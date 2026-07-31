@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/*
+  Brand tokens — Manthan Vidyashram.
+  Colors are the school's fixed brand values; do not adjust without sign-off.
+  Usage rule: maroon and rust are accents (headings, CTAs, active states);
+  warm neutrals carry structure (chrome, borders, inactive states) so the brand
+  color reads as a deliberate accent, not a wash.
+
+  Two themes, one set of semantic token NAMES — the values swap per theme so the
+  ~280 utility usages across the app never need to change:
+    • light — warm parchment page, white surfaces, maroon ink accents
+    • dark  — deep maroon page, lifted-maroon surfaces, beige/gold ink
+
+  One subtlety: `maroon` plays two roles. text-/border-maroon is an INK accent
+  (maroon on light, gold on dark). bg-maroon is a saturated FILL (button, active
+  pill, login field — maroon in BOTH themes). So --color-maroon carries the ink
+  value, and the .bg-maroon utility is overridden to --color-fill-maroon below.
+
+  Display typeface (Samarkan, big headings only) is pending a confirmed license —
+  --font-display falls back to a strong serif until the licensed file is supplied.
+*/
+
+/* Drive the `dark:` variant from data-theme (set by the theme toggle / no-flash
+   script), not prefers-color-scheme, so the manual switch is authoritative. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  /* — light — */
+  --color-maroon: #5a0510;        /* INK: headings, accents, borders */
+  --color-maroon-strong: #40040b; /* strong fill: pressed / heavy CTA */
+  --color-maroon-tint: #f3e3df;   /* faint maroon wash */
+  --color-fill-maroon: #5a0510;   /* FILL: button / active pill / login field */
+  --color-cream: #f7efe1;         /* light text/fill that sits ON maroon */
+  --color-parchment: #ece1cf;     /* raised warm panel / hover */
+  --color-rust: #a4470b;          /* accent — links, eyebrows (AA on parchment) */
+  --color-rust-tint: #f6ddc4;     /* saffron highlight panel */
+  --color-slate: #6b5a4f;         /* muted / secondary text (warm taupe) */
+  --color-slate-strong: #33241d;  /* body text (warm espresso) */
+  --color-mist: #ece2d3;          /* secondary surface — footer, placeholders */
+  --color-hairline: rgba(74, 44, 22, 0.16);
+  --color-surface: #fffdfa;       /* card / content surface */
+  --color-bg: #f4ece0;            /* page */
+
+  --shadow-card: 0 1px 2px rgba(60, 30, 12, 0.05), 0 10px 30px -16px rgba(60, 30, 12, 0.22);
+  --shadow-pop: 0 4px 10px rgba(60, 30, 12, 0.08), 0 24px 48px -20px rgba(60, 30, 12, 0.32);
+  --mandala-ink: #5a0510;
+  --mandala-strength: 0.05;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  /* — dark: maroon field, beige/gold ink — */
+  --color-maroon: #f4e6c6;        /* INK glows warm gold on the maroon field */
+  --color-maroon-strong: #55050f; /* strong fill sits just under the CTA */
+  --color-maroon-tint: #2c0710;
+  --color-fill-maroon: #8a1622;   /* FILL lifts clearly off page + surface (CTAs, active pills) */
+  --color-cream: #f5e9cf;         /* still light — sits on maroon fills */
+  --color-parchment: #5a0812;     /* raised maroon hover */
+  --color-rust: #e79a52;          /* saffron accent, readable on maroon */
+  --color-rust-tint: #3d2412;
+  --color-slate: #cbb897;         /* muted beige */
+  --color-slate-strong: #efe1c6;  /* body — beige */
+  --color-mist: #45040f;          /* secondary maroon surface */
+  --color-hairline: rgba(240, 225, 195, 0.16);
+  --color-surface: #4e0611;       /* lifted-maroon card */
+  --color-bg: #3a0009;            /* deep maroon page */
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45), 0 12px 34px -18px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 6px 16px rgba(0, 0, 0, 0.5), 0 30px 60px -24px rgba(0, 0, 0, 0.8);
+  --mandala-ink: #f0dcae;
+  --mandala-strength: 0.07;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-maroon: var(--color-maroon);
+  --color-maroon-strong: var(--color-maroon-strong);
+  --color-maroon-tint: var(--color-maroon-tint);
+  --color-cream: var(--color-cream);
+  --color-parchment: var(--color-parchment);
+  --color-rust: var(--color-rust);
+  --color-rust-tint: var(--color-rust-tint);
+  --color-slate: var(--color-slate);
+  --color-slate-strong: var(--color-slate-strong);
+  --color-mist: var(--color-mist);
+  --color-hairline: var(--color-hairline);
+  --color-surface: var(--color-surface);
+  --color-bg: var(--color-bg);
+
+  --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-heading: var(--font-yatra-one), Georgia, serif;
+  --font-body: var(--font-alegreya), Georgia, serif;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --z-dropdown: 30;
+  --z-sticky: 40;
+  --z-toast: 70;
+}
+
+/* bg-maroon / bg-maroon-strong are FILLS (saturated maroon in both themes),
+   distinct from the text-maroon INK which goes gold in dark. */
+@layer utilities {
+  .bg-maroon { background-color: var(--color-fill-maroon); }
+}
+
+html {
+  color-scheme: light dark;
+  /* Gently scale the whole UI with the viewport — the interface breathes with
+     the device instead of snapping at breakpoints. */
+  font-size: clamp(16px, 0.95rem + 0.3vw, 19px);
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-slate-strong);
+  font-family: var(--font-body);
+  min-height: 100dvh;
+  transition: background-color 0.35s var(--ease-out-quart), color 0.35s var(--ease-out-quart);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  header, main, footer, .surface-tint {
+    transition: background-color 0.35s var(--ease-out-quart), border-color 0.35s var(--ease-out-quart);
+  }
+}
+
+::selection {
+  background: var(--color-fill-maroon);
+  color: var(--color-cream);
+}
+
+/* Consistent, brand-tinted focus ring on every interactive element. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-rust);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Thin, on-brand scrollbars for the horizontal nav and any overflow region. */
+* { scrollbar-width: thin; scrollbar-color: var(--color-hairline) transparent; }
+*::-webkit-scrollbar { height: 8px; width: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-hairline); border-radius: 999px; }
+
+/* ---- Mandala decoration -------------------------------------------------- */
+/* One shared asset (public/brand/mandala.svg, currentColor strokes) painted as
+   a MASK, so its color is a theme token and its opacity is tunable. Purely
+   decorative texture behind content — never interactive. */
+.mandala {
+  --_size: 22rem;
+  position: absolute;
+  width: var(--_size);
+  height: var(--_size);
+  background-color: var(--mandala-ink);
+  -webkit-mask: url("/brand/mandala.svg") center / contain no-repeat;
+  mask: url("/brand/mandala.svg") center / contain no-repeat;
+  opacity: var(--mandala-strength);
+  pointer-events: none;
+  z-index: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mandala-spin { animation: mandala-spin 260s linear infinite; }
+}
+@keyframes mandala-spin { to { transform: rotate(360deg); } }
