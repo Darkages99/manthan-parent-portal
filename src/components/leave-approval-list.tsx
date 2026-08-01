@@ -12,10 +12,12 @@ export function LeaveApprovalList({
   leaves,
   studentNames,
   guardianNames,
+  emptyLabel = "No leave requests yet.",
 }: {
   leaves: Leave[];
   studentNames: Record<string, string>;
   guardianNames: Record<string, string>;
+  emptyLabel?: string;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -56,7 +58,7 @@ export function LeaveApprovalList({
           )}
         </li>
       ))}
-      {leaves.length === 0 && <p className="text-base text-slate">No leave requests yet.</p>}
+      {leaves.length === 0 && <p className="text-base text-slate">{emptyLabel}</p>}
     </ul>
   );
 }

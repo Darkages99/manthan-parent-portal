@@ -12,7 +12,7 @@ select s.sid, g.d::date,
   case
     when s.sid = 'c0000000-0000-0000-0000-000000000001' and g.d::date in ('2026-07-08','2026-07-21') then 'absent'
     when s.sid = 'c0000000-0000-0000-0000-000000000001' and g.d::date = '2026-07-15' then 'late'
-    when s.sid = 'c0000000-0000-0000-0000-000000000002' and g.d::date = '2026-07-10' then 'excused'
+    when s.sid = 'c0000000-0000-0000-0000-000000000002' and g.d::date = '2026-07-10' then 'half_day'
     when s.sid = 'c0000000-0000-0000-0000-000000000002' and g.d::date = '2026-07-23' then 'absent'
     when s.sid = 'c0000000-0000-0000-0000-000000000002' and g.d::date = '2026-07-03' then 'late'
     else 'present'

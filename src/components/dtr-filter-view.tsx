@@ -17,7 +17,7 @@ import {
   categoryLabel,
   type DTRCategory,
 } from "@/lib/dtr";
-import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "./icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Event = Tables<"dtr_events">;
@@ -258,7 +258,7 @@ function MonthView({
               })}
             </p>
             {selectedEvents.length === 0 ? (
-              <p className="text-base text-slate">Nothing on this day.</p>
+              <EmptyDay />
             ) : (
               <ul className="divide-y divide-hairline rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
                 {selectedEvents.map((e) => (
@@ -364,6 +364,26 @@ function WeekView({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Aesthetic empty state for a day with no events — sized to balance the
+ * calendar card beside it instead of leaving a lone line of text. */
+function EmptyDay() {
+  return (
+    <div className="flex min-h-[16rem] flex-col items-center justify-center gap-4 rounded-sm border border-dashed border-hairline bg-mist/40 px-6 py-10 text-center md:min-h-[20rem]">
+      <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-surface shadow-[var(--shadow-card)]">
+        <span className="absolute inset-0 rounded-full ring-1 ring-hairline" aria-hidden />
+        <CalendarIcon className="h-8 w-8 text-maroon/50" />
+      </span>
+      <div>
+        <p className="font-heading text-xl text-maroon">Nothing on this day</p>
+        <p className="mx-auto mt-1.5 max-w-[22rem] text-base leading-relaxed text-slate">
+          No exams, holidays or events are scheduled. Pick another date, or filter by a tag to see
+          what&apos;s coming up.
+        </p>
+      </div>
     </div>
   );
 }

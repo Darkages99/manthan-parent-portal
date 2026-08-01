@@ -163,6 +163,22 @@ export function ChevronRightIcon(p: IconProps) {
   );
 }
 
+export function ChevronDownIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function PlusIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 5v14M5 12h14" />
+    </Svg>
+  );
+}
+
 export function MenuIcon(p: IconProps) {
   return (
     <Svg {...p}>

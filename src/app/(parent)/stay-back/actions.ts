@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
+import { sendPush } from "@/lib/notifications/push";
 
 export async function raiseStayBack(formData: FormData) {
   const viewer = await getViewer();
@@ -32,7 +34,29 @@ export async function raiseStayBack(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  // TODO: sendPush([named teacher, principal], {...}) once push subscriptions exist —
-  // see src/lib/notifications/push.ts
+  // Best-effort: notify the named teacher plus every principal/super_admin.
+  // Both parties must approve, so both need the heads-up.
+  try {
+    const admin = createAdminClient();
+    const { data: principals } = await admin
+      .from("staff")
+      .select("id")
+      .in("role", ["principal", "super_admin"]);
+
+    const targetIds = new Set([teacherId, ...(principals ?? []).map((p) => p.id)]);
+    const studentName = viewer.students.find((s) => s.id === studentId)?.first_name ?? "your child";
+
+    await sendPush(
+      [...targetIds].map((userId) => ({ userId, role: "staff" as const })),
+      {
+        title: "Stay-back consent request",
+        body: `${studentName} — ${reason} on ${date}`,
+        url: "/console/stay-back",
+      }
+    );
+  } catch (err) {
+    console.error("[stay-back] notification failed:", (err as Error).message);
+  }
+
   revalidatePath("/stay-back");
 }

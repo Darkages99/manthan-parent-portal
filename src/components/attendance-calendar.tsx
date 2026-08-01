@@ -11,14 +11,14 @@ const STATUS_FILL: Record<Status, string> = {
   present: "bg-emerald-500 text-white",
   absent: "bg-rose-500 text-white",
   late: "bg-amber-500 text-white",
-  excused: "bg-slate-400 text-white",
+  half_day: "bg-slate-400 text-white",
 };
 
 const STATUS_LABEL: Record<Status, string> = {
   present: "Present",
   absent: "Absent",
   late: "Late",
-  excused: "Excused",
+  half_day: "Half day",
 };
 
 /** Month-grid view of a single child's daily attendance register. */
@@ -65,7 +65,7 @@ export function AttendanceCalendar({ statusByDate }: { statusByDate: Record<stri
       <div className="rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]">
         <div className="grid grid-cols-7 gap-1">
           {WEEKDAY_LABELS.map((d) => (
-            <div key={d} className="pb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate">
+            <div key={d} className="pb-1 text-center text-sm font-semibold uppercase tracking-wide text-slate">
               {d}
             </div>
           ))}
@@ -74,11 +74,11 @@ export function AttendanceCalendar({ statusByDate }: { statusByDate: Record<stri
             return (
               <div
                 key={day.iso}
-                className="flex aspect-square items-center justify-center"
+                className="flex h-11 items-center justify-center sm:h-12"
                 title={status ? `${STATUS_LABEL[status]} — ${day.iso}` : undefined}
               >
                 <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-sm ${
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-base sm:h-10 sm:w-10 ${
                     status
                       ? `font-semibold ${STATUS_FILL[status]}`
                       : day.inMonth

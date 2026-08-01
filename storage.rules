@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// The portal authenticates through Supabase, not Firebase Auth, so request.auth
+// is never populated in Storage rules. All direct client access is therefore
+// denied: uploads and downloads must go through a Next.js route handler using
+// the Firebase Admin SDK, which verifies the Supabase session server-side.
+// See src/lib/firebase/storage.ts.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

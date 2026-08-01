@@ -31,7 +31,7 @@ export default async function StayBackPage() {
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Stay-back consent</h1>
         <p className="mt-2 max-w-prose text-lg text-slate-strong">
           Raising a request sends a push notification to the named teacher and the principal —
-          either can approve it.
+          both must approve it before it&apos;s confirmed.
         </p>
       </div>
 

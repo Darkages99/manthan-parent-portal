@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/test-results
+/playwright-report
+/playwright/.cache
 
 # next.js
 /.next/
@@ -33,9 +36,15 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# firebase admin service account keys — never commit these
+*firebase-adminsdk*.json
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*

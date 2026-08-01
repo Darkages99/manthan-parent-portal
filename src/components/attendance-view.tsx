@@ -4,18 +4,17 @@ import { useState } from "react";
 import { ChildTabs } from "./child-tabs";
 import { AttendanceCalendar } from "./attendance-calendar";
 import { AlertTriangleIcon } from "./icons";
+import { ATTENDANCE_THRESHOLD, presentPercent } from "@/lib/attendance";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type Student = Tables<"students">;
 type AttendanceRecord = Tables<"attendance_records">;
 type Status = Enums<"attendance_status">;
 
-const ATTENDANCE_THRESHOLD = 85;
-
 const STATUS_META: Record<Status, { label: string; solid: string }> = {
   present: { label: "Present", solid: "#10b981" },
   late: { label: "Late", solid: "#f59e0b" },
-  excused: { label: "Excused", solid: "#94a3b8" },
+  half_day: { label: "Half day", solid: "#94a3b8" },
   absent: { label: "Absent", solid: "#f43f5e" },
 };
 
@@ -23,7 +22,7 @@ const STATUS_META: Record<Status, { label: string; solid: string }> = {
 function AttendanceDonut({ counts, total, pct }: { counts: Record<Status, number>; total: number; pct: number }) {
   const R = 42;
   const C = 2 * Math.PI * R;
-  const order: Status[] = ["present", "late", "excused", "absent"];
+  const order: Status[] = ["present", "late", "half_day", "absent"];
 
   let acc = 0;
   const segments = order.map((s) => {
@@ -73,10 +72,10 @@ export function AttendanceView({
   const [activeId, setActiveId] = useState(students[0]?.id);
   const records = recordsByStudent[activeId] ?? [];
 
-  const counts: Record<Status, number> = { present: 0, absent: 0, late: 0, excused: 0 };
+  const counts: Record<Status, number> = { present: 0, absent: 0, late: 0, half_day: 0 };
   for (const r of records) counts[r.status] += 1;
   const total = records.length;
-  const presentPct = total ? Math.round(((counts.present + counts.late) / total) * 100) : 0;
+  const presentPct = presentPercent(records);
   const belowThreshold = total > 0 && presentPct < ATTENDANCE_THRESHOLD;
 
   const statusByDate: Record<string, Status> = {};
@@ -105,7 +104,7 @@ export function AttendanceView({
           <div className="flex-1">
             <p className="mb-3 text-sm uppercase tracking-wide text-slate">Attendance this term</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {(["present", "absent", "late", "excused"] as Status[]).map((k) => (
+              {(["present", "absent", "late", "half_day"] as Status[]).map((k) => (
                 <div key={k}>
                   <p className="font-heading text-3xl text-maroon">{counts[k]}</p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-sm uppercase tracking-wide text-slate">

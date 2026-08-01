@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { LogoMark } from "./logo-mark";
 import { SidebarNav, type NavItem } from "./sidebar-nav";
 import { Mandala } from "./mandala";
 import { ThemeToggle } from "./theme-toggle";
+import { PushToggle } from "./push-toggle";
 import {
   LeaveIcon,
   ChevronLeftIcon,
@@ -13,6 +15,7 @@ import {
   CloseIcon,
 } from "./icons";
 import { signOutAction } from "@/app/actions";
+import { EASE_OUT_EXPO } from "@/lib/motion";
 
 /**
  * The universal application shell: a collapsible desktop sidebar plus a mobile
@@ -66,26 +69,38 @@ export function AppShell({
       </aside>
 
       {/* ---- Mobile drawer ----------------------------------------------- */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-[var(--z-toast)] lg:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={() => setMobileOpen(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <aside className="absolute left-0 top-0 flex h-dvh w-72 max-w-[82vw] border-r border-hairline bg-surface shadow-[var(--shadow-pop)]">
-            <SidebarContent
-              collapsed={false}
-              navItems={navItems}
-              subtitle={subtitle}
-              accountName={accountName}
-              onNavigate={() => setMobileOpen(false)}
-              onClose={() => setMobileOpen(false)}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-[var(--z-toast)] lg:hidden">
+            <motion.button
+              type="button"
+              aria-label="Close menu"
+              onClick={() => setMobileOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
             />
-          </aside>
-        </div>
-      )}
+            <motion.aside
+              className="absolute left-0 top-0 flex h-dvh w-72 max-w-[82vw] border-r border-hairline bg-surface shadow-[var(--shadow-pop)]"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+            >
+              <SidebarContent
+                collapsed={false}
+                navItems={navItems}
+                subtitle={subtitle}
+                accountName={accountName}
+                onNavigate={() => setMobileOpen(false)}
+                onClose={() => setMobileOpen(false)}
+              />
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ---- Content column ---------------------------------------------- */}
       <div className="relative flex min-w-0 flex-1 flex-col">
@@ -168,6 +183,7 @@ function SidebarContent({
       <div className="mt-auto border-t border-hairline px-2.5 py-3">
         {collapsed ? (
           <div className="flex flex-col items-center gap-3 py-1">
+            <PushToggle collapsed />
             <ThemeToggle />
             <form action={signOutAction}>
               <button
@@ -181,16 +197,19 @@ function SidebarContent({
             </form>
           </div>
         ) : (
-          <div className="flex items-center gap-2 px-1">
-            <div className="min-w-0 flex-1 text-sm leading-tight">
-              <p className="truncate font-semibold text-slate-strong">{accountName}</p>
-              <form action={signOutAction}>
-                <button type="submit" className="text-rust underline-offset-2 hover:underline">
-                  Sign out
-                </button>
-              </form>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 px-1">
+              <div className="min-w-0 flex-1 text-sm leading-tight">
+                <p className="truncate font-semibold text-slate-strong">{accountName}</p>
+                <form action={signOutAction}>
+                  <button type="submit" className="text-rust underline-offset-2 hover:underline">
+                    Sign out
+                  </button>
+                </form>
+              </div>
+              <ThemeToggle />
             </div>
-            <ThemeToggle />
+            <PushToggle />
           </div>
         )}
       </div>

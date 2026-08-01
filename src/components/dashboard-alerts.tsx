@@ -2,11 +2,13 @@
 
 import { useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   readReportCardSeen,
   type DashboardAlertData,
   type StudentAlertState,
 } from "@/lib/alerts";
+import { fadeUp, staggerContainer } from "@/lib/motion";
 import {
   PaymentIcon,
   UsersIcon,
@@ -106,36 +108,52 @@ export function DashboardAlerts({ data }: { data: DashboardAlertData }) {
     <div className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
       <h2 className="mb-4 font-heading text-xl text-maroon">Alerts</h2>
 
-      {alerts.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <CheckCircleIcon className="h-8 w-8 text-emerald-500" />
-          <p className="text-base font-medium text-slate-strong">You&apos;re all caught up</p>
-          <p className="text-sm text-slate">No pending actions right now.</p>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {alerts.map((a) => {
-            const Icon = a.icon;
-            return (
-              <li key={a.key}>
-                <Link
-                  href={a.href}
-                  className="group flex items-center gap-3 rounded-sm border border-hairline bg-mist/40 p-3 transition hover:border-rust/50 hover:bg-mist"
-                >
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${a.tint}`}>
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-base font-semibold text-maroon">{a.title}</p>
-                    <p className="truncate text-sm text-slate-strong">{a.detail}</p>
-                  </div>
-                  <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <AnimatePresence mode="wait">
+        {alerts.length === 0 ? (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center gap-2 py-6 text-center"
+          >
+            <CheckCircleIcon className="h-8 w-8 text-emerald-500" />
+            <p className="text-base font-medium text-slate-strong">You&apos;re all caught up</p>
+            <p className="text-sm text-slate">No pending actions right now.</p>
+          </motion.div>
+        ) : (
+          <motion.ul
+            key="alerts"
+            variants={staggerContainer()}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col gap-2"
+          >
+            <AnimatePresence>
+              {alerts.map((a) => {
+                const Icon = a.icon;
+                return (
+                  <motion.li key={a.key} layout variants={fadeUp} exit={{ opacity: 0, x: -8 }}>
+                    <Link
+                      href={a.href}
+                      className="group flex items-center gap-3 rounded-sm border border-hairline bg-mist/40 p-3 transition hover:border-rust/50 hover:bg-mist"
+                    >
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${a.tint}`}>
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-semibold text-maroon">{a.title}</p>
+                        <p className="truncate text-sm text-slate-strong">{a.detail}</p>
+                      </div>
+                      <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
+                    </Link>
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

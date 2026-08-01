@@ -267,7 +267,7 @@ create table push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   guardian_id uuid references guardians (id) on delete cascade,
   staff_id uuid references staff (id) on delete cascade,
-  endpoint text not null,
+  endpoint text not null unique, -- one row per browser push endpoint (upsert key)
   p256dh text not null,
   auth text not null,
   created_at timestamptz not null default now(),
@@ -275,28 +275,164 @@ create table push_subscriptions (
 );
 
 -- ---------------------------------------------------------------------------
--- Row-level security (enable now, policies added alongside auth wiring)
+-- Row-level security
 -- ---------------------------------------------------------------------------
+-- Access-control backbone. Two security-definer helpers resolve the signed-in
+-- Supabase user to their domain identity; every guardian policy scopes rows
+-- through guardian_student via current_guardian_id(), and staff (is_staff())
+-- get full access. These functions are defined here because migration 0002's
+-- policies depend on them — a fresh `supabase db push` must create them first.
 
+create or replace function public.current_guardian_id()
+  returns uuid language sql stable security definer set search_path to 'public'
+as $function$
+  select id from guardians where auth_user_id = auth.uid()
+$function$;
+
+create or replace function public.current_staff_id()
+  returns uuid language sql stable security definer set search_path to 'public'
+as $function$
+  select id from staff where auth_user_id = auth.uid()
+$function$;
+
+create or replace function public.is_staff()
+  returns boolean language sql stable security definer set search_path to 'public'
+as $function$
+  select exists(select 1 from staff where auth_user_id = auth.uid())
+$function$;
+
+-- Enable RLS. (invoices/payments are enabled now but left policy-less until the
+-- payments module lands in Phase 2, so they deny all access in the meantime.)
 alter table students enable row level security;
 alter table guardians enable row level security;
+alter table guardian_student enable row level security;
+alter table class_sections enable row level security;
 alter table attendance_records enable row level security;
 alter table leave_requests enable row level security;
 alter table stay_back_consents enable row level security;
+alter table dtr_events enable row level security;
+alter table dtr_event_classes enable row level security;
 alter table invoices enable row level security;
 alter table payments enable row level security;
 alter table exam_results enable row level security;
 alter table defaulter_records enable row level security;
+alter table ptm_slots enable row level security;
 alter table messages enable row level security;
+alter table message_targets enable row level security;
+alter table message_attachments enable row level security;
 alter table message_receipts enable row level security;
+alter table push_subscriptions enable row level security;
 
--- Example policy shape (uncomment and adapt once auth_user_id is populated):
--- create policy "guardians see only their own linked students"
---   on students for select
---   using (
---     id in (
---       select gs.student_id from guardian_student gs
---       join guardians g on g.id = gs.guardian_id
---       where g.auth_user_id = auth.uid()
---     )
---   );
+-- Guardians & students -------------------------------------------------------
+drop policy if exists "guardian reads own row" on guardians;
+create policy "guardian reads own row" on guardians for select
+  using (auth_user_id = auth.uid() or is_staff());
+
+drop policy if exists "guardian reads linked students" on students;
+create policy "guardian reads linked students" on students for select
+  using (
+    is_staff()
+    or id in (select student_id from guardian_student where guardian_id = current_guardian_id())
+  );
+
+drop policy if exists "guardian reads own links" on guardian_student;
+create policy "guardian reads own links" on guardian_student for select
+  using (is_staff() or guardian_id = current_guardian_id());
+
+-- Class sections are non-sensitive reference data any signed-in user may read
+-- (names appear on the child's profile, calendar, PTM list); staff may write.
+drop policy if exists "authenticated reads class sections" on class_sections;
+create policy "authenticated reads class sections" on class_sections for select
+  using (auth.uid() is not null);
+drop policy if exists "staff writes class sections" on class_sections;
+create policy "staff writes class sections" on class_sections for all
+  using (is_staff()) with check (is_staff());
+
+-- Leave requests -------------------------------------------------------------
+drop policy if exists "guardian reads own leave" on leave_requests;
+create policy "guardian reads own leave" on leave_requests for select
+  using (
+    is_staff()
+    or student_id in (select student_id from guardian_student where guardian_id = current_guardian_id())
+  );
+drop policy if exists "guardian raises own leave" on leave_requests;
+create policy "guardian raises own leave" on leave_requests for insert
+  with check (
+    requested_by = current_guardian_id()
+    and student_id in (select student_id from guardian_student where guardian_id = current_guardian_id())
+  );
+drop policy if exists "staff decides leave" on leave_requests;
+create policy "staff decides leave" on leave_requests for all
+  using (is_staff()) with check (is_staff());
+
+-- Stay-back consent ----------------------------------------------------------
+drop policy if exists "guardian reads own stay_back" on stay_back_consents;
+create policy "guardian reads own stay_back" on stay_back_consents for select
+  using (
+    is_staff()
+    or student_id in (select student_id from guardian_student where guardian_id = current_guardian_id())
+  );
+drop policy if exists "guardian raises own stay_back" on stay_back_consents;
+create policy "guardian raises own stay_back" on stay_back_consents for insert
+  with check (
+    raised_by_guardian_id = current_guardian_id()
+    and student_id in (select student_id from guardian_student where guardian_id = current_guardian_id())
+  );
+drop policy if exists "staff decides stay_back" on stay_back_consents;
+create policy "staff decides stay_back" on stay_back_consents for all
+  using (is_staff()) with check (is_staff());
+
+-- Dates To Remember (school calendar) — readable by any signed-in user --------
+drop policy if exists "authenticated reads dtr" on dtr_events;
+create policy "authenticated reads dtr" on dtr_events for select
+  using (auth.uid() is not null);
+drop policy if exists "staff writes dtr" on dtr_events;
+create policy "staff writes dtr" on dtr_events for all
+  using (is_staff()) with check (is_staff());
+drop policy if exists "authenticated reads dtr classes" on dtr_event_classes;
+create policy "authenticated reads dtr classes" on dtr_event_classes for select
+  using (auth.uid() is not null);
+drop policy if exists "staff writes dtr classes" on dtr_event_classes;
+create policy "staff writes dtr classes" on dtr_event_classes for all
+  using (is_staff()) with check (is_staff());
+
+-- Messaging: targets/attachments/receipts. (The guardian message-read policies
+-- and message_targets guardian-read live in migration 0002.) --------------------
+drop policy if exists "staff writes message_targets" on message_targets;
+create policy "staff writes message_targets" on message_targets for all
+  using (is_staff()) with check (is_staff());
+
+drop policy if exists "reads attachments of visible messages" on message_attachments;
+create policy "reads attachments of visible messages" on message_attachments for select
+  using (
+    is_staff()
+    -- message_id is filtered by the caller's own messages RLS, so a guardian
+    -- only matches attachments of messages they can already read.
+    or message_id in (select id from messages)
+  );
+drop policy if exists "staff writes attachments" on message_attachments;
+create policy "staff writes attachments" on message_attachments for all
+  using (is_staff()) with check (is_staff());
+
+drop policy if exists "guardian reads own receipts" on message_receipts;
+create policy "guardian reads own receipts" on message_receipts for select
+  using (is_staff() or guardian_id = current_guardian_id());
+drop policy if exists "guardian updates own receipts" on message_receipts;
+create policy "guardian updates own receipts" on message_receipts for update
+  using (guardian_id = current_guardian_id())
+  with check (guardian_id = current_guardian_id());
+drop policy if exists "staff writes receipts" on message_receipts;
+create policy "staff writes receipts" on message_receipts for all
+  using (is_staff()) with check (is_staff());
+
+-- Push subscriptions — each device row is owned by its guardian or staff member.
+drop policy if exists "owner manages push subscriptions" on push_subscriptions;
+create policy "owner manages push subscriptions" on push_subscriptions for all
+  using (
+    (guardian_id is not null and guardian_id = current_guardian_id())
+    or (staff_id is not null and staff_id = current_staff_id())
+  )
+  with check (
+    (guardian_id is not null and guardian_id = current_guardian_id())
+    or (staff_id is not null and staff_id = current_staff_id())
+  );

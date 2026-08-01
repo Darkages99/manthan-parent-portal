@@ -12,15 +12,21 @@ export async function decideStayBack(id: string, decision: "approved" | "decline
   const supabase = await createClient();
   const { data: consent } = await supabase
     .from("stay_back_consents")
-    .select("teacher_id")
+    .select("teacher_id, teacher_decision, principal_decision")
     .eq("id", id)
     .single();
   if (!consent) throw new Error("Request not found");
 
   const isPrincipal = viewer.staff.role === "principal" || viewer.staff.role === "super_admin";
   const isNamedTeacher = consent.teacher_id === viewer.staff.id;
+  if (!isPrincipal && !isNamedTeacher) throw new Error("You aren't a party to this request");
 
-  const patch: TablesUpdate<"stay_back_consents"> = { status: decision };
+  if (isNamedTeacher && consent.teacher_decision) throw new Error("You've already decided this request");
+  if (isPrincipal && consent.principal_decision) throw new Error("You've already decided this request");
+
+  const patch: TablesUpdate<"stay_back_consents"> = {};
+  const teacherDecision = isNamedTeacher ? decision : consent.teacher_decision;
+  const principalDecision = isPrincipal ? decision : consent.principal_decision;
   if (isNamedTeacher) {
     patch.teacher_decision = decision;
     patch.teacher_decided_at = new Date().toISOString();
@@ -28,6 +34,14 @@ export async function decideStayBack(id: string, decision: "approved" | "decline
   if (isPrincipal) {
     patch.principal_decision = decision;
     patch.principal_decided_at = new Date().toISOString();
+  }
+
+  // Both must approve for the request to succeed; either side declining
+  // closes it immediately without waiting on the other party.
+  if (teacherDecision === "declined" || principalDecision === "declined") {
+    patch.status = "declined";
+  } else if (teacherDecision === "approved" && principalDecision === "approved") {
+    patch.status = "approved";
   }
 
   const { error } = await supabase.from("stay_back_consents").update(patch).eq("id", id);

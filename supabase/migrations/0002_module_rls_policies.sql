@@ -75,6 +75,13 @@ alter table custom_group_students enable row level security;
 drop policy if exists "staff full access to custom_group_students" on custom_group_students;
 create policy "staff full access to custom_group_students" on custom_group_students for all
   using (is_staff()) with check (is_staff());
+-- Guardians read their own children's group memberships (the Messages inbox
+-- resolves which custom groups the guardian is targeted through).
+drop policy if exists "guardian reads own group memberships" on custom_group_students;
+create policy "guardian reads own group memberships" on custom_group_students for select
+  using (
+    student_id in (select student_id from guardian_student where guardian_id = current_guardian_id())
+  );
 
 -- ---------------------------------------------------------------------------
 -- Extend guardian message visibility to cover custom-group targeting

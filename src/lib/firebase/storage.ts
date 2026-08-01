@@ -11,10 +11,11 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 // write: if false"), which is deliberate: the app authenticates through
 // Supabase, not Firebase Auth, so request.auth in Storage rules would
 // never be populated and open rules would mean an unauthenticated public
-// bucket. Once this is actually wired up, route uploads/downloads through
-// a Next.js Route Handler using the Firebase Admin SDK (service account
-// key from Firebase Console > Project Settings > Service accounts),
-// checked against the Supabase session server-side — not this client SDK.
+// bucket. Uploads instead go through a Next.js Route Handler using the
+// Firebase Admin SDK, checked against the Supabase session server-side —
+// see src/lib/firebase/admin-storage.ts and /api/attachments/upload for the
+// message-attachments path this powers today. `uploadFile` below is unused
+// client-side scaffolding for a future report-card/receipt upload path.
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,

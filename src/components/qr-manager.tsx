@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   getStudentQr,
   issueStudentQr,
@@ -8,6 +9,7 @@ import {
   issueMissingQrCodes,
   type StudentQr,
 } from "@/app/(staff)/console/qr-codes/actions";
+import { EASE_OUT_EXPO } from "@/lib/motion";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -257,67 +259,101 @@ export function QrManager({
               </p>
             </div>
 
-            {loadState === "loading" && <p className="py-10 text-base text-slate">Loading…</p>}
+            <AnimatePresence mode="wait">
+              {loadState === "loading" && (
+                <motion.p
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="py-10 text-base text-slate"
+                >
+                  Loading…
+                </motion.p>
+              )}
 
-            {loadState === "none" && (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <p className="text-base text-slate">No QR code has been generated yet.</p>
-                {canManage ? (
-                  <button
-                    type="button"
-                    onClick={generate}
-                    disabled={isPending}
-                    className="rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream transition hover:bg-maroon-strong disabled:opacity-60"
-                  >
-                    {isPending ? "Generating…" : "Generate QR code"}
-                  </button>
-                ) : (
-                  <p className="text-sm text-slate">Ask the principal to generate one.</p>
-                )}
-              </div>
-            )}
-
-            {loadState === "loaded" && qr && (
-              <>
-                <div
-                  className="w-64 max-w-full rounded-sm border border-hairline bg-white p-4 [&_svg]:h-full [&_svg]:w-full"
-                  // The SVG is generated server-side by the `qrcode` library from a
-                  // random token — no user-controlled markup is injected here.
-                  dangerouslySetInnerHTML={{ __html: qr.svg }}
-                />
-                <p className="break-all font-mono text-xs text-slate">{qr.token}</p>
-                <p className="text-sm text-slate">
-                  Issued {new Date(qr.issuedAt).toLocaleDateString()}
-                </p>
-
-                <div className="flex flex-wrap justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={printQr}
-                    className="rounded-sm bg-maroon px-4 py-2 text-sm font-semibold text-cream transition hover:bg-maroon-strong"
-                  >
-                    Print
-                  </button>
-                  <button
-                    type="button"
-                    onClick={downloadSvg}
-                    className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon transition hover:border-rust/60"
-                  >
-                    Download SVG
-                  </button>
-                  {canManage && (
+              {loadState === "none" && (
+                <motion.div
+                  key="none"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center gap-3 py-6"
+                >
+                  <p className="text-base text-slate">No QR code has been generated yet.</p>
+                  {canManage ? (
                     <button
                       type="button"
-                      onClick={regenerate}
+                      onClick={generate}
                       disabled={isPending}
-                      className="rounded-sm border border-rust/40 bg-rust-tint/30 px-4 py-2 text-sm font-semibold text-rust transition hover:border-rust/70 disabled:opacity-60"
+                      className="rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream transition hover:bg-maroon-strong disabled:opacity-60"
                     >
-                      Regenerate
+                      {isPending ? "Generating…" : "Generate QR code"}
                     </button>
+                  ) : (
+                    <p className="text-sm text-slate">Ask the principal to generate one.</p>
                   )}
-                </div>
-              </>
-            )}
+                </motion.div>
+              )}
+
+              {loadState === "loaded" && qr && (
+                <motion.div
+                  key={`loaded-${qr.token}`}
+                  initial="hidden"
+                  animate="show"
+                  exit={{ opacity: 0 }}
+                  variants={{
+                    hidden: { opacity: 0, scaleY: 0.85, clipPath: "inset(0% 45% 0% 45%)" },
+                    show: {
+                      opacity: 1,
+                      scaleY: 1,
+                      clipPath: "inset(0% 0% 0% 0%)",
+                      transition: { duration: 0.55, ease: EASE_OUT_EXPO },
+                    },
+                  }}
+                  style={{ transformOrigin: "top center" }}
+                  className="flex flex-col items-center gap-4"
+                >
+                  <div
+                    className="w-64 max-w-full rounded-sm border border-hairline bg-white p-4 [&_svg]:h-full [&_svg]:w-full"
+                    // The SVG is generated server-side by the `qrcode` library from a
+                    // random token — no user-controlled markup is injected here.
+                    dangerouslySetInnerHTML={{ __html: qr.svg }}
+                  />
+                  <p className="break-all font-mono text-xs text-slate">{qr.token}</p>
+                  <p className="text-sm text-slate">
+                    Issued {new Date(qr.issuedAt).toLocaleDateString()}
+                  </p>
+
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={printQr}
+                      className="rounded-sm bg-maroon px-4 py-2 text-sm font-semibold text-cream transition hover:bg-maroon-strong"
+                    >
+                      Print
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadSvg}
+                      className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon transition hover:border-rust/60"
+                    >
+                      Download SVG
+                    </button>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={regenerate}
+                        disabled={isPending}
+                        className="rounded-sm border border-rust/40 bg-rust-tint/30 px-4 py-2 text-sm font-semibold text-rust transition hover:border-rust/70 disabled:opacity-60"
+                      >
+                        Regenerate
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {error && <p className="text-base text-rose-700">{error}</p>}
           </div>

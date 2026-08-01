@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { motion } from "framer-motion";
 import { ChildTabs } from "./child-tabs";
+import { EmptyState } from "./empty-state";
+import { CalendarIcon } from "./icons";
 import { bookSlot, cancelSlot } from "@/app/(parent)/ptm/actions";
 import { formatSlotTime, formatClock } from "@/lib/format";
+import { fadeUp, staggerContainer } from "@/lib/motion";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Student = Tables<"students"> & { classSection: Tables<"class_sections"> | null };
@@ -74,15 +78,25 @@ export function PtmView({
       {error && <p className="text-base text-rose-700">{error}</p>}
 
       {classSlots.length === 0 ? (
-        <p className="text-base text-slate">No slots have been opened for this class yet.</p>
+        <EmptyState
+          icon={CalendarIcon}
+          title="No upcoming meetings"
+          detail="Once the class teacher opens slots for a parent–teacher meeting, they'll show up here for you to book."
+        />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <motion.ul
+          variants={staggerContainer()}
+          initial="hidden"
+          animate="show"
+          className="grid gap-3 sm:grid-cols-2"
+        >
           {classSlots.map((s) => {
             const mine = s.booked_student_id === activeId;
             const takenByOther = !!s.booked_by_guardian_id && !mine;
             return (
-              <li
+              <motion.li
                 key={s.id}
+                variants={fadeUp}
                 className={`flex items-center justify-between gap-3 rounded-sm border p-4 shadow-[var(--shadow-card)] ${
                   mine ? "border-maroon bg-maroon-tint" : "border-hairline bg-surface"
                 }`}
@@ -94,26 +108,28 @@ export function PtmView({
                   {takenByOther && <p className="text-sm text-slate">Booked</p>}
                 </div>
                 {mine ? (
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     disabled={isPending}
                     onClick={() => run(() => cancelSlot(s.id))}
                     className="rounded-sm border border-hairline bg-surface px-3 py-1.5 text-sm font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
                   >
                     Cancel
-                  </button>
+                  </motion.button>
                 ) : (
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     disabled={isPending || takenByOther || !!myBooking}
                     onClick={() => run(() => bookSlot(s.id, activeId))}
                     className="rounded-sm bg-maroon px-3 py-1.5 text-sm font-semibold text-cream hover:bg-maroon-strong disabled:opacity-40"
                   >
                     {takenByOther ? "Taken" : "Book"}
-                  </button>
+                  </motion.button>
                 )}
-              </li>
+              </motion.li>
             );
           })}
-        </ul>
+        </motion.ul>
       )}
       {myBooking && (
         <p className="text-sm text-slate">

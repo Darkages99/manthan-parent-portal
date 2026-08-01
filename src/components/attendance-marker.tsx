@@ -12,7 +12,7 @@ const STATUSES: { value: Enums<"attendance_status">; label: string; active: stri
   { value: "present", label: "P", active: "bg-emerald-600 text-white border-emerald-600" },
   { value: "absent", label: "A", active: "bg-rose-600 text-white border-rose-600" },
   { value: "late", label: "L", active: "bg-amber-500 text-white border-amber-500" },
-  { value: "excused", label: "E", active: "bg-slate-500 text-white border-slate-500" },
+  { value: "half_day", label: "H", active: "bg-slate-500 text-white border-slate-500" },
 ];
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -147,7 +147,7 @@ export function AttendanceMarker({
         >
           {isPending ? "Saving…" : "Save attendance"}
         </button>
-        <span className="text-sm text-slate">P present · A absent · L late · E excused</span>
+        <span className="text-sm text-slate">P present · A absent · L late · H half day</span>
         {saved && <span className="text-base text-emerald-700">Saved.</span>}
         {error && <span className="text-base text-rose-700">{error}</span>}
       </div>

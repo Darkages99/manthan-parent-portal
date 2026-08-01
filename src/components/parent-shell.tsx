@@ -16,30 +16,35 @@ import {
   MailIcon,
 } from "./icons";
 
-const navItems: NavItem[] = [
-  { href: "/home", label: "Home", icon: HomeIcon },
-  { href: "/attendance", label: "Attendance", icon: CheckCircleIcon },
-  { href: "/leave", label: "Leave", icon: LeaveIcon },
-  { href: "/dtr", label: "Dates to Remember", icon: CalendarIcon },
-  { href: "/stay-back", label: "Stay-back consent", icon: ConsentIcon },
-  { href: "/payments", label: "Payments", icon: PaymentIcon },
-  { href: "/ptm", label: "PTM booking", icon: UsersIcon },
-  { href: "/results", label: "Results", icon: AwardIcon },
-  { href: "/defaulters", label: "Defaulters", icon: AlertTriangleIcon },
-  { href: "/gallery", label: "Gallery", icon: ImageIcon },
-  { href: "/messages", label: "Messages", icon: MailIcon },
-];
+function buildNavItems(unreadMessages: number): NavItem[] {
+  return [
+    { href: "/home", label: "Home", icon: HomeIcon },
+    { href: "/messages", label: "Messages", icon: MailIcon, badge: unreadMessages },
+    { href: "/attendance", label: "Attendance", icon: CheckCircleIcon },
+    { href: "/leave", label: "Leave", icon: LeaveIcon },
+    { href: "/dtr", label: "Dates to Remember", icon: CalendarIcon },
+    { href: "/stay-back", label: "Stay-back consent", icon: ConsentIcon },
+    { href: "/payments", label: "Payments", icon: PaymentIcon },
+    { href: "/ptm", label: "PTM booking", icon: UsersIcon },
+    { href: "/results", label: "Results", icon: AwardIcon },
+    { href: "/defaulters", label: "Defaulters", icon: AlertTriangleIcon },
+    { href: "/gallery", label: "Gallery", icon: ImageIcon },
+  ];
+}
 
 export function ParentShell({
   guardianName,
+  unreadMessages = 0,
   children,
 }: {
   guardianName: string;
+  /** Count of unread messages, shown as a red badge on the Messages nav item. */
+  unreadMessages?: number;
   children: React.ReactNode;
 }) {
   return (
     <AppShell
-      navItems={navItems}
+      navItems={buildNavItems(unreadMessages)}
       subtitle="Parent Portal"
       accountName={guardianName}
       footer={

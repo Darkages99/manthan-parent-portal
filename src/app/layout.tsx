@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Alegreya, Yatra_One } from "next/font/google";
 import Script from "next/script";
+import { MotionConfig } from "framer-motion";
 import "./globals.css";
 
 const alegreya = Alegreya({
@@ -24,6 +25,11 @@ export const metadata: Metadata = {
     icon: "/brand/favicon-32.png",
     apple: "/brand/icon-192.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Manthan Portal",
+  },
 };
 
 export const viewport: Viewport = {
@@ -39,7 +45,8 @@ export default function RootLayout({
     <html lang="en" className={`${alegreya.variable} ${yatraOne.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-body antialiased">
         <Script src="/theme-init.js" strategy="beforeInteractive" />
-        {children}
+        <Script src="/register-sw.js" strategy="afterInteractive" />
+        <MotionConfig reducedMotion="user">{children}</MotionConfig>
       </body>
     </html>
   );

@@ -25,7 +25,7 @@ export default async function AttendancePage() {
         <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Daily register</p>
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Attendance</h1>
         <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          Present, absent, late and excused days, from the register the class teacher marks each
+          Present, absent, late and half days, from the register the class teacher marks each
           morning.
         </p>
       </div>

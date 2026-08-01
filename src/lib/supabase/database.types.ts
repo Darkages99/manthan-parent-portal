@@ -10,6 +10,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -655,6 +657,51 @@ export type Database = {
           },
         ]
       }
+      ptm_meetings: {
+        Row: {
+          class_section_id: string
+          created_at: string
+          id: string
+          meeting_date: string
+          status: Database["public"]["Enums"]["ptm_status"]
+          teacher_id: string
+          title: string | null
+        }
+        Insert: {
+          class_section_id: string
+          created_at?: string
+          id?: string
+          meeting_date: string
+          status?: Database["public"]["Enums"]["ptm_status"]
+          teacher_id: string
+          title?: string | null
+        }
+        Update: {
+          class_section_id?: string
+          created_at?: string
+          id?: string
+          meeting_date?: string
+          status?: Database["public"]["Enums"]["ptm_status"]
+          teacher_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ptm_meetings_class_section_id_fkey"
+            columns: ["class_section_id"]
+            isOneToOne: false
+            referencedRelation: "class_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptm_meetings_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ptm_slots: {
         Row: {
           booked_by_guardian_id: string | null
@@ -662,6 +709,7 @@ export type Database = {
           class_section_id: string
           ends_at: string
           id: string
+          meeting_id: string
           starts_at: string
           teacher_id: string
         }
@@ -671,6 +719,7 @@ export type Database = {
           class_section_id: string
           ends_at: string
           id?: string
+          meeting_id: string
           starts_at: string
           teacher_id: string
         }
@@ -680,6 +729,7 @@ export type Database = {
           class_section_id?: string
           ends_at?: string
           id?: string
+          meeting_id?: string
           starts_at?: string
           teacher_id?: string
         }
@@ -703,6 +753,13 @@ export type Database = {
             columns: ["class_section_id"]
             isOneToOne: false
             referencedRelation: "class_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptm_slots_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "ptm_meetings"
             referencedColumns: ["id"]
           },
           {
@@ -950,15 +1007,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_guardian_id: { Args: never; Returns: string }
+      current_staff_id: { Args: never; Returns: string }
+      current_staff_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["role"]
+      }
+      is_principal: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
     }
     Enums: {
       approval_decision: "approved" | "declined"
-      attendance_status: "present" | "absent" | "late" | "excused"
+      attendance_status: "present" | "absent" | "late" | "half_day"
       dtr_category: "exam" | "holiday" | "event" | "deadline" | "ptm" | "other"
       invoice_status: "due" | "partially_paid" | "paid" | "overdue"
       leave_status: "pending" | "approved" | "declined"
       message_scope_type: "school" | "class" | "student" | "group"
+      ptm_status: "open" | "closed"
       role:
         | "parent"
         | "class_teacher"
@@ -974,13 +1039,142 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database["public"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Tables<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Row"]
-export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Insert"]
-export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Update"]
-export type Enums<T extends keyof DefaultSchema["Enums"]> =
-  DefaultSchema["Enums"][T]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      approval_decision: ["approved", "declined"],
+      attendance_status: ["present", "absent", "late", "half_day"],
+      dtr_category: ["exam", "holiday", "event", "deadline", "ptm", "other"],
+      invoice_status: ["due", "partially_paid", "paid", "overdue"],
+      leave_status: ["pending", "approved", "declined"],
+      message_scope_type: ["school", "class", "student", "group"],
+      ptm_status: ["open", "closed"],
+      role: [
+        "parent",
+        "class_teacher",
+        "front_office",
+        "accounts",
+        "principal",
+        "super_admin",
+      ],
+      stay_back_status: ["pending", "approved", "declined"],
+    },
+  },
+} as const
