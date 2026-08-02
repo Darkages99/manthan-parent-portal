@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Mandala } from "@/components/mandala";
+import { EyeIcon, EyeOffIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Landing() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -75,15 +77,26 @@ export default function Landing() {
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-cream/85">Password</span>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              className="rounded-lg border border-cream/25 bg-cream/10 px-3.5 py-2.5 text-base text-cream placeholder:text-cream/40 transition focus:border-cream/70 focus:bg-cream/15 focus:outline-none"
-              placeholder="••••••••"
-            />
+            <span className="relative flex items-center">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                className="w-full rounded-lg border border-cream/25 bg-cream/10 px-3.5 py-2.5 pr-11 text-base text-cream placeholder:text-cream/40 transition focus:border-cream/70 focus:bg-cream/15 focus:outline-none"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className="absolute right-2.5 flex h-7 w-7 items-center justify-center rounded-md text-cream/60 transition hover:text-cream focus-visible:outline-2 focus-visible:outline-cream/70"
+              >
+                {showPassword ? <EyeOffIcon className="h-4.5 w-4.5" /> : <EyeIcon className="h-4.5 w-4.5" />}
+              </button>
+            </span>
           </label>
 
           {error && (

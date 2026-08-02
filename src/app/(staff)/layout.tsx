@@ -33,7 +33,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   });
 
   return (
-    <StaffShell staffName={viewer.staff.name} ptmMeetings={ptmMeetings}>
+    <StaffShell staffName={viewer.staff.name} role={viewer.staff.role} ptmMeetings={ptmMeetings}>
       {children}
     </StaffShell>
   );

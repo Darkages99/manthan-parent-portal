@@ -1002,6 +1002,113 @@ export type Database = {
           },
         ]
       }
+      subjects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      timetable_entries: {
+        Row: {
+          class_section_id: string
+          day_of_week: number
+          id: string
+          period_id: string
+          subject_id: string | null
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          class_section_id: string
+          day_of_week: number
+          id?: string
+          period_id: string
+          subject_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          class_section_id?: string
+          day_of_week?: number
+          id?: string
+          period_id?: string
+          subject_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_entries_class_section_id_fkey"
+            columns: ["class_section_id"]
+            isOneToOne: false
+            referencedRelation: "class_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "timetable_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_periods: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          is_break: boolean
+          label: string
+          position: number
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          is_break?: boolean
+          label: string
+          position: number
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_break?: boolean
+          label?: string
+          position?: number
+          start_time?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

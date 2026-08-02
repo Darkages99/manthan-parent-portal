@@ -27,6 +27,7 @@ export default async function ParentHome() {
     { data: messages },
     { data: ptmSlots },
     { data: examResults },
+    { data: receipts },
   ] = await Promise.all([
     supabase.from("dtr_events").select("*").order("event_date", { ascending: true }),
     supabase.from("dtr_event_classes").select("*"),
@@ -48,6 +49,11 @@ export default async function ParentHome() {
       .from("exam_results")
       .select("student_id, report_card_pdf_url")
       .in("student_id", studentIds),
+    supabase
+      .from("message_receipts")
+      .select("message_id")
+      .eq("guardian_id", guardian.id)
+      .is("read_at", null),
   ]);
 
   // Keep only events that target one of this guardian's classes (or all classes).
@@ -59,6 +65,7 @@ export default async function ParentHome() {
       (eventClasses ?? []).some((ec) => ec.dtr_event_id === e.id && classIds.has(ec.class_section_id))
   );
 
+  const unreadMessageIds = new Set((receipts ?? []).map((r) => r.message_id));
   const notifications: Notification[] = (messages ?? []).map((m) => ({
     id: m.id,
     subject: m.subject,
@@ -66,6 +73,7 @@ export default async function ParentHome() {
     sent_at: m.sent_at,
     urgent: m.urgent,
     senderName: m.staff?.name ?? null,
+    unread: unreadMessageIds.has(m.id),
   }));
 
   // Actionable alerts: fees (placeholder), PTM bookings still needed, and newly

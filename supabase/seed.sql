@@ -1,7 +1,7 @@
 -- Manthan Parent Portal — placeholder seed data for the module demo.
 -- Re-runnable (delete-then-insert). Assumes the base seed already exists:
---   Guardian Sarang d...001; students Arjun c...001 (8-B / teacher Anjali b...001)
---   and Meera c...002 (5-A / teacher Suresh b...002); principal Kavita b...003.
+--   Guardian Sarang d...001; students Test Child One c...001 (8-B / teacher Anjali b...001)
+--   and Test Child Two c...002 (5-A / teacher Suresh b...002); principal Kavita b...003.
 -- Names, marks and incidents here are illustrative placeholders only.
 
 -- ---- Attendance: weekdays 2026-07-01..2026-07-29 ----

@@ -13,6 +13,7 @@ import {
   AwardIcon,
   AlertTriangleIcon,
   ImageIcon,
+  GridIcon,
   MailIcon,
 } from "./icons";
 
@@ -22,6 +23,7 @@ function buildNavItems(unreadMessages: number): NavItem[] {
     { href: "/messages", label: "Messages", icon: MailIcon, badge: unreadMessages },
     { href: "/attendance", label: "Attendance", icon: CheckCircleIcon },
     { href: "/leave", label: "Leave", icon: LeaveIcon },
+    { href: "/timetable", label: "Timetable", icon: GridIcon },
     { href: "/dtr", label: "Dates to Remember", icon: CalendarIcon },
     { href: "/stay-back", label: "Stay-back consent", icon: ConsentIcon },
     { href: "/payments", label: "Payments", icon: PaymentIcon },

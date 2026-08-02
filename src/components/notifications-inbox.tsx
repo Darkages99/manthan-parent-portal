@@ -8,13 +8,9 @@ export type Notification = {
   sent_at: string | null;
   urgent: boolean;
   senderName: string | null;
+  /** Whether this guardian has an unread receipt for the message. */
+  unread: boolean;
 };
-
-/** True when a message arrived within the last three days. Kept out of the
- * component body so the current-time read isn't a render-time impurity. */
-function isRecent(iso: string | null): boolean {
-  return !!iso && Date.now() - new Date(iso).getTime() < 3 * 86_400_000;
-}
 
 function relativeDay(iso: string | null): string {
   if (!iso) return "";
@@ -29,16 +25,16 @@ function relativeDay(iso: string | null): string {
 
 /** School notifications inbox for the dashboard. */
 export function NotificationsInbox({ notifications }: { notifications: Notification[] }) {
-  const unreadRecent = notifications.filter((n) => isRecent(n.sent_at)).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
     <div className="flex h-full flex-col rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
       <div className="flex items-center gap-2.5 border-b border-hairline px-5 py-4">
         <BellIcon className="h-5 w-5 text-maroon" />
         <h2 className="font-heading text-xl text-maroon">Notifications</h2>
-        {unreadRecent > 0 && (
+        {unreadCount > 0 && (
           <span className="rounded-full bg-rust px-2 py-0.5 text-xs font-bold text-white">
-            {unreadRecent} new
+            {unreadCount} new
           </span>
         )}
         <Link href="/messages" className="ml-auto text-sm text-rust hover:underline">
@@ -48,12 +44,11 @@ export function NotificationsInbox({ notifications }: { notifications: Notificat
 
       <ul className="max-h-[26rem] flex-1 divide-y divide-hairline overflow-y-auto">
         {notifications.map((n) => {
-          const recent = isRecent(n.sent_at);
           return (
             <li key={n.id} className="flex gap-3 px-5 py-3.5">
               <span
                 className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                  n.urgent ? "bg-rose-500" : recent ? "bg-rust" : "bg-transparent"
+                  n.urgent && n.unread ? "bg-rose-500" : n.unread ? "bg-rust" : "bg-transparent"
                 }`}
                 aria-hidden
               />

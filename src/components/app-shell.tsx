@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { LogoMark } from "./logo-mark";
 import { SidebarNav, type NavItem } from "./sidebar-nav";
-import { Mandala } from "./mandala";
+import { Jaali, JaaliField } from "./jaali";
 import { ThemeToggle } from "./theme-toggle";
 import { PushToggle } from "./push-toggle";
 import {
@@ -47,10 +47,14 @@ export function AppShell({
 
   return (
     <div className="relative isolate flex min-h-dvh">
-      {/* Decorative rangoli — fixed & clipped, faint, purely ambient texture. */}
+      {/* Decorative jaali — a seamless lattice covers the whole field (slowly
+          drifting). Two large star-rosettes turn in opposite corners, each on
+          an opaque disc so it occludes the lattice (a rosette in its own
+          clearing). Generously spaced so they never overlap. */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
-        <Mandala size="min(64vw, 36rem)" className="-right-32 -top-40" spin />
-        <Mandala size="min(52vw, 28rem)" className="-bottom-36 -left-28" />
+        <JaaliField />
+        <Jaali size="min(46vw, 30rem)" className="-right-24 -top-28" spin breathe solid />
+        <Jaali size="min(40vw, 26rem)" className="-bottom-28 -left-24" spin="reverse" breathe solid />
       </div>
 
       {/* ---- Desktop sidebar --------------------------------------------- */}

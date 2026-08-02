@@ -10,54 +10,55 @@ export type LowAttendanceStudent = {
   pct: number;
 };
 
-/** All students absent (via approved leave) on one calendar day. */
-export type DayAbsence = {
-  date: string;
-  students: { name: string; reason: string }[];
-};
-
-export type UninformedAbsence = {
+export type PendingRequest = {
   id: string;
   name: string;
   className: string;
 };
 
+/** Every student absent today, whether covered by approved leave or not. */
+export type AbsentToday = {
+  id: string;
+  name: string;
+  className: string;
+  reason: string;
+};
+
+/** A student who scored below the pass mark in one or more subjects. */
+export type LowScoreStudent = {
+  id: string;
+  name: string;
+  className: string;
+  subjects: string[];
+};
+
 export type ConsoleAlertData = {
   lowAttendance: LowAttendanceStudent[];
-  dayAbsences: DayAbsence[];
-  uninformedToday: UninformedAbsence[];
+  pendingLeave: PendingRequest[];
+  pendingStayBack: PendingRequest[];
+  absentToday: AbsentToday[];
+  lowScores: LowScoreStudent[];
 };
+
+/** Marks at or below this fraction of the maximum count as failing. */
+export const PASS_FRACTION = 0.4;
 
 /** Today's date in IST as YYYY-MM-DD (matches how dates are stored/marked). */
 function istToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
-/** Every calendar day (YYYY-MM-DD) in [from, to], inclusive. */
-function daysBetween(from: string, to: string): string[] {
-  const out: string[] = [];
-  const cur = new Date(`${from}T00:00:00Z`);
-  const end = new Date(`${to}T00:00:00Z`);
-  while (cur <= end) {
-    out.push(cur.toISOString().slice(0, 10));
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return out;
-}
-
 /**
  * Computes the principal/teacher dashboard alerts, scoped to the staff member's
- * classes (class teacher → own classes; other roles → all). Three kinds:
+ * classes (class teacher → own classes; other roles → all). Four kinds:
  *  - students below the school attendance minimum,
- *  - upcoming approved absences grouped one-per-day,
- *  - students absent today with no approved leave (uninformed).
+ *  - new (pending) leave requests awaiting a decision,
+ *  - new (pending) stay-back requests awaiting a decision,
+ *  - a single alert listing everyone absent today (approved leave or not).
  */
 export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleAlertData> {
   const supabase = await createClient();
   const today = istToday();
-  const horizon = new Date(`${today}T00:00:00Z`);
-  horizon.setUTCDate(horizon.getUTCDate() + 30);
-  const horizonDate = horizon.toISOString().slice(0, 10);
 
   const { data: allClasses } = await supabase.from("class_sections").select("*");
   const classes =
@@ -71,21 +72,38 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
   };
 
   if (classIds.length === 0) {
-    return { lowAttendance: [], dayAbsences: [], uninformedToday: [] };
+    return { lowAttendance: [], pendingLeave: [], pendingStayBack: [], absentToday: [], lowScores: [] };
   }
 
-  const [{ data: students }, { data: records }, { data: leaves }] = await Promise.all([
-    supabase
-      .from("students")
-      .select("id, first_name, last_name, class_section_id")
-      .in("class_section_id", classIds),
-    supabase.from("attendance_records").select("student_id, date, status"),
-    supabase
-      .from("leave_requests")
-      .select("student_id, from_date, to_date, reason, status")
-      .eq("status", "approved")
-      .gte("to_date", today),
-  ]);
+  const [
+    { data: students },
+    { data: records },
+    { data: leaves },
+    { data: pendingLeaves },
+    { data: pendingStayBacks },
+    { data: examResults },
+  ] = await Promise.all([
+      supabase
+        .from("students")
+        .select("id, first_name, last_name, class_section_id")
+        .in("class_section_id", classIds),
+      supabase.from("attendance_records").select("student_id, date, status"),
+      supabase
+        .from("leave_requests")
+        .select("student_id, from_date, to_date, reason, status")
+        .eq("status", "approved")
+        .lte("from_date", today)
+        .gte("to_date", today),
+      supabase
+        .from("leave_requests")
+        .select("id, student_id")
+        .eq("status", "pending"),
+      supabase
+        .from("stay_back_consents")
+        .select("id, student_id")
+        .eq("status", "pending"),
+      supabase.from("exam_results").select("student_id, subject, marks, max_marks"),
+    ]);
 
   const studentList = students ?? [];
   const studentIds = new Set(studentList.map((s) => s.id));
@@ -122,37 +140,46 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
   }
   lowAttendance.sort((a, b) => a.pct - b.pct);
 
-  // --- Approved absences, one alert per day (today .. +30d) ---
-  const byDay = new Map<string, { name: string; reason: string }[]>();
-  for (const l of leaves ?? []) {
-    if (!studentIds.has(l.student_id)) continue;
-    const start = l.from_date > today ? l.from_date : today;
-    const end = l.to_date < horizonDate ? l.to_date : horizonDate;
-    for (const day of daysBetween(start, end)) {
-      const arr = byDay.get(day) ?? [];
-      arr.push({ name: nameOf(l.student_id), reason: l.reason });
-      byDay.set(day, arr);
+  // --- New (pending) leave and stay-back requests, scoped to these classes ---
+  const pendingLeave: PendingRequest[] = (pendingLeaves ?? [])
+    .filter((l) => studentIds.has(l.student_id))
+    .map((l) => ({ id: l.id, name: nameOf(l.student_id), className: classOf(l.student_id) }));
+
+  const pendingStayBack: PendingRequest[] = (pendingStayBacks ?? [])
+    .filter((s) => studentIds.has(s.student_id))
+    .map((s) => ({ id: s.id, name: nameOf(s.student_id), className: classOf(s.student_id) }));
+
+  // --- Everyone absent today, one alert — approved-leave reason, or uninformed ---
+  const approvedTodayReason = new Map((leaves ?? []).map((l) => [l.student_id, l.reason]));
+  const absentToday: AbsentToday[] = (records ?? [])
+    .filter((r) => r.date === today && r.status === "absent" && studentIds.has(r.student_id))
+    .map((r) => ({
+      id: r.student_id,
+      name: nameOf(r.student_id),
+      className: classOf(r.student_id),
+      reason: approvedTodayReason.get(r.student_id) ?? "No approved leave on record",
+    }));
+
+  // --- Students failing (≤40%) one or more subjects, one alert per student ---
+  const failingSubjects = new Map<string, Set<string>>();
+  for (const r of examResults ?? []) {
+    if (!studentIds.has(r.student_id)) continue;
+    const max = Number(r.max_marks);
+    if (max <= 0) continue;
+    if (Number(r.marks) / max <= PASS_FRACTION) {
+      const set = failingSubjects.get(r.student_id) ?? new Set<string>();
+      set.add(r.subject);
+      failingSubjects.set(r.student_id, set);
     }
   }
-  const dayAbsences: DayAbsence[] = [...byDay.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([date, studentsOnDay]) => ({ date, students: studentsOnDay }));
+  const lowScores: LowScoreStudent[] = [...failingSubjects.entries()]
+    .map(([id, subjects]) => ({
+      id,
+      name: nameOf(id),
+      className: classOf(id),
+      subjects: [...subjects].sort(),
+    }))
+    .sort((a, b) => b.subjects.length - a.subjects.length);
 
-  // --- Uninformed absences today (absent, no approved leave covering today) ---
-  const approvedTodayStudentIds = new Set(
-    (leaves ?? [])
-      .filter((l) => l.from_date <= today && l.to_date >= today)
-      .map((l) => l.student_id)
-  );
-  const uninformedToday: UninformedAbsence[] = (records ?? [])
-    .filter(
-      (r) =>
-        r.date === today &&
-        r.status === "absent" &&
-        studentIds.has(r.student_id) &&
-        !approvedTodayStudentIds.has(r.student_id)
-    )
-    .map((r) => ({ id: r.student_id, name: nameOf(r.student_id), className: classOf(r.student_id) }));
-
-  return { lowAttendance, dayAbsences, uninformedToday };
+  return { lowAttendance, pendingLeave, pendingStayBack, absentToday, lowScores };
 }

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",
-    "vapid:keys": "node scripts/generate-vapid.mjs"
+    "vapid:keys": "node scripts/generate-vapid.mjs",
+    "demo:seed": "node --env-file=.env.local scripts/demo-seed/seed.mjs",
+    "demo:teardown": "node --env-file=.env.local scripts/demo-seed/teardown.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

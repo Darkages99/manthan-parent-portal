@@ -44,6 +44,8 @@
 
   --shadow-card: 0 1px 2px rgba(60, 30, 12, 0.05), 0 10px 30px -16px rgba(60, 30, 12, 0.22);
   --shadow-pop: 0 4px 10px rgba(60, 30, 12, 0.08), 0 24px 48px -20px rgba(60, 30, 12, 0.32);
+  --jaali-ink: #5a0510;
+  --jaali-strength: 0.06;
   --mandala-ink: #5a0510;
   --mandala-strength: 0.05;
   color-scheme: light;
@@ -68,6 +70,8 @@
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45), 0 12px 34px -18px rgba(0, 0, 0, 0.7);
   --shadow-pop: 0 6px 16px rgba(0, 0, 0, 0.5), 0 30px 60px -24px rgba(0, 0, 0, 0.8);
+  --jaali-ink: #f0dcae;
+  --jaali-strength: 0.08;
   --mandala-ink: #f0dcae;
   --mandala-strength: 0.07;
   color-scheme: dark;
@@ -113,6 +117,9 @@ html {
   font-size: clamp(16px, 0.95rem + 0.3vw, 19px);
   -webkit-text-size-adjust: 100%;
   scrollbar-gutter: stable;
+  /* Without this, the gutter reserved above by scrollbar-gutter shows through
+     as a white strip, since only `body` carried the theme background. */
+  background: var(--color-bg);
 }
 
 body {
@@ -145,6 +152,91 @@ body {
 * { scrollbar-width: thin; scrollbar-color: var(--color-hairline) transparent; }
 *::-webkit-scrollbar { height: 8px; width: 8px; }
 *::-webkit-scrollbar-thumb { background: var(--color-hairline); border-radius: 999px; }
+
+/* ---- Jaali (pierced-screen lattice) decoration --------------------------- */
+/* Indian jaali motifs painted as a MASK over a theme-tinted fill, so colour is
+   a token and opacity stays faint. Two roles:
+     .jaali-field  full-bleed SEAMLESS lattice — even background texture.
+     .jaali        a single spaced star-rosette accent.
+   Both are purely decorative — aria-hidden, never interactive. */
+.jaali-field {
+  --_tile: 108px;
+  position: absolute;
+  inset: 0;
+  background-color: var(--jaali-ink);
+  -webkit-mask: url("/brand/jaali-tile.svg") 0 0 / var(--_tile) var(--_tile) repeat;
+  mask: url("/brand/jaali-tile.svg") 0 0 / var(--_tile) var(--_tile) repeat;
+  /* Field covers everything, so keep it fainter than the accents. */
+  opacity: calc(var(--jaali-strength) * 0.7);
+  pointer-events: none;
+}
+.jaali {
+  --_size: 22rem;
+  position: absolute;
+  width: var(--_size);
+  height: var(--_size);
+  background-color: var(--jaali-ink);
+  -webkit-mask: url("/brand/jaali-medallion.svg") center / contain no-repeat;
+  mask: url("/brand/jaali-medallion.svg") center / contain no-repeat;
+  opacity: var(--jaali-strength);
+  pointer-events: none;
+  z-index: 0;
+}
+/* Solid accent: an opaque disc (page-surface colour) hides the lattice, with a
+   crisper rosette turning on top of it. Motion lives on the wrapper so disc +
+   motif stay locked together. */
+.jaali-accent {
+  --_size: 22rem;
+  position: absolute;
+  width: var(--_size);
+  height: var(--_size);
+  pointer-events: none;
+  z-index: 0;
+}
+.jaali-accent .jaali-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--jaali-solid, var(--color-bg));
+}
+.jaali-accent .jaali-motif {
+  position: absolute;
+  inset: 0;
+  background-color: var(--jaali-ink);
+  -webkit-mask: url("/brand/jaali-medallion.svg") center / contain no-repeat;
+  mask: url("/brand/jaali-medallion.svg") center / contain no-repeat;
+  opacity: var(--jaali-accent-strength, 0.3);
+}
+/* Motion is layered on the independent `rotate` / `scale` transform properties
+   so a slow spin and a slower "breathe" run together without fighting over
+   `transform`. The field drifts by exactly one tile so the loop is seamless.
+   All gated behind reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .jaali-field { animation: jaali-drift 140s linear infinite; }
+  .jaali-spin { animation: jaali-spin 260s linear infinite; }
+  .jaali-spin-rev { animation: jaali-spin-rev 320s linear infinite; }
+  .jaali-breathe { animation: jaali-breathe 34s ease-in-out infinite; }
+  .jaali-spin.jaali-breathe {
+    animation: jaali-spin 260s linear infinite,
+               jaali-breathe 34s ease-in-out infinite;
+  }
+  .jaali-spin-rev.jaali-breathe {
+    animation: jaali-spin-rev 320s linear infinite,
+               jaali-breathe 40s ease-in-out infinite;
+  }
+}
+@keyframes jaali-spin { to { rotate: 360deg; } }
+@keyframes jaali-spin-rev { to { rotate: -360deg; } }
+@keyframes jaali-breathe {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.05; }
+}
+@keyframes jaali-drift {
+  to {
+    -webkit-mask-position: var(--_tile) var(--_tile);
+    mask-position: var(--_tile) var(--_tile);
+  }
+}
 
 /* ---- Mandala decoration -------------------------------------------------- */
 /* One shared asset (public/brand/mandala.svg, currentColor strokes) painted as
