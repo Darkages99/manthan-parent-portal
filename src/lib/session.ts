@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -15,8 +16,12 @@ export type StaffViewer = {
 
 export type Viewer = GuardianViewer | StaffViewer | null;
 
-/** Resolves the signed-in Supabase user to their guardian or staff row. Null if unauthenticated or unlinked. */
-export async function getViewer(): Promise<Viewer> {
+/**
+ * Resolves the signed-in Supabase user to their guardian or staff row. Null if unauthenticated or unlinked.
+ * Wrapped in React `cache()` so the layout, page, and any server actions invoked during the same
+ * request share one lookup instead of each re-running the auth + DB round trips from scratch.
+ */
+export const getViewer = cache(async (): Promise<Viewer> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -54,4 +59,4 @@ export async function getViewer(): Promise<Viewer> {
   if (staff) return { type: "staff", staff };
 
   return null;
-}
+});

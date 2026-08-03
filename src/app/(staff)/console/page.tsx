@@ -38,7 +38,7 @@ export default async function StaffDashboard() {
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Dashboard</h1>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         {/* Left column: pending-approval tiles + compose CTA. */}
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">

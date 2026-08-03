@@ -18,6 +18,13 @@ import type { ConsoleAlertData } from "@/lib/console-alerts";
 
 const MAX_LOW_ATTENDANCE = 4;
 const MAX_LOW_SCORES = 4;
+const MAX_NAMES_SHOWN = 3;
+
+/** "A, B, C" for short lists; "A, B, C, etc." once it gets long — keeps the row from forcing the layout wide. */
+function truncateList(items: string[], max = MAX_NAMES_SHOWN): string {
+  if (items.length <= max) return items.join(", ");
+  return `${items.slice(0, max).join(", ")}, etc.`;
+}
 
 export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
   const { lowAttendance, pendingLeave, pendingStayBack, absentToday, lowScores } = data;
@@ -47,7 +54,7 @@ export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
           variants={staggerContainer()}
           initial="hidden"
           animate="show"
-          className="flex flex-col gap-2"
+          className="flex max-h-[28rem] flex-col gap-2 overflow-y-auto pr-1"
         >
           {/* New leave requests awaiting a decision. */}
           {pendingLeave.length > 0 && (
@@ -63,8 +70,8 @@ export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
                   <p className="text-base font-semibold text-maroon">
                     {pendingLeave.length} new {pendingLeave.length === 1 ? "leave request" : "leave requests"}
                   </p>
-                  <p className="truncate text-sm text-slate-strong">
-                    {pendingLeave.map((l) => l.name).join(", ")} — awaiting a decision.
+                  <p className="text-sm text-slate-strong">
+                    {truncateList(pendingLeave.map((l) => l.name))} — awaiting a decision.
                   </p>
                 </div>
                 <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
@@ -87,8 +94,8 @@ export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
                     {pendingStayBack.length} new{" "}
                     {pendingStayBack.length === 1 ? "stay-back request" : "stay-back requests"}
                   </p>
-                  <p className="truncate text-sm text-slate-strong">
-                    {pendingStayBack.map((s) => s.name).join(", ")} — awaiting a decision.
+                  <p className="text-sm text-slate-strong">
+                    {truncateList(pendingStayBack.map((s) => s.name))} — awaiting a decision.
                   </p>
                 </div>
                 <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
@@ -149,7 +156,7 @@ export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
                     {s.subjects.length === 1 ? "subject" : "subjects"}
                   </p>
                   <p className="truncate text-sm text-slate-strong">
-                    {s.className} · {s.subjects.join(", ")}
+                    {s.className} · {truncateList(s.subjects, 2)}
                   </p>
                 </div>
                 <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
@@ -192,9 +199,7 @@ function AbsentTodayAlert({ students }: { students: { name: string; reason: stri
           <p className="text-base font-semibold text-maroon">
             {students.length} {students.length === 1 ? "student" : "students"} absent today
           </p>
-          <p className="truncate text-sm text-slate-strong">
-            {students.map((s) => s.name).join(", ")}
-          </p>
+          <p className="text-sm text-slate-strong">{truncateList(students.map((s) => s.name))}</p>
         </div>
         <ChevronDownIcon
           className={`h-5 w-5 shrink-0 text-slate transition-transform ${open ? "" : "-rotate-90"}`}
