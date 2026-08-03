@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { LeaveApprovalList } from "@/components/leave-approval-list";
 import { StatusPill } from "@/components/status-pill";
+import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 
@@ -9,17 +11,40 @@ function istToday(): string {
 }
 
 export default async function LeaveApprovals() {
+  const viewer = await getViewer();
+  if (!viewer || viewer.type !== "staff") redirect("/");
+
   const supabase = await createClient();
   const today = istToday();
 
-  const [{ data: leaves }, { data: students }, { data: guardians }] = await Promise.all([
-    supabase.from("leave_requests").select("*").order("created_at", { ascending: false }),
-    supabase.from("students").select("id, first_name, last_name"),
+  // A class teacher only sees requests for their own class's students; the principal sees all.
+  const { data: allStudents } = await supabase.from("students").select("id, first_name, last_name, class_section_id");
+  let visibleStudents = allStudents ?? [];
+  if (viewer.staff.role === "class_teacher") {
+    const { data: ownClasses } = await supabase
+      .from("class_sections")
+      .select("id")
+      .eq("class_teacher_id", viewer.staff.id);
+    const ownClassIds = new Set((ownClasses ?? []).map((c) => c.id));
+    visibleStudents = visibleStudents.filter((s) => s.class_section_id && ownClassIds.has(s.class_section_id));
+  }
+  const visibleStudentIds = new Set(visibleStudents.map((s) => s.id));
+
+  let leavesQuery = supabase.from("leave_requests").select("*").order("created_at", { ascending: false });
+  if (viewer.staff.role === "class_teacher") {
+    leavesQuery = leavesQuery.in(
+      "student_id",
+      visibleStudentIds.size ? [...visibleStudentIds] : ["00000000-0000-0000-0000-000000000000"]
+    );
+  }
+
+  const [{ data: leaves }, { data: guardians }] = await Promise.all([
+    leavesQuery,
     supabase.from("guardians").select("id, name"),
   ]);
 
   const studentNames = Object.fromEntries(
-    (students ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`])
+    visibleStudents.map((s) => [s.id, `${s.first_name} ${s.last_name}`])
   );
   const guardianNames = Object.fromEntries((guardians ?? []).map((g) => [g.id, g.name]));
 

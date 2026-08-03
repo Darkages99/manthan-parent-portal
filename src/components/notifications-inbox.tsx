@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellIcon } from "./icons";
+import { BellIcon, CheckCircleIcon } from "./icons";
 
 export type Notification = {
   id: string;
@@ -23,18 +23,18 @@ function relativeDay(iso: string | null): string {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
-/** School notifications inbox for the dashboard. */
+/** School notifications inbox for the dashboard — shows only new (unread) messages. */
 export function NotificationsInbox({ notifications }: { notifications: Notification[] }) {
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unread = notifications.filter((n) => n.unread);
 
   return (
     <div className="flex h-full flex-col rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
       <div className="flex items-center gap-2.5 border-b border-hairline px-5 py-4">
         <BellIcon className="h-5 w-5 text-maroon" />
         <h2 className="font-heading text-xl text-maroon">Notifications</h2>
-        {unreadCount > 0 && (
+        {unread.length > 0 && (
           <span className="rounded-full bg-rust px-2 py-0.5 text-xs font-bold text-white">
-            {unreadCount} new
+            {unread.length} new
           </span>
         )}
         <Link href="/messages" className="ml-auto text-sm text-rust hover:underline">
@@ -42,14 +42,18 @@ export function NotificationsInbox({ notifications }: { notifications: Notificat
         </Link>
       </div>
 
-      <ul className="max-h-[26rem] flex-1 divide-y divide-hairline overflow-y-auto">
-        {notifications.map((n) => {
-          return (
+      {unread.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-5 py-10 text-center">
+          <CheckCircleIcon className="h-8 w-8 text-emerald-500" />
+          <p className="text-base font-medium text-slate-strong">You&apos;re all caught up</p>
+          <p className="text-sm text-slate">No new messages right now.</p>
+        </div>
+      ) : (
+        <ul className="max-h-[26rem] flex-1 divide-y divide-hairline overflow-y-auto">
+          {unread.map((n) => (
             <li key={n.id} className="flex gap-3 px-5 py-3.5">
               <span
-                className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                  n.urgent && n.unread ? "bg-rose-500" : n.unread ? "bg-rust" : "bg-transparent"
-                }`}
+                className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.urgent ? "bg-rose-500" : "bg-rust"}`}
                 aria-hidden
               />
               <div className="min-w-0 flex-1">
@@ -67,12 +71,9 @@ export function NotificationsInbox({ notifications }: { notifications: Notificat
                 </p>
               </div>
             </li>
-          );
-        })}
-        {notifications.length === 0 && (
-          <li className="px-5 py-8 text-center text-base text-slate">No notifications yet.</li>
-        )}
-      </ul>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

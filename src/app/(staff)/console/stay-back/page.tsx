@@ -9,9 +9,18 @@ export default async function StayBackApprovals() {
 
   const supabase = await createClient();
 
+  // A class teacher only decides requests named to them; the principal sees every request.
+  let consentsQuery = supabase
+    .from("stay_back_consents")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (viewer.staff.role === "class_teacher") {
+    consentsQuery = consentsQuery.eq("teacher_id", viewer.staff.id);
+  }
+
   const [{ data: consents }, { data: students }, { data: teachers }, { data: guardians }] =
     await Promise.all([
-      supabase.from("stay_back_consents").select("*").order("created_at", { ascending: false }),
+      consentsQuery,
       supabase.from("students").select("*"),
       supabase.from("staff").select("*"),
       supabase.from("guardians").select("id, phone"),
