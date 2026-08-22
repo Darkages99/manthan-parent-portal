@@ -5,6 +5,7 @@ import { ChevronLeftIcon } from "@/components/icons";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
+import type { Tables } from "@/lib/supabase/database.types";
 
 export default async function PtmMeetingPage({
   params,
@@ -46,6 +47,20 @@ export default async function PtmMeetingPage({
   );
   const guardianNames = Object.fromEntries((guardians ?? []).map((g) => [g.id, g.name]));
 
+  const slotIds = (slots ?? []).map((s) => s.id);
+  const { data: approvalStepRows } = slotIds.length
+    ? await supabase
+        .from("approval_steps")
+        .select("*")
+        .eq("subject_type", "ptm_slot_request")
+        .in("subject_id", slotIds)
+    : { data: [] as Tables<"approval_steps">[] };
+
+  const approvalSteps: Record<string, Tables<"approval_steps">[]> = {};
+  for (const step of approvalStepRows ?? []) {
+    (approvalSteps[step.subject_id] ??= []).push(step);
+  }
+
   const cls = meeting.class_sections as { grade: string; section: string } | null;
   const classLabel = cls ? `Grade ${cls.grade}-${cls.section}` : "Class";
 
@@ -67,9 +82,15 @@ export default async function PtmMeetingPage({
       <MeetingSlotManager
         meetingId={meeting.id}
         status={meeting.status}
+        windowStart={meeting.window_start}
+        windowEnd={meeting.window_end}
+        slotMinutes={meeting.slot_minutes}
         slots={slots ?? []}
         studentNames={studentNames}
         guardianNames={guardianNames}
+        approvalSteps={approvalSteps}
+        viewerStaffId={viewer.staff.id}
+        viewerRole={viewer.staff.role}
       />
     </div>
   );

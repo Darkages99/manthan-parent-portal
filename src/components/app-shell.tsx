@@ -27,6 +27,7 @@ export function AppShell({
   subtitle,
   accountName,
   footer,
+  childSwitcher,
   children,
 }: {
   navItems: NavItem[];
@@ -36,6 +37,9 @@ export function AppShell({
   accountName: string;
   /** Optional page footer rendered beneath the content column. */
   footer?: React.ReactNode;
+  /** Optional sidebar-footer control (e.g. the parent portal's child switcher).
+   * Staff console has no "child" concept, so `StaffShell` simply omits it. */
+  childSwitcher?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -68,6 +72,7 @@ export function AppShell({
           navItems={navItems}
           subtitle={subtitle}
           accountName={accountName}
+          childSwitcher={childSwitcher}
           onToggleCollapse={toggleCollapsed}
         />
       </aside>
@@ -98,6 +103,7 @@ export function AppShell({
                 navItems={navItems}
                 subtitle={subtitle}
                 accountName={accountName}
+                childSwitcher={childSwitcher}
                 onNavigate={() => setMobileOpen(false)}
                 onClose={() => setMobileOpen(false)}
               />
@@ -141,6 +147,7 @@ function SidebarContent({
   navItems,
   subtitle,
   accountName,
+  childSwitcher,
   onToggleCollapse,
   onNavigate,
   onClose,
@@ -149,6 +156,7 @@ function SidebarContent({
   navItems: NavItem[];
   subtitle: string;
   accountName: string;
+  childSwitcher?: React.ReactNode;
   onToggleCollapse?: () => void;
   onNavigate?: () => void;
   onClose?: () => void;
@@ -202,6 +210,7 @@ function SidebarContent({
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
+            {childSwitcher}
             <div className="flex items-center gap-2 px-1">
               <div className="min-w-0 flex-1 text-sm leading-tight">
                 <p className="truncate font-semibold text-slate-strong">{accountName}</p>

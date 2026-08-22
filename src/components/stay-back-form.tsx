@@ -5,6 +5,14 @@ import { useFormStatus } from "react-dom";
 import { raiseStayBack } from "@/app/(parent)/stay-back/actions";
 import type { Tables } from "@/lib/supabase/database.types";
 
+const PURPOSE_OPTIONS: { value: string; label: string }[] = [
+  { value: "cultural", label: "Cultural" },
+  { value: "project", label: "Project" },
+  { value: "competitions_prep", label: "Competitions preparation" },
+  { value: "ihc", label: "IHC" },
+  { value: "others", label: "Others" },
+];
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -27,6 +35,7 @@ export function StayBackForm({
 }) {
   const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [purpose, setPurpose] = useState("others");
 
   async function handleAction(formData: FormData) {
     setError(null);
@@ -66,6 +75,35 @@ export function StayBackForm({
         </select>
       </label>
 
+      <label className="flex flex-col gap-1.5 text-base">
+        <span className="font-medium text-maroon">Purpose</span>
+        <select
+          name="purpose"
+          required
+          value={purpose}
+          onChange={(e) => setPurpose(e.target.value)}
+          className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+        >
+          {PURPOSE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {purpose === "others" && (
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Purpose detail</span>
+          <input
+            type="text"
+            name="purposeDetail"
+            placeholder="Briefly describe the purpose"
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          />
+        </label>
+      )}
+
       <label className="flex flex-col gap-1.5 text-base sm:col-span-2">
         <span className="font-medium text-maroon">Reason</span>
         <textarea
@@ -92,6 +130,16 @@ export function StayBackForm({
           <input type="time" name="toTime" required className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base" />
         </label>
       </div>
+
+      <label className="flex flex-col gap-1.5 text-base sm:col-span-2">
+        <span className="font-medium text-maroon">Mode of transport</span>
+        <input
+          type="text"
+          name="modeOfTransport"
+          placeholder="e.g. School bus, parent pickup"
+          className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+        />
+      </label>
 
       <div className="sm:col-span-2">
         <SubmitButton />

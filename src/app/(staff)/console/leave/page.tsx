@@ -10,9 +10,15 @@ function istToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
-export default async function LeaveApprovals() {
+export default async function LeaveApprovals({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
+
+  const { from, to } = await searchParams;
 
   const supabase = await createClient();
   const today = istToday();
@@ -37,6 +43,14 @@ export default async function LeaveApprovals() {
       visibleStudentIds.size ? [...visibleStudentIds] : ["00000000-0000-0000-0000-000000000000"]
     );
   }
+  // Overlap: the request's [from_date, to_date] span intersects the requested range.
+  if (from) leavesQuery = leavesQuery.gte("to_date", from);
+  if (to) leavesQuery = leavesQuery.lte("from_date", to);
+
+  const exportQuery = new URLSearchParams({
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+  }).toString();
 
   const [{ data: leaves }, { data: guardians }] = await Promise.all([
     leavesQuery,
@@ -64,6 +78,42 @@ export default async function LeaveApprovals() {
           Requests raised by parents. Approving or declining notifies the family.
         </p>
       </div>
+
+      <form
+        method="GET"
+        className="flex flex-wrap items-end gap-3 rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]"
+      >
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">From</span>
+          <input
+            type="date"
+            name="from"
+            defaultValue={from ?? ""}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">To</span>
+          <input
+            type="date"
+            name="to"
+            defaultValue={to ?? ""}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
+          />
+        </label>
+        <button
+          type="submit"
+          className="rounded-sm bg-maroon px-4 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong"
+        >
+          Filter
+        </button>
+        <a
+          href={`/api/export/leave${exportQuery ? `?${exportQuery}` : ""}`}
+          className="rounded-sm border border-hairline bg-mist px-4 py-2.5 text-base font-semibold text-maroon hover:bg-parchment"
+        >
+          Download CSV
+        </a>
+      </form>
 
       {/* 1. Action zone — pending requests. */}
       <section>

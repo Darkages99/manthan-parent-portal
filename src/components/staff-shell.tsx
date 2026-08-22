@@ -16,6 +16,8 @@ import {
   MailIcon,
   QrCodeIcon,
   CalendarIcon,
+  FlagIcon,
+  RefreshIcon,
 } from "./icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -43,17 +45,23 @@ function buildNavItems(role: Tables<"staff">["role"], ptmMeetings: PtmNavMeeting
       })),
     },
     { href: "/console/timetable", label: "Timetable", icon: GridIcon },
+    { href: "/console/homework", label: "Homework", icon: ClassIcon },
     // Principal-only administration.
     ...(isPrincipal
       ? [
           { href: "/console/classes", label: "Classes", icon: ClassIcon },
           { href: "/console/results", label: "Results", icon: AwardIcon },
+          { href: "/console/competitions", label: "Competitions", icon: AwardIcon },
         ]
       : []),
     { href: "/console/qr-codes", label: "QR codes", icon: QrCodeIcon },
     { href: "/console/defaulters", label: "Defaulters", icon: AlertTriangleIcon },
+    { href: "/console/issues", label: "Reported issues", icon: FlagIcon },
     ...(isPrincipal
-      ? [{ href: "/console/gallery", label: "Gallery", icon: ImageIcon }]
+      ? [
+          { href: "/console/gallery", label: "Gallery", icon: ImageIcon },
+          { href: "/console/sync", label: "Sheet sync", icon: RefreshIcon },
+        ]
       : []),
   ];
 }

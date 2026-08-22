@@ -14,6 +14,9 @@ export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [date, setDate] = useState("");
   const [title, setTitle] = useState("");
+  const [windowStart, setWindowStart] = useState("09:00");
+  const [windowEnd, setWindowEnd] = useState("11:00");
+  const [slotMinutes, setSlotMinutes] = useState(15);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -21,7 +24,14 @@ export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
     setError(null);
     startTransition(async () => {
       try {
-        const id = await createMeeting({ classSectionId: classId, meetingDate: date, title });
+        const id = await createMeeting({
+          classSectionId: classId,
+          meetingDate: date,
+          title,
+          windowStart,
+          windowEnd,
+          slotMinutes,
+        });
         router.push(`/console/ptm/${id}`);
       } catch (e) {
         setError((e as Error).message);
@@ -68,6 +78,38 @@ export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
             placeholder="Term 2 PTM"
             className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
           />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Window from</span>
+          <input
+            type="time"
+            value={windowStart}
+            onChange={(e) => setWindowStart(e.target.value)}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Window to</span>
+          <input
+            type="time"
+            value={windowEnd}
+            onChange={(e) => setWindowEnd(e.target.value)}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Slot length</span>
+          <select
+            value={slotMinutes}
+            onChange={(e) => setSlotMinutes(Number(e.target.value))}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          >
+            {[10, 15, 20, 30].map((m) => (
+              <option key={m} value={m}>
+                {m} min
+              </option>
+            ))}
+          </select>
         </label>
         <button
           onClick={submit}

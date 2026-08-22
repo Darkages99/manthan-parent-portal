@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell } from "./app-shell";
+import { ChildSwitcher } from "./child-switcher";
 import { type NavItem } from "./sidebar-nav";
 import {
   HomeIcon,
@@ -15,6 +16,10 @@ import {
   ImageIcon,
   GridIcon,
   MailIcon,
+  BellIcon,
+  ClassIcon,
+  ClockIcon,
+  FlagIcon,
 } from "./icons";
 
 function buildNavItems(unreadMessages: number): NavItem[] {
@@ -24,13 +29,18 @@ function buildNavItems(unreadMessages: number): NavItem[] {
     { href: "/attendance", label: "Attendance", icon: CheckCircleIcon },
     { href: "/leave", label: "Leave", icon: LeaveIcon },
     { href: "/timetable", label: "Timetable", icon: GridIcon },
+    { href: "/homework", label: "Homework", icon: ClassIcon },
     { href: "/dtr", label: "Dates to Remember", icon: CalendarIcon },
     { href: "/stay-back", label: "Stay-back consent", icon: ConsentIcon },
     { href: "/payments", label: "Payments", icon: PaymentIcon },
     { href: "/ptm", label: "PTM booking", icon: UsersIcon },
     { href: "/results", label: "Results", icon: AwardIcon },
+    { href: "/competitions", label: "Competitions", icon: AwardIcon },
     { href: "/defaulters", label: "Defaulters", icon: AlertTriangleIcon },
+    { href: "/reminders", label: "Reminders", icon: ClockIcon },
+    { href: "/report-issue", label: "Report an issue", icon: FlagIcon },
     { href: "/gallery", label: "Gallery", icon: ImageIcon },
+    { href: "/settings/notifications", label: "Notifications", icon: BellIcon },
   ];
 }
 
@@ -49,6 +59,7 @@ export function ParentShell({
       navItems={buildNavItems(unreadMessages)}
       subtitle="Parent Portal"
       accountName={guardianName}
+      childSwitcher={<ChildSwitcher />}
       footer={
         <footer className="relative z-10 mt-auto border-t border-hairline bg-mist/80 px-4 py-6 text-center text-sm text-slate">
           <div className="mx-auto flex max-w-5xl items-center justify-center gap-2">

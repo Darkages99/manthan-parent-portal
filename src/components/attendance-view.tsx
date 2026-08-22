@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { ChildTabs } from "./child-tabs";
 import { AttendanceCalendar } from "./attendance-calendar";
 import { AlertTriangleIcon } from "./icons";
 import { ATTENDANCE_THRESHOLD, presentPercent } from "@/lib/attendance";
+import { useSelectedChild } from "@/lib/selected-child-context";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type Student = Tables<"students">;
@@ -69,7 +68,8 @@ export function AttendanceView({
   students: Student[];
   recordsByStudent: Record<string, AttendanceRecord[]>;
 }) {
-  const [activeId, setActiveId] = useState(students[0]?.id);
+  const { selectedChildId } = useSelectedChild();
+  const activeId = selectedChildId ?? students[0]?.id;
   const records = recordsByStudent[activeId] ?? [];
 
   const counts: Record<Status, number> = { present: 0, absent: 0, late: 0, half_day: 0 };
@@ -83,8 +83,6 @@ export function AttendanceView({
 
   return (
     <div className="flex flex-col gap-6">
-      <ChildTabs students={students} activeId={activeId} onSelect={setActiveId} />
-
       {/* Summary card: donut + breakdown, with a low-attendance alert. */}
       <div
         className={`relative rounded-sm border bg-surface p-6 shadow-[var(--shadow-card)] ${

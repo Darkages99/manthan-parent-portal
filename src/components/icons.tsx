@@ -49,6 +49,44 @@ export function CheckCircleIcon(p: IconProps) {
   );
 }
 
+export function XCircleIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m9.5 9.5 5 5m0-5-5 5" />
+    </Svg>
+  );
+}
+
+export function ClockIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </Svg>
+  );
+}
+
+export function RefreshIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 12a8 8 0 0 1 13.66-5.66L20 8" />
+      <path d="M20 4v4h-4" />
+      <path d="M20 12a8 8 0 0 1-13.66 5.66L4 16" />
+      <path d="M4 20v-4h4" />
+    </Svg>
+  );
+}
+
+export function FlagIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M5 3v18" />
+      <path d="M5 4h11l-2.5 3.5L16 11H5" />
+    </Svg>
+  );
+}
+
 export function LeaveIcon(p: IconProps) {
   return (
     <Svg {...p}>

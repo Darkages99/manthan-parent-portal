@@ -10,6 +10,24 @@ import type { Enums } from "@/lib/supabase/database.types";
 
 type Recipient = { id: string; phone: string };
 
+/** Admin-configurable gate on which staff role may send to which scope. Absence
+ * of a row (shouldn't happen post-seed, but treat defensively) denies. */
+async function requireSendPermission(
+  role: Enums<"role">,
+  scopeType: Enums<"message_scope_type">
+): Promise<void> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("message_send_permissions")
+    .select("allowed")
+    .eq("role", role)
+    .eq("scope_type", scopeType)
+    .maybeSingle();
+  if (!data?.allowed) {
+    throw new Error(`Your role isn't permitted to send ${scopeType}-scoped messages.`);
+  }
+}
+
 /** Resolves the guardians a message reaches, from its scope. Uses the service-
  * role client because a broadcast legitimately spans every guardian. */
 async function resolveRecipients(
@@ -78,7 +96,8 @@ async function fanOut(
 
   await sendPush(
     recipients.map((r) => ({ userId: r.id, role: "guardian" as const })),
-    { title: subject, body, url: "/messages" }
+    { title: subject, body, url: "/messages" },
+    "messages"
   );
 
   if (urgent) {
@@ -99,6 +118,7 @@ export async function sendMessage(input: {
 }) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
+  await requireSendPermission(viewer.staff.role, input.scopeType);
   if (!input.subject || !input.body) throw new Error("Subject and message are required");
   if (input.scopeType === "class" && input.classSectionIds.length === 0)
     throw new Error("Pick at least one class");

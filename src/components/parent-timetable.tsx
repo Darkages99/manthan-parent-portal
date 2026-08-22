@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChildTabs } from "./child-tabs";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
 import { TimetableGrid, type GridCell } from "./timetable-grid";
 import { DAYS, type Period } from "@/lib/timetable";
+import { useSelectedChild } from "@/lib/selected-child-context";
 
 type Child = { id: string; first_name: string; last_name: string; classSectionId: string | null };
 
@@ -28,7 +28,8 @@ export function ParentTimetable({
   periods: Period[];
   cellsByClass: Record<string, Record<string, GridCell>>;
 }) {
-  const [activeId, setActiveId] = useState(students[0]?.id ?? "");
+  const { selectedChildId } = useSelectedChild();
+  const activeId = selectedChildId ?? students[0]?.id ?? "";
   const [view, setView] = useState<"day" | "week">("day");
   const [day, setDay] = useState(todayDayNumber());
   const active = students.find((s) => s.id === activeId) ?? students[0];
@@ -37,8 +38,6 @@ export function ParentTimetable({
 
   return (
     <div className="flex flex-col gap-6">
-      <ChildTabs students={students} activeId={activeId} onSelect={setActiveId} />
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-sm border border-hairline bg-surface p-0.5">
           {(["day", "week"] as const).map((v) => (

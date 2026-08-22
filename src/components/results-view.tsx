@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChildTabs } from "./child-tabs";
 import { reportCardSignature, writeReportCardSeen } from "@/lib/alerts";
+import { useSelectedChild } from "@/lib/selected-child-context";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Student = Tables<"students">;
@@ -15,7 +15,8 @@ export function ResultsView({
   students: Student[];
   resultsByStudent: Record<string, Result[]>;
 }) {
-  const [activeId, setActiveId] = useState(students[0]?.id);
+  const { selectedChildId } = useSelectedChild();
+  const activeId = selectedChildId ?? students[0]?.id;
   const results = resultsByStudent[activeId] ?? [];
 
   // Opening Results acknowledges every published report card, clearing the
@@ -43,27 +44,24 @@ export function ResultsView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ChildTabs students={students} activeId={activeId} onSelect={setActiveId} />
-        {terms.length > 1 && (
-          <div className="flex flex-wrap gap-2">
-            {terms.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTerm(t)}
-                className={`rounded-full px-4 py-1.5 text-base font-medium transition ${
-                  t === activeTerm
-                    ? "bg-rust text-white"
-                    : "border border-hairline bg-mist text-slate-strong hover:bg-parchment"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {terms.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {terms.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTerm(t)}
+              className={`rounded-full px-4 py-1.5 text-base font-medium transition ${
+                t === activeTerm
+                  ? "bg-rust text-white"
+                  : "border border-hairline bg-mist text-slate-strong hover:bg-parchment"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-base text-slate">No results published yet.</p>

@@ -1,6 +1,9 @@
 import "server-only";
 import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/database.types";
+
+export type NotificationCategory = Enums<"notification_category">;
 
 /**
  * Web Push, wired to the `push_subscriptions` table. Each guardian/staff device
@@ -39,14 +42,58 @@ function ensureVapid(): boolean {
   return true;
 }
 
-export async function sendPush(targets: PushTarget[], payload: PushPayload): Promise<void> {
-  if (targets.length === 0) return;
+/**
+ * Drops targets that have explicitly disabled push for this category via
+ * notification_preferences. Absence of a row means enabled (default on).
+ */
+async function filterByPreference(
+  supabase: ReturnType<typeof createAdminClient>,
+  targets: PushTarget[],
+  category: NotificationCategory
+): Promise<PushTarget[]> {
+  const guardianIds = targets.filter((t) => t.role === "guardian").map((t) => t.userId);
+  const staffIds = targets.filter((t) => t.role === "staff").map((t) => t.userId);
+
+  const orClauses: string[] = [];
+  if (guardianIds.length) orClauses.push(`guardian_id.in.(${guardianIds.join(",")})`);
+  if (staffIds.length) orClauses.push(`staff_id.in.(${staffIds.join(",")})`);
+  if (orClauses.length === 0) return targets;
+
+  const { data: disabled, error } = await supabase
+    .from("notification_preferences")
+    .select("guardian_id, staff_id")
+    .eq("category", category)
+    .eq("enabled", false)
+    .or(orClauses.join(","));
+  if (error) {
+    console.error("[push] could not read notification preferences:", error.message);
+    return targets;
+  }
+  if (!disabled || disabled.length === 0) return targets;
+
+  const disabledGuardianIds = new Set(disabled.map((d) => d.guardian_id).filter(Boolean));
+  const disabledStaffIds = new Set(disabled.map((d) => d.staff_id).filter(Boolean));
+  return targets.filter((t) =>
+    t.role === "guardian" ? !disabledGuardianIds.has(t.userId) : !disabledStaffIds.has(t.userId)
+  );
+}
+
+export async function sendPush(
+  targetsIn: PushTarget[],
+  payload: PushPayload,
+  category: NotificationCategory
+): Promise<void> {
+  if (targetsIn.length === 0) return;
   if (!ensureVapid()) {
     console.warn(
       "[push] skipped — set NEXT_PUBLIC_VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY (see `npm run vapid:keys`)."
     );
     return;
   }
+
+  const supabase = createAdminClient();
+  const targets = await filterByPreference(supabase, targetsIn, category);
+  if (targets.length === 0) return;
 
   const guardianIds = targets.filter((t) => t.role === "guardian").map((t) => t.userId);
   const staffIds = targets.filter((t) => t.role === "staff").map((t) => t.userId);
@@ -56,7 +103,6 @@ export async function sendPush(targets: PushTarget[], payload: PushPayload): Pro
   if (staffIds.length) orClauses.push(`staff_id.in.(${staffIds.join(",")})`);
   if (orClauses.length === 0) return;
 
-  const supabase = createAdminClient();
   const { data: subs, error } = await supabase
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")

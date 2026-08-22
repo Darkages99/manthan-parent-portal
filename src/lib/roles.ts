@@ -21,3 +21,17 @@ export async function requirePrincipal(): Promise<StaffViewer> {
   }
   return viewer;
 }
+
+/**
+ * Guards a server action to super_admin only — stricter than requirePrincipal().
+ * Used for the sheet-sync pending-deletion confirm action, since that's the one
+ * place a row queued for deletion actually gets removed from Postgres.
+ */
+export async function requireSuperAdmin(): Promise<StaffViewer> {
+  const viewer = await getViewer();
+  if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
+  if (viewer.staff.role !== "super_admin") {
+    throw new Error("Only a super admin can perform this action");
+  }
+  return viewer;
+}

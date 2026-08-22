@@ -3,7 +3,9 @@
 import { useTransition } from "react";
 import { motion } from "framer-motion";
 import { StatusPill } from "@/components/status-pill";
+import { ApprovalChecklist } from "@/components/approval-checklist";
 import { decideStayBack } from "@/app/(staff)/console/stay-back/actions";
+import { resolveApproverMatch } from "@/lib/approval-match";
 import { buildWhatsAppLink } from "@/lib/notifications/whatsapp";
 import { formatTime } from "@/lib/format";
 import { fadeUp, staggerContainer } from "@/lib/motion";
@@ -17,15 +19,16 @@ export function StayBackApprovalList({
   teachers,
   guardianPhones,
   viewer,
+  stepsByConsent,
 }: {
   consents: Consent[];
   students: Tables<"students">[];
   teachers: Tables<"staff">[];
   guardianPhones: Record<string, string>;
   viewer: Tables<"staff">;
+  stepsByConsent: Record<string, Tables<"approval_steps">[]>;
 }) {
   const [isPending, startTransition] = useTransition();
-  const isPrincipal = viewer.role === "principal" || viewer.role === "super_admin";
 
   return (
     <motion.ul
@@ -40,12 +43,16 @@ export function StayBackApprovalList({
         const parentPhone = guardianPhones[c.raised_by_guardian_id];
         const nudgeMessage = `Manthan Vidyashram: your stay-back request for ${student?.first_name} on ${c.stay_date} (${formatTime(c.from_time)}-${formatTime(c.to_time)}) is ${c.status}.`;
 
-        const isNamedTeacher = c.teacher_id === viewer.id;
-        const canDecide = c.status === "pending" && ((isNamedTeacher && !c.teacher_decision) || (isPrincipal && !c.principal_decision));
-        const awaiting =
-          c.status === "pending" &&
-          ((c.teacher_decision === "approved" && !c.principal_decision && "Awaiting principal") ||
-            (c.principal_decision === "approved" && !c.teacher_decision && "Awaiting teacher"));
+        const steps = stepsByConsent[c.id] ?? [];
+        const match = resolveApproverMatch(viewer.role, viewer.id, c.teacher_id);
+        const myStep = match
+          ? steps.find(
+              (s) =>
+                s.approver_role === match.approverRole &&
+                (!match.matchByStaffId || c.teacher_id === viewer.id),
+            )
+          : undefined;
+        const canDecide = c.status === "pending" && !!myStep && myStep.decision === null;
 
         return (
           <motion.li
@@ -62,9 +69,12 @@ export function StayBackApprovalList({
                   {c.stay_date} · {formatTime(c.from_time)}–{formatTime(c.to_time)} · Named teacher:{" "}
                   {teacher?.name}
                 </p>
-                {awaiting && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{awaiting}</p>}
               </div>
               <StatusPill status={c.status} />
+            </div>
+
+            <div className="mt-3 w-56">
+              <ApprovalChecklist steps={steps} />
             </div>
 
             {canDecide ? (

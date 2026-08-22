@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { PtmView } from "@/components/ptm-view";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/lib/supabase/database.types";
 
 export default async function PtmPage() {
   const viewer = await getViewer();
@@ -12,12 +13,32 @@ export default async function PtmPage() {
     new Set(viewer.students.map((s) => s.classSection?.id).filter((id): id is string => !!id))
   );
 
+  // Only surface slots whose parent meeting is still open — a closed meeting
+  // shouldn't show as bookable even if some of its slots are unclaimed.
   const [{ data: slots }, { data: teachers }] = await Promise.all([
-    supabase.from("ptm_slots").select("*").in("class_section_id", classIds),
+    supabase
+      .from("ptm_slots")
+      .select("*, ptm_meetings!inner(status)")
+      .in("class_section_id", classIds)
+      .eq("ptm_meetings.status", "open"),
     supabase.from("staff").select("id, name"),
   ]);
 
   const teacherNames = Object.fromEntries((teachers ?? []).map((t) => [t.id, t.name]));
+
+  const slotIds = (slots ?? []).map((s) => s.id);
+  const { data: approvalStepRows } = slotIds.length
+    ? await supabase
+        .from("approval_steps")
+        .select("*")
+        .eq("subject_type", "ptm_slot_request")
+        .in("subject_id", slotIds)
+    : { data: [] as Tables<"approval_steps">[] };
+
+  const approvalSteps: Record<string, Tables<"approval_steps">[]> = {};
+  for (const step of approvalStepRows ?? []) {
+    (approvalSteps[step.subject_id] ??= []).push(step);
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -29,7 +50,12 @@ export default async function PtmPage() {
         </p>
       </div>
 
-      <PtmView students={viewer.students} slots={slots ?? []} teacherNames={teacherNames} />
+      <PtmView
+        students={viewer.students}
+        slots={slots ?? []}
+        teacherNames={teacherNames}
+        approvalSteps={approvalSteps}
+      />
     </div>
   );
 }

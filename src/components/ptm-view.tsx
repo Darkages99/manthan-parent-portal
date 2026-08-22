@@ -2,27 +2,32 @@
 
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { ChildTabs } from "./child-tabs";
 import { EmptyState } from "./empty-state";
 import { CalendarIcon } from "./icons";
+import { ApprovalChecklist } from "./approval-checklist";
 import { bookSlot, cancelSlot } from "@/app/(parent)/ptm/actions";
 import { formatSlotTime, formatClock } from "@/lib/format";
 import { fadeUp, staggerContainer } from "@/lib/motion";
+import { useSelectedChild } from "@/lib/selected-child-context";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Student = Tables<"students"> & { classSection: Tables<"class_sections"> | null };
 type Slot = Tables<"ptm_slots">;
+type ApprovalStep = Tables<"approval_steps">;
 
 export function PtmView({
   students,
   slots,
   teacherNames,
+  approvalSteps,
 }: {
   students: Student[];
   slots: Slot[];
   teacherNames: Record<string, string>;
+  approvalSteps: Record<string, ApprovalStep[]>;
 }) {
-  const [activeId, setActiveId] = useState(students[0]?.id);
+  const { selectedChildId } = useSelectedChild();
+  const activeId = selectedChildId ?? students[0]?.id;
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -49,8 +54,6 @@ export function PtmView({
 
   return (
     <div className="flex flex-col gap-6">
-      <ChildTabs students={students} activeId={activeId} onSelect={setActiveId} />
-
       <div className="rounded-sm border border-hairline bg-mist px-5 py-4">
         <p className="text-base text-slate-strong">
           {active && (
@@ -70,7 +73,9 @@ export function PtmView({
         </p>
         {myBooking && (
           <p className="mt-1 text-base text-emerald-700">
-            You&apos;re booked for {formatSlotTime(myBooking.starts_at)}.
+            {myBooking.booked_by_guardian_id
+              ? `You're booked for ${formatSlotTime(myBooking.starts_at)}.`
+              : `Your booking for ${formatSlotTime(myBooking.starts_at)} is awaiting approval.`}
           </p>
         )}
       </div>
@@ -92,7 +97,8 @@ export function PtmView({
         >
           {classSlots.map((s) => {
             const mine = s.booked_student_id === activeId;
-            const takenByOther = !!s.booked_by_guardian_id && !mine;
+            const takenByOther = !!(s.booked_by_guardian_id || s.pending_guardian_id) && !mine;
+            const steps = approvalSteps[s.id];
             return (
               <motion.li
                 key={s.id}
@@ -106,6 +112,11 @@ export function PtmView({
                     {formatClock(s.starts_at)} – {formatClock(s.ends_at)}
                   </p>
                   {takenByOther && <p className="text-sm text-slate">Booked</p>}
+                  {mine && steps && steps.length > 0 && (
+                    <div className="mt-2">
+                      <ApprovalChecklist steps={steps} />
+                    </div>
+                  )}
                 </div>
                 {mine ? (
                   <motion.button

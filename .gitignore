@@ -39,6 +39,12 @@ yarn-error.log*
 # firebase admin service account keys — never commit these
 *firebase-adminsdk*.json
 
+# Google Cloud service account keys (e.g. the Sheets-sync credential) — never
+# commit these. Downloaded keys are named <project-id>-<hash>.json.
+manthan-portal-*.json
+*service-account*.json
+*-sheets-sync*.json
+
 # vercel
 .vercel
 

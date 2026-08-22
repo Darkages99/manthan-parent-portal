@@ -5,17 +5,32 @@ import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 
-export default async function LeavePage() {
+export default async function LeavePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "guardian") redirect("/");
 
+  const { from, to } = await searchParams;
+
   const supabase = await createClient();
   const studentIds = viewer.students.map((s) => s.id);
-  const { data: leaves } = await supabase
+  let leavesQuery = supabase
     .from("leave_requests")
     .select("*")
     .in("student_id", studentIds)
     .order("created_at", { ascending: false });
+  // Overlap: the request's [from_date, to_date] span intersects the requested range.
+  if (from) leavesQuery = leavesQuery.gte("to_date", from);
+  if (to) leavesQuery = leavesQuery.lte("from_date", to);
+  const { data: leaves } = await leavesQuery;
+
+  const exportQuery = new URLSearchParams({
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+  }).toString();
 
   const studentById = (id: string) => viewer.students.find((s) => s.id === id);
 
@@ -30,6 +45,42 @@ export default async function LeavePage() {
       </div>
 
       <LeaveForm students={viewer.students} />
+
+      <form
+        method="GET"
+        className="flex flex-wrap items-end gap-3 rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]"
+      >
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">From</span>
+          <input
+            type="date"
+            name="from"
+            defaultValue={from ?? ""}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">To</span>
+          <input
+            type="date"
+            name="to"
+            defaultValue={to ?? ""}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
+          />
+        </label>
+        <button
+          type="submit"
+          className="rounded-sm bg-maroon px-4 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong"
+        >
+          Filter
+        </button>
+        <a
+          href={`/api/export/leave${exportQuery ? `?${exportQuery}` : ""}`}
+          className="rounded-sm border border-hairline bg-mist px-4 py-2.5 text-base font-semibold text-maroon hover:bg-parchment"
+        >
+          Download CSV
+        </a>
+      </form>
 
       <ul className="flex flex-col gap-3">
         {(leaves ?? []).map((l) => {

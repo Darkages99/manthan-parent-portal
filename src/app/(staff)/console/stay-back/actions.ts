@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/session";
-import type { TablesUpdate } from "@/lib/supabase/database.types";
+import { decideApprovalStep } from "@/lib/approvals";
+import { resolveApproverMatch } from "@/lib/approval-match";
 
 export async function decideStayBack(id: string, decision: "approved" | "declined") {
   const viewer = await getViewer();
@@ -12,39 +13,27 @@ export async function decideStayBack(id: string, decision: "approved" | "decline
   const supabase = await createClient();
   const { data: consent } = await supabase
     .from("stay_back_consents")
-    .select("teacher_id, teacher_decision, principal_decision")
+    .select("teacher_id")
     .eq("id", id)
     .single();
   if (!consent) throw new Error("Request not found");
 
-  const isPrincipal = viewer.staff.role === "principal" || viewer.staff.role === "super_admin";
-  const isNamedTeacher = consent.teacher_id === viewer.staff.id;
-  if (!isPrincipal && !isNamedTeacher) throw new Error("You aren't a party to this request");
+  const match = resolveApproverMatch(viewer.staff.role, viewer.staff.id, consent.teacher_id);
+  if (!match) throw new Error("You aren't a party to this request");
 
-  if (isNamedTeacher && consent.teacher_decision) throw new Error("You've already decided this request");
-  if (isPrincipal && consent.principal_decision) throw new Error("You've already decided this request");
+  // Finds the caller's open step in the class_teacher -> front_office ->
+  // coordinator -> principal chain and records the decision; any decline
+  // closes the whole request, approval only completes once every step has.
+  const status = await decideApprovalStep(supabase, {
+    subjectType: "stay_back_consent",
+    subjectId: id,
+    approverRole: match.approverRole,
+    staffId: viewer.staff.id,
+    decision,
+    matchByStaffId: match.matchByStaffId,
+  });
 
-  const patch: TablesUpdate<"stay_back_consents"> = {};
-  const teacherDecision = isNamedTeacher ? decision : consent.teacher_decision;
-  const principalDecision = isPrincipal ? decision : consent.principal_decision;
-  if (isNamedTeacher) {
-    patch.teacher_decision = decision;
-    patch.teacher_decided_at = new Date().toISOString();
-  }
-  if (isPrincipal) {
-    patch.principal_decision = decision;
-    patch.principal_decided_at = new Date().toISOString();
-  }
-
-  // Both must approve for the request to succeed; either side declining
-  // closes it immediately without waiting on the other party.
-  if (teacherDecision === "declined" || principalDecision === "declined") {
-    patch.status = "declined";
-  } else if (teacherDecision === "approved" && principalDecision === "approved") {
-    patch.status = "approved";
-  }
-
-  const { error } = await supabase.from("stay_back_consents").update(patch).eq("id", id);
+  const { error } = await supabase.from("stay_back_consents").update({ status }).eq("id", id);
   if (error) throw new Error(error.message);
 
   revalidatePath("/console/stay-back");

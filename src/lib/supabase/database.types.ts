@@ -1,6 +1,3 @@
-// Generated via `mcp__claude_ai_Supabase__generate_typescript_types` against
-// the live "manthan-parent-portal" project. Regenerate after schema changes
-// rather than hand-editing.
 export type Json =
   | string
   | number
@@ -17,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_steps: {
+        Row: {
+          approver_role: Database["public"]["Enums"]["approval_step_role"]
+          approver_staff_id: string | null
+          created_at: string
+          decided_at: string | null
+          decision: Database["public"]["Enums"]["approval_decision"] | null
+          id: string
+          step_order: number
+          subject_id: string
+          subject_type: Database["public"]["Enums"]["approval_subject_type"]
+        }
+        Insert: {
+          approver_role: Database["public"]["Enums"]["approval_step_role"]
+          approver_staff_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision?: Database["public"]["Enums"]["approval_decision"] | null
+          id?: string
+          step_order: number
+          subject_id: string
+          subject_type: Database["public"]["Enums"]["approval_subject_type"]
+        }
+        Update: {
+          approver_role?: Database["public"]["Enums"]["approval_step_role"]
+          approver_staff_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision?: Database["public"]["Enums"]["approval_decision"] | null
+          id?: string
+          step_order?: number
+          subject_id?: string
+          subject_type?: Database["public"]["Enums"]["approval_subject_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_steps_approver_staff_id_fkey"
+            columns: ["approver_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           date: string
@@ -82,6 +123,47 @@ export type Database = {
           {
             foreignKeyName: "class_sections_class_teacher_id_fkey"
             columns: ["class_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          exam_date: string | null
+          external_link: string | null
+          id: string
+          name: string
+          registration_deadline: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exam_date?: string | null
+          external_link?: string | null
+          id?: string
+          name: string
+          registration_deadline?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exam_date?: string | null
+          external_link?: string | null
+          id?: string
+          name?: string
+          registration_deadline?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitions_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
@@ -361,6 +443,61 @@ export type Database = {
         }
         Relationships: []
       }
+      homework_assignments: {
+        Row: {
+          class_section_id: string
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          subject_id: string | null
+          teacher_id: string | null
+          title: string
+        }
+        Insert: {
+          class_section_id: string
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          subject_id?: string | null
+          teacher_id?: string | null
+          title: string
+        }
+        Update: {
+          class_section_id?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          subject_id?: string | null
+          teacher_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_assignments_class_section_id_fkey"
+            columns: ["class_section_id"]
+            isOneToOne: false
+            referencedRelation: "class_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_assignments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_paise: number
@@ -528,6 +665,24 @@ export type Database = {
           },
         ]
       }
+      message_send_permissions: {
+        Row: {
+          allowed: boolean
+          role: Database["public"]["Enums"]["role"]
+          scope_type: Database["public"]["Enums"]["message_scope_type"]
+        }
+        Insert: {
+          allowed?: boolean
+          role: Database["public"]["Enums"]["role"]
+          scope_type: Database["public"]["Enums"]["message_scope_type"]
+        }
+        Update: {
+          allowed?: boolean
+          role?: Database["public"]["Enums"]["role"]
+          scope_type?: Database["public"]["Enums"]["message_scope_type"]
+        }
+        Relationships: []
+      }
       message_targets: {
         Row: {
           class_section_id: string | null
@@ -622,6 +777,48 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          category: Database["public"]["Enums"]["notification_category"]
+          created_at: string
+          enabled: boolean
+          guardian_id: string | null
+          id: string
+          staff_id: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["notification_category"]
+          created_at?: string
+          enabled?: boolean
+          guardian_id?: string | null
+          id?: string
+          staff_id?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["notification_category"]
+          created_at?: string
+          enabled?: boolean
+          guardian_id?: string | null
+          id?: string
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_preferences_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_paise: number
@@ -663,27 +860,36 @@ export type Database = {
           created_at: string
           id: string
           meeting_date: string
+          slot_minutes: number
           status: Database["public"]["Enums"]["ptm_status"]
           teacher_id: string
           title: string | null
+          window_end: string | null
+          window_start: string | null
         }
         Insert: {
           class_section_id: string
           created_at?: string
           id?: string
           meeting_date: string
+          slot_minutes?: number
           status?: Database["public"]["Enums"]["ptm_status"]
           teacher_id: string
           title?: string | null
+          window_end?: string | null
+          window_start?: string | null
         }
         Update: {
           class_section_id?: string
           created_at?: string
           id?: string
           meeting_date?: string
+          slot_minutes?: number
           status?: Database["public"]["Enums"]["ptm_status"]
           teacher_id?: string
           title?: string | null
+          window_end?: string | null
+          window_start?: string | null
         }
         Relationships: [
           {
@@ -710,6 +916,7 @@ export type Database = {
           ends_at: string
           id: string
           meeting_id: string
+          pending_guardian_id: string | null
           starts_at: string
           teacher_id: string
         }
@@ -720,6 +927,7 @@ export type Database = {
           ends_at: string
           id?: string
           meeting_id: string
+          pending_guardian_id?: string | null
           starts_at: string
           teacher_id: string
         }
@@ -730,6 +938,7 @@ export type Database = {
           ends_at?: string
           id?: string
           meeting_id?: string
+          pending_guardian_id?: string | null
           starts_at?: string
           teacher_id?: string
         }
@@ -760,6 +969,13 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "ptm_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptm_slots_pending_guardian_id_fkey"
+            columns: ["pending_guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
             referencedColumns: ["id"]
           },
           {
@@ -816,10 +1032,185 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          created_at: string
+          guardian_id: string | null
+          id: string
+          message: string
+          remind_at: string
+          sent_at: string | null
+          staff_id: string | null
+          subject_id: string | null
+          subject_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          guardian_id?: string | null
+          id?: string
+          message: string
+          remind_at: string
+          sent_at?: string | null
+          staff_id?: string | null
+          subject_id?: string | null
+          subject_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          guardian_id?: string | null
+          id?: string
+          message?: string
+          remind_at?: string
+          sent_at?: string | null
+          staff_id?: string | null
+          subject_id?: string | null
+          subject_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reported_issues: {
+        Row: {
+          body: string
+          confidential: boolean
+          created_at: string
+          id: string
+          reported_by_guardian_id: string | null
+          reported_by_staff_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: Database["public"]["Enums"]["issue_status"]
+          subject: string
+        }
+        Insert: {
+          body: string
+          confidential?: boolean
+          created_at?: string
+          id?: string
+          reported_by_guardian_id?: string | null
+          reported_by_staff_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["issue_status"]
+          subject: string
+        }
+        Update: {
+          body?: string
+          confidential?: boolean
+          created_at?: string
+          id?: string
+          reported_by_guardian_id?: string | null
+          reported_by_staff_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["issue_status"]
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reported_issues_reported_by_guardian_id_fkey"
+            columns: ["reported_by_guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reported_issues_reported_by_staff_id_fkey"
+            columns: ["reported_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reported_issues_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheet_sync_pending_deletions: {
+        Row: {
+          detected_at: string
+          id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          sheet_row_snapshot: Json
+          subject_id: string
+          subject_type: string
+        }
+        Insert: {
+          detected_at?: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sheet_row_snapshot: Json
+          subject_id: string
+          subject_type: string
+        }
+        Update: {
+          detected_at?: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sheet_row_snapshot?: Json
+          subject_id?: string
+          subject_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_sync_pending_deletions_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheet_sync_runs: {
+        Row: {
+          error_summary: string | null
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error_summary?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       staff: {
         Row: {
           auth_user_id: string | null
           created_at: string
+          email: string | null
           id: string
           name: string
           phone: string
@@ -828,6 +1219,7 @@ export type Database = {
         Insert: {
           auth_user_id?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           name: string
           phone: string
@@ -836,6 +1228,7 @@ export type Database = {
         Update: {
           auth_user_id?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
           phone?: string
@@ -848,10 +1241,13 @@ export type Database = {
           created_at: string
           from_time: string
           id: string
+          mode_of_transport: string | null
           principal_decided_at: string | null
           principal_decision:
             | Database["public"]["Enums"]["approval_decision"]
             | null
+          purpose: Database["public"]["Enums"]["stay_back_purpose"]
+          purpose_detail: string | null
           raised_by_guardian_id: string
           reason: string
           status: Database["public"]["Enums"]["stay_back_status"]
@@ -868,10 +1264,13 @@ export type Database = {
           created_at?: string
           from_time: string
           id?: string
+          mode_of_transport?: string | null
           principal_decided_at?: string | null
           principal_decision?:
             | Database["public"]["Enums"]["approval_decision"]
             | null
+          purpose?: Database["public"]["Enums"]["stay_back_purpose"]
+          purpose_detail?: string | null
           raised_by_guardian_id: string
           reason: string
           status?: Database["public"]["Enums"]["stay_back_status"]
@@ -888,10 +1287,13 @@ export type Database = {
           created_at?: string
           from_time?: string
           id?: string
+          mode_of_transport?: string | null
           principal_decided_at?: string | null
           principal_decision?:
             | Database["public"]["Enums"]["approval_decision"]
             | null
+          purpose?: Database["public"]["Enums"]["stay_back_purpose"]
+          purpose_detail?: string | null
           raised_by_guardian_id?: string
           reason?: string
           status?: Database["public"]["Enums"]["stay_back_status"]
@@ -1125,11 +1527,25 @@ export type Database = {
     }
     Enums: {
       approval_decision: "approved" | "declined"
+      approval_step_role:
+        | "class_teacher"
+        | "front_office"
+        | "coordinator"
+        | "principal"
+      approval_subject_type: "stay_back_consent" | "ptm_slot_request"
       attendance_status: "present" | "absent" | "late" | "half_day"
       dtr_category: "exam" | "holiday" | "event" | "deadline" | "ptm" | "other"
       invoice_status: "due" | "partially_paid" | "paid" | "overdue"
+      issue_status: "open" | "resolved"
       leave_status: "pending" | "approved" | "declined"
       message_scope_type: "school" | "class" | "student" | "group"
+      notification_category:
+        | "stay_back"
+        | "leave"
+        | "ptm"
+        | "messages"
+        | "reminders"
+        | "defaulters"
       ptm_status: "open" | "closed"
       role:
         | "parent"
@@ -1138,6 +1554,13 @@ export type Database = {
         | "accounts"
         | "principal"
         | "super_admin"
+        | "coordinator"
+      stay_back_purpose:
+        | "cultural"
+        | "project"
+        | "competitions_prep"
+        | "ihc"
+        | "others"
       stay_back_status: "pending" | "approved" | "declined"
     }
     CompositeTypes: {
@@ -1267,11 +1690,27 @@ export const Constants = {
   public: {
     Enums: {
       approval_decision: ["approved", "declined"],
+      approval_step_role: [
+        "class_teacher",
+        "front_office",
+        "coordinator",
+        "principal",
+      ],
+      approval_subject_type: ["stay_back_consent", "ptm_slot_request"],
       attendance_status: ["present", "absent", "late", "half_day"],
       dtr_category: ["exam", "holiday", "event", "deadline", "ptm", "other"],
       invoice_status: ["due", "partially_paid", "paid", "overdue"],
+      issue_status: ["open", "resolved"],
       leave_status: ["pending", "approved", "declined"],
       message_scope_type: ["school", "class", "student", "group"],
+      notification_category: [
+        "stay_back",
+        "leave",
+        "ptm",
+        "messages",
+        "reminders",
+        "defaulters",
+      ],
       ptm_status: ["open", "closed"],
       role: [
         "parent",
@@ -1280,6 +1719,14 @@ export const Constants = {
         "accounts",
         "principal",
         "super_admin",
+        "coordinator",
+      ],
+      stay_back_purpose: [
+        "cultural",
+        "project",
+        "competitions_prep",
+        "ihc",
+        "others",
       ],
       stay_back_status: ["pending", "approved", "declined"],
     },

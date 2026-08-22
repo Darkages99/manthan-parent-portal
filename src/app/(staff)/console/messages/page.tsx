@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ComposeForm } from "@/components/compose-form";
 import { SentMessagesList } from "@/components/sent-messages-list";
 import { getViewer } from "@/lib/session";
+import { isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function MessagesPage() {
@@ -40,13 +42,23 @@ export default async function MessagesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Messaging</p>
-        <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Messages</h1>
-        <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          Send a circular to the whole school, a class, a student or a saved group — and review
-          everything you&apos;ve sent.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Messaging</p>
+          <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Messages</h1>
+          <p className="mt-2 max-w-prose text-lg text-slate-strong">
+            Send a circular to the whole school, a class, a student or a saved group — and review
+            everything you&apos;ve sent.
+          </p>
+        </div>
+        {isPrincipalRole(viewer.staff.role) && (
+          <Link
+            href="/console/messages/permissions"
+            className="shrink-0 rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+          >
+            Send permissions
+          </Link>
+        )}
       </div>
 
       <ComposeForm
