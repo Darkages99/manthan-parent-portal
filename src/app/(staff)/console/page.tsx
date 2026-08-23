@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ConsoleAlerts } from "@/components/console-alerts";
 import { getConsoleAlerts } from "@/lib/console-alerts";
 import { getViewer } from "@/lib/session";
+import { isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { MailIcon } from "@/components/icons";
 
@@ -11,11 +12,19 @@ export default async function StaffDashboard() {
   if (!viewer || viewer.type !== "staff") redirect("/");
 
   const supabase = await createClient();
+  const isAdmin = isPrincipalRole(viewer.staff.role);
 
-  const [stayBack, leave, alerts] = await Promise.all([
+  const [stayBack, leave, alerts, staffAlerts] = await Promise.all([
     supabase.from("stay_back_consents").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
     getConsoleAlerts(viewer.staff),
+    isAdmin
+      ? supabase
+          .from("staff_reassignment_alerts")
+          .select("id, message")
+          .eq("resolved", false)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as { id: string; message: string }[] }),
   ]);
 
   const tiles = [
@@ -68,7 +77,7 @@ export default async function StaffDashboard() {
         </div>
 
         {/* Right column: the alert hub. */}
-        <ConsoleAlerts data={alerts} />
+        <ConsoleAlerts data={alerts} staffAlerts={staffAlerts.data ?? []} />
       </div>
     </div>
   );

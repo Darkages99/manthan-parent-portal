@@ -1,0 +1,227 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import {
+  createGroup,
+  renameGroup,
+  deleteGroup,
+  setGroupMembers,
+} from "@/app/(staff)/console/messages/groups/actions";
+import { setGroupStaffAccess } from "@/app/(staff)/console/messages/compose/actions";
+import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
+import { useToast } from "./toast-provider";
+
+type Group = { id: string; name: string };
+
+export function CustomGroupManager({
+  groups,
+  members,
+  students,
+  teachers,
+  access,
+}: {
+  groups: Group[];
+  members: Record<string, string[]>;
+  students: TypeaheadOption[];
+  teachers: TypeaheadOption[];
+  access: Record<string, string[]>;
+}) {
+  const toast = useToast();
+  const [localGroups, setLocalGroups] = useState(groups);
+  const [newName, setNewName] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function add() {
+    if (!newName.trim()) return;
+    setError(null);
+    const name = newName.trim();
+    startTransition(async () => {
+      try {
+        const id = await createGroup(name);
+        setLocalGroups((g) => [...g, { id, name }]);
+        setNewName("");
+        toast.success("Group created");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Couldn't create group");
+      }
+    });
+  }
+
+  function remove(id: string) {
+    if (!confirm("Delete this group? This can't be undone.")) return;
+    startTransition(async () => {
+      try {
+        await deleteGroup(id);
+        setLocalGroups((g) => g.filter((x) => x.id !== id));
+        toast.success("Group deleted");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Couldn't delete group");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center gap-2 rounded-sm border border-dashed border-hairline bg-mist/40 p-4">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder="New group name"
+          className="flex-1 rounded-sm border border-hairline bg-surface px-3 py-2 text-base"
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={isPending || !newName.trim()}
+          className="rounded-sm bg-maroon px-4 py-2 text-sm font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+        >
+          Create group
+        </button>
+      </div>
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+
+      <ul className="flex flex-col gap-4">
+        {localGroups.map((g) => (
+          <GroupCard
+            key={g.id}
+            group={g}
+            students={students}
+            teachers={teachers}
+            initialMembers={members[g.id] ?? []}
+            initialAccess={access[g.id] ?? []}
+            onDelete={() => remove(g.id)}
+          />
+        ))}
+        {localGroups.length === 0 && <p className="text-base text-slate">No custom groups yet.</p>}
+      </ul>
+    </div>
+  );
+}
+
+function GroupCard({
+  group,
+  students,
+  teachers,
+  initialMembers,
+  initialAccess,
+  onDelete,
+}: {
+  group: Group;
+  students: TypeaheadOption[];
+  teachers: TypeaheadOption[];
+  initialMembers: string[];
+  initialAccess: string[];
+  onDelete: () => void;
+}) {
+  const toast = useToast();
+  const [name, setName] = useState(group.name);
+  const [editingName, setEditingName] = useState(false);
+  const [memberIds, setMemberIds] = useState(initialMembers);
+  const [accessIds, setAccessIds] = useState(initialAccess);
+  const [, startTransition] = useTransition();
+
+  function saveName() {
+    setEditingName(false);
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === group.name) {
+      setName(group.name);
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await renameGroup(group.id, trimmed);
+        toast.success("Renamed");
+      } catch {
+        setName(group.name);
+      }
+    });
+  }
+
+  function onMembersChange(next: string[]) {
+    const previous = memberIds;
+    setMemberIds(next);
+    startTransition(async () => {
+      try {
+        await setGroupMembers(group.id, next);
+        toast.success("Members updated");
+      } catch {
+        setMemberIds(previous);
+      }
+    });
+  }
+
+  function onAccessChange(next: string[]) {
+    const previous = accessIds;
+    const added = next.filter((id) => !previous.includes(id));
+    const removed = previous.filter((id) => !next.includes(id));
+    setAccessIds(next);
+    startTransition(async () => {
+      try {
+        await Promise.all([
+          ...added.map((id) => setGroupStaffAccess(group.id, id, true)),
+          ...removed.map((id) => setGroupStaffAccess(group.id, id, false)),
+        ]);
+        toast.success("Access updated");
+      } catch {
+        setAccessIds(previous);
+      }
+    });
+  }
+
+  return (
+    <li className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between gap-3">
+        {editingName ? (
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={saveName}
+            onKeyDown={(e) => e.key === "Enter" && saveName()}
+            className="rounded-sm border border-hairline bg-mist px-2 py-1 text-lg font-semibold text-maroon"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditingName(true)}
+            className="font-heading text-lg text-maroon hover:underline"
+          >
+            {group.name}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded-sm border border-hairline px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
+        >
+          Delete
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-slate">Members</p>
+          <TypeaheadPicker
+            options={students}
+            selected={memberIds}
+            onChange={onMembersChange}
+            placeholder="Add a student…"
+          />
+        </div>
+        <div>
+          <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-slate">
+            Teachers with access
+          </p>
+          <TypeaheadPicker
+            options={teachers}
+            selected={accessIds}
+            onChange={onAccessChange}
+            placeholder="Add a teacher…"
+          />
+        </div>
+      </div>
+    </li>
+  );
+}

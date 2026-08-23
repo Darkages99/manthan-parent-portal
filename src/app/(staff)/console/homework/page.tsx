@@ -4,11 +4,17 @@ import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
+/** Today's date in IST as YYYY-MM-DD. */
+function istToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
 export default async function ConsoleHomework() {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
 
   const supabase = await createClient();
+  const today = istToday();
 
   // Class teachers see/manage only their own class(es); principal / office roles see any class.
   const { data: allClasses } = await supabase
@@ -33,6 +39,15 @@ export default async function ConsoleHomework() {
       : Promise.resolve({ data: [] as Tables<"homework_assignments">[] }),
   ]);
 
+  const pastHomeworkIds = (homework ?? []).filter((h) => h.due_date < today).map((h) => h.id);
+  const { data: submissionRows } = pastHomeworkIds.length
+    ? await supabase.from("homework_submissions").select("homework_id").in("homework_id", pastHomeworkIds)
+    : { data: [] as { homework_id: string }[] };
+  const notSubmittedCounts: Record<string, number> = {};
+  for (const r of submissionRows ?? []) {
+    notSubmittedCounts[r.homework_id] = (notSubmittedCounts[r.homework_id] ?? 0) + 1;
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -46,7 +61,13 @@ export default async function ConsoleHomework() {
       {classes.length === 0 ? (
         <p className="text-base text-slate">No class is assigned to you.</p>
       ) : (
-        <HomeworkConsole classes={classes} subjects={subjects ?? []} homework={homework ?? []} />
+        <HomeworkConsole
+          classes={classes}
+          subjects={subjects ?? []}
+          homework={homework ?? []}
+          notSubmittedCounts={notSubmittedCounts}
+          today={today}
+        />
       )}
     </div>
   );

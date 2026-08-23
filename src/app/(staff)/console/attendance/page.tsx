@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AttendanceAnalytics } from "@/components/attendance-analytics";
+import { ExportCsvButton } from "@/components/export-csv-button";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -43,13 +44,16 @@ export default async function StaffAttendance() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Register</p>
-        <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Attendance</h1>
-        <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          Who&apos;s in today, who&apos;s missing, and who&apos;s slipping below the {""}
-          minimum. Marking is available at the bottom.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Register</p>
+          <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Attendance</h1>
+          <p className="mt-2 max-w-prose text-lg text-slate-strong">
+            Who&apos;s in today, who&apos;s missing, and who&apos;s slipping below the {""}
+            minimum. Marking is available at the bottom.
+          </p>
+        </div>
+        <ExportCsvButton href="/api/export/attendance" />
       </div>
 
       {classes.length === 0 ? (

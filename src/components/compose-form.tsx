@@ -3,15 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessage, createCustomGroup } from "@/app/(staff)/console/messages/compose/actions";
-import { CloseIcon } from "./icons";
+import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
 import { useToast } from "./toast-provider";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type RecipientMode = Enums<"message_scope_type">;
 type StudentOption = { id: string; label: string; classSectionId: string };
 type GroupOption = { id: string; name: string };
-
-const MAX_RENDERED = 60;
 
 export function ComposeForm({
   classSections,
@@ -31,7 +29,6 @@ export function ComposeForm({
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [query, setQuery] = useState("");
   const [groupName, setGroupName] = useState("");
   const [groupSaving, setGroupSaving] = useState(false);
   const [groupSaved, setGroupSaved] = useState(false);
@@ -43,33 +40,18 @@ export function ComposeForm({
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function toggle(list: string[], setList: (v: string[]) => void, id: string) {
-    setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
-  }
-
-  const classLabel = (id: string) => {
-    const c = classSections.find((cs) => cs.id === id);
-    return c ? `Grade ${c.grade}-${c.section}` : id;
-  };
-  const studentLabel = (id: string) => students.find((s) => s.id === id)?.label ?? id;
-  const groupLabel = (id: string) => groups.find((g) => g.id === id)?.name ?? id;
-
-  // Filtered lists for the searchable pickers.
-  const filteredClasses = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return classSections.filter((c) => `grade ${c.grade}-${c.section}`.includes(q));
-  }, [classSections, query]);
-  const filteredStudents = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (q ? students.filter((s) => s.label.toLowerCase().includes(q)) : students).slice(
-      0,
-      MAX_RENDERED
-    );
-  }, [students, query]);
-  const filteredGroups = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return groups.filter((g) => g.name.toLowerCase().includes(q));
-  }, [groups, query]);
+  const classOptions: TypeaheadOption[] = useMemo(
+    () => classSections.map((c) => ({ id: c.id, label: `Grade ${c.grade} - ${c.section}` })),
+    [classSections]
+  );
+  const studentOptions: TypeaheadOption[] = useMemo(
+    () => students.map((s) => ({ id: s.id, label: s.label })),
+    [students]
+  );
+  const groupOptions: TypeaheadOption[] = useMemo(
+    () => groups.map((g) => ({ id: g.id, label: g.name })),
+    [groups]
+  );
 
   // Students implied by the current selection — used for "save as group".
   const selectionStudentIds = useMemo(() => {
@@ -81,7 +63,6 @@ export function ComposeForm({
 
   function onModeChange(m: RecipientMode) {
     setMode(m);
-    setQuery("");
     setGroupSaved(false);
   }
 
@@ -176,7 +157,7 @@ export function ComposeForm({
               >
                 {m === "school" && "Whole school"}
                 {m === "class" && "By class"}
-                {m === "student" && "Individual student"}
+                {m === "student" && "Individual student(s)"}
                 {m === "group" && "Custom group"}
               </button>
             ))}
@@ -188,91 +169,65 @@ export function ComposeForm({
             </p>
           )}
 
-          {mode !== "school" && (
-            <div className="mt-3 flex flex-col gap-3">
-              {/* Selected chips */}
-              {mode === "class" && selectedClasses.length > 0 && (
-                <ChipRow ids={selectedClasses} label={classLabel} onRemove={(id) => toggle(selectedClasses, setSelectedClasses, id)} />
-              )}
-              {mode === "student" && selectedStudents.length > 0 && (
-                <ChipRow ids={selectedStudents} label={studentLabel} onRemove={(id) => toggle(selectedStudents, setSelectedStudents, id)} />
-              )}
-              {mode === "group" && selectedGroups.length > 0 && (
-                <ChipRow ids={selectedGroups} label={groupLabel} onRemove={(id) => toggle(selectedGroups, setSelectedGroups, id)} />
-              )}
-
-              {/* Search + checkbox list */}
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={
-                  mode === "class" ? "Search classes…" : mode === "student" ? "Search students…" : "Search groups…"
-                }
-                className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          {mode === "class" && (
+            <div className="mt-3">
+              <TypeaheadPicker
+                options={classOptions}
+                selected={selectedClasses}
+                onChange={setSelectedClasses}
+                placeholder="Search classes…"
               />
-              <ul className="max-h-56 divide-y divide-hairline overflow-y-auto rounded-sm border border-hairline">
-                {mode === "class" &&
-                  filteredClasses.map((c) => (
-                    <PickRow
-                      key={c.id}
-                      checked={selectedClasses.includes(c.id)}
-                      onToggle={() => toggle(selectedClasses, setSelectedClasses, c.id)}
-                      label={`Grade ${c.grade} - ${c.section}`}
-                    />
-                  ))}
-                {mode === "student" &&
-                  filteredStudents.map((s) => (
-                    <PickRow
-                      key={s.id}
-                      checked={selectedStudents.includes(s.id)}
-                      onToggle={() => toggle(selectedStudents, setSelectedStudents, s.id)}
-                      label={s.label}
-                    />
-                  ))}
-                {mode === "group" &&
-                  filteredGroups.map((g) => (
-                    <PickRow
-                      key={g.id}
-                      checked={selectedGroups.includes(g.id)}
-                      onToggle={() => toggle(selectedGroups, setSelectedGroups, g.id)}
-                      label={g.name}
-                    />
-                  ))}
-                {((mode === "class" && filteredClasses.length === 0) ||
-                  (mode === "student" && filteredStudents.length === 0) ||
-                  (mode === "group" && filteredGroups.length === 0)) && (
-                  <li className="px-4 py-3 text-sm text-slate">
-                    {mode === "group" ? "No custom groups yet." : "No matches."}
-                  </li>
-                )}
-              </ul>
-              {mode === "student" && students.length > MAX_RENDERED && (
-                <p className="text-sm text-slate">Showing the first {MAX_RENDERED} — search to narrow down.</p>
+            </div>
+          )}
+          {mode === "student" && (
+            <div className="mt-3">
+              <TypeaheadPicker
+                options={studentOptions}
+                selected={selectedStudents}
+                onChange={setSelectedStudents}
+                placeholder="Search students — pick as many as you like…"
+                maxResults={10}
+              />
+              <p className="mt-1.5 text-sm text-slate">
+                Sends immediately to everyone picked — no need to save a group first.
+              </p>
+            </div>
+          )}
+          {mode === "group" && (
+            <div className="mt-3">
+              <TypeaheadPicker
+                options={groupOptions}
+                selected={selectedGroups}
+                onChange={setSelectedGroups}
+                placeholder="Search custom groups…"
+              />
+              {groups.length === 0 && (
+                <p className="mt-1.5 text-sm text-slate">No custom groups yet.</p>
               )}
+            </div>
+          )}
 
-              {/* Inline save-as-group */}
-              {canSaveGroup && (
-                <div className="flex flex-wrap items-center gap-2 rounded-sm border border-dashed border-hairline bg-mist/40 px-3 py-2.5">
-                  <span className="text-sm text-slate-strong">
-                    Save these {selectionStudentIds.length} student{selectionStudentIds.length === 1 ? "" : "s"} as a group:
-                  </span>
-                  <input
-                    value={groupName}
-                    onChange={(e) => setGroupName(e.target.value)}
-                    placeholder="Group name"
-                    className="flex-1 rounded-sm border border-hairline bg-surface px-2.5 py-1.5 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={saveGroup}
-                    disabled={groupSaving || !groupName.trim()}
-                    className="rounded-sm bg-maroon px-3 py-1.5 text-sm font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
-                  >
-                    {groupSaving ? "Saving…" : "Save group"}
-                  </button>
-                  {groupSaved && <span className="text-sm text-emerald-700">Saved.</span>}
-                </div>
-              )}
+          {/* Inline save-as-group */}
+          {canSaveGroup && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-sm border border-dashed border-hairline bg-mist/40 px-3 py-2.5">
+              <span className="text-sm text-slate-strong">
+                Save these {selectionStudentIds.length} student{selectionStudentIds.length === 1 ? "" : "s"} as a group for later:
+              </span>
+              <input
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Group name"
+                className="flex-1 rounded-sm border border-hairline bg-surface px-2.5 py-1.5 text-sm"
+              />
+              <button
+                type="button"
+                onClick={saveGroup}
+                disabled={groupSaving || !groupName.trim()}
+                className="rounded-sm bg-maroon px-3 py-1.5 text-sm font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+              >
+                {groupSaving ? "Saving…" : "Save group"}
+              </button>
+              {groupSaved && <span className="text-sm text-emerald-700">Saved.</span>}
             </div>
           )}
         </div>
@@ -333,50 +288,5 @@ export function ComposeForm({
         </div>
       </div>
     </form>
-  );
-}
-
-function ChipRow({
-  ids,
-  label,
-  onRemove,
-}: {
-  ids: string[];
-  label: (id: string) => string;
-  onRemove: (id: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {ids.map((id) => (
-        <span
-          key={id}
-          className="inline-flex items-center gap-1.5 rounded-full bg-maroon px-3 py-1 text-sm text-cream"
-        >
-          {label(id)}
-          <button type="button" onClick={() => onRemove(id)} aria-label={`Remove ${label(id)}`}>
-            <CloseIcon className="h-3.5 w-3.5" />
-          </button>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function PickRow({
-  checked,
-  onToggle,
-  label,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  label: string;
-}) {
-  return (
-    <li>
-      <label className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 text-base hover:bg-mist">
-        <input type="checkbox" checked={checked} onChange={onToggle} />
-        <span className="text-slate-strong">{label}</span>
-      </label>
-    </li>
   );
 }

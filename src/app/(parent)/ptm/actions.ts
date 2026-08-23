@@ -14,10 +14,11 @@ export async function bookSlot(slotId: string, studentId: string) {
   const supabase = await createClient();
   const { data: slot, error: slotError } = await supabase
     .from("ptm_slots")
-    .select("id, teacher_id")
+    .select("id, teacher_id, meeting_id, ptm_meetings(assigned_admin_id)")
     .eq("id", slotId)
     .single();
   if (slotError || !slot) throw new Error("Slot not found");
+  const meeting = slot.ptm_meetings as unknown as { assigned_admin_id: string | null } | null;
 
   // Only claim the slot if it's still fully unclaimed — guards against a
   // double-book race. This puts the guardian on a provisional hold; the
@@ -44,12 +45,11 @@ export async function bookSlot(slotId: string, studentId: string) {
     .delete()
     .eq("subject_type", "ptm_slot_request")
     .eq("subject_id", slotId);
-  // 2-step chain: admin (principal, or a coordinator acting as admin — see
-  // resolveApproverRole) and the named teacher. Everyone else just gets
-  // notified, not asked to approve.
+  // Single-step chain: only the PTM's assigned admin (or a super_admin — see
+  // decidePtmBooking) decides. Teachers on the meeting are notified, not
+  // asked to approve.
   await createApprovalChain(admin, "ptm_slot_request", slotId, [
-    { approverRole: "principal" },
-    { approverRole: "class_teacher", approverStaffId: slot.teacher_id },
+    { approverRole: "principal", approverStaffId: meeting?.assigned_admin_id ?? null },
   ]);
 
   revalidatePath("/ptm");

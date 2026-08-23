@@ -8,7 +8,16 @@ import type { Enums } from "@/lib/supabase/database.types";
 type Role = Enums<"role">;
 type ScopeType = Enums<"message_scope_type">;
 
-const ROLES: Role[] = ["parent", "class_teacher", "front_office", "accounts", "principal", "super_admin", "coordinator"];
+const ROLES: Role[] = [
+  "parent",
+  "class_teacher",
+  "front_office",
+  "accounts",
+  "principal",
+  "super_admin",
+  "coordinator",
+  "admin",
+];
 const SCOPES: { value: ScopeType; label: string }[] = [
   { value: "school", label: "Whole school" },
   { value: "class", label: "Class" },

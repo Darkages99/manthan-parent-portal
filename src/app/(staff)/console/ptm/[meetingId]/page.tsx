@@ -25,10 +25,16 @@ export default async function PtmMeetingPage({
     .maybeSingle();
   if (!meeting) notFound();
 
-  const { data: slots } = await supabase
-    .from("ptm_slots")
-    .select("*")
-    .eq("meeting_id", meetingId);
+  const [{ data: slots }, { data: meetingTeachers }] = await Promise.all([
+    supabase.from("ptm_slots").select("*").eq("meeting_id", meetingId),
+    supabase.from("ptm_meeting_teachers").select("teacher_id, staff(name)").eq("meeting_id", meetingId),
+  ]);
+  const teacherNames = (meetingTeachers ?? [])
+    .map((t) => (t.staff as unknown as { name: string } | null)?.name)
+    .filter((n): n is string => !!n);
+  const { data: assignedAdmin } = meeting.assigned_admin_id
+    ? await supabase.from("staff").select("name").eq("id", meeting.assigned_admin_id).maybeSingle()
+    : { data: null };
 
   // Names for booked slots.
   const studentIds = [...new Set((slots ?? []).map((s) => s.booked_student_id).filter((id): id is string => !!id))];
@@ -77,6 +83,10 @@ export default async function PtmMeetingPage({
         <p className="mt-2 text-lg text-slate-strong">
           {meeting.title ?? "Parent–teacher meeting"} · {formatDate(meeting.meeting_date)}
         </p>
+        <p className="mt-1 text-sm text-slate">
+          Admin: {assignedAdmin?.name ?? "Unassigned"}
+          {teacherNames.length > 0 && ` · Teachers: ${teacherNames.join(", ")}`}
+        </p>
       </div>
 
       <MeetingSlotManager
@@ -91,6 +101,7 @@ export default async function PtmMeetingPage({
         approvalSteps={approvalSteps}
         viewerStaffId={viewer.staff.id}
         viewerRole={viewer.staff.role}
+        assignedAdminId={meeting.assigned_admin_id}
       />
     </div>
   );

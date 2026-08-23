@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/session";
-import { decideApprovalStep } from "@/lib/approvals";
-import { resolveApproverRole } from "@/lib/ptm-approval";
+import { sendPush } from "@/lib/notifications/push";
 import { formatTime } from "@/lib/format";
 import type { Enums } from "@/lib/supabase/database.types";
 
@@ -22,8 +21,12 @@ function addMinutes(hhmm: string, mins: number): string {
 }
 
 /** Creates a PTM meeting for a class on a date, with its own booking window
- * and slot length. The card appears immediately; slots are opened separately
- * from the meeting's own page, generated from the window stored here. */
+ * and slot length. Only super_admin/principal may create one; it must name
+ * one or more teachers (notified on every booking decision) and exactly one
+ * `admin`-role staff member, who — along with any super_admin — is the only
+ * one who can approve or decline that meeting's slot bookings. The card
+ * appears immediately; slots are opened separately from the meeting's own
+ * page, generated from the window stored here. */
 export async function createMeeting(input: {
   classSectionId: string;
   meetingDate: string;
@@ -31,32 +34,33 @@ export async function createMeeting(input: {
   windowStart: string;
   windowEnd: string;
   slotMinutes: number;
-  teacherId?: string;
+  teacherIds: string[];
+  adminId: string;
 }) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
+  if (viewer.staff.role !== "super_admin" && viewer.staff.role !== "principal") {
+    throw new Error("Only a super admin or principal can create a PTM");
+  }
   if (!input.classSectionId || !input.meetingDate) throw new Error("Class and date are required");
+  if (input.teacherIds.length === 0) throw new Error("Assign at least one teacher");
+  if (!input.adminId) throw new Error("Assign an admin to approve bookings for this PTM");
   if (input.windowStart && input.windowEnd && input.windowEnd <= input.windowStart) {
     throw new Error("End time must be after start time");
   }
   if (input.slotMinutes < 5) throw new Error("Slot length is too short");
 
   const supabase = await createClient();
-  let teacherId = input.teacherId;
-  if (!teacherId) {
-    const { data: cls } = await supabase
-      .from("class_sections")
-      .select("class_teacher_id")
-      .eq("id", input.classSectionId)
-      .single();
-    teacherId = cls?.class_teacher_id ?? viewer.staff.id;
-  }
+
+  const { data: admin } = await supabase.from("staff").select("role").eq("id", input.adminId).single();
+  if (admin?.role !== "admin") throw new Error("The assigned admin must have the Admin (PTM) role");
 
   const { data, error } = await supabase
     .from("ptm_meetings")
     .insert({
       class_section_id: input.classSectionId,
-      teacher_id: teacherId,
+      teacher_id: input.teacherIds[0],
+      assigned_admin_id: input.adminId,
       meeting_date: input.meetingDate,
       title: input.title.trim() || null,
       window_start: input.windowStart || null,
@@ -67,6 +71,12 @@ export async function createMeeting(input: {
     .single();
 
   if (error) throw new Error(error.message);
+
+  const { error: teachersError } = await supabase
+    .from("ptm_meeting_teachers")
+    .insert(input.teacherIds.map((teacherId) => ({ meeting_id: data.id, teacher_id: teacherId })));
+  if (teachersError) throw new Error(teachersError.message);
+
   revalidatePath("/console/ptm");
   revalidatePath("/console", "layout"); // refresh the nav's meeting list
   return data.id as string;
@@ -173,11 +183,12 @@ export async function deleteSlot(slotId: string, meetingId: string) {
 }
 
 /**
- * Records the caller's decision on a PTM slot booking request. Resolves
- * which approval step the caller acts as the same way the stay-back module
- * does (principal role also accepts super_admin); the named class teacher's
- * step is matched by their own staff id. Once every step approves, the
- * provisional hold becomes the final booking; any decline reopens the slot.
+ * Records the caller's decision on a PTM slot booking request. Only the
+ * meeting's assigned admin, or any super_admin, may decide — a single
+ * decision-maker rather than the generic multi-role approval chain used
+ * elsewhere. Once approved, the provisional hold becomes the final booking;
+ * a decline reopens the slot. Either way, every teacher on the meeting gets
+ * a lightweight push notification.
  */
 export async function decidePtmBooking(
   slotId: string,
@@ -187,25 +198,39 @@ export async function decidePtmBooking(
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
 
-  const approverRole = resolveApproverRole(viewer.staff.role);
-  if (!approverRole) throw new Error("You aren't authorized to decide this request");
-
   const supabase = await createClient();
-  const status = await decideApprovalStep(supabase, {
-    subjectType: "ptm_slot_request",
-    subjectId: slotId,
-    approverRole,
-    staffId: viewer.staff.id,
-    decision,
-    matchByStaffId: approverRole === "class_teacher",
-  });
+  const { data: meeting } = await supabase
+    .from("ptm_meetings")
+    .select("assigned_admin_id")
+    .eq("id", meetingId)
+    .single();
+  if (!meeting) throw new Error("Meeting not found");
+  if (viewer.staff.id !== meeting.assigned_admin_id && viewer.staff.role !== "super_admin") {
+    throw new Error("Only this PTM's assigned admin (or a super admin) can decide bookings");
+  }
 
-  if (status === "approved") {
+  const { error: stepError } = await supabase.from("approval_steps").upsert(
+    {
+      subject_type: "ptm_slot_request",
+      subject_id: slotId,
+      step_order: 1,
+      approver_role: "principal",
+      approver_staff_id: viewer.staff.id,
+      decision,
+      decided_at: new Date().toISOString(),
+    },
+    { onConflict: "subject_type,subject_id,step_order" }
+  );
+  if (stepError) throw new Error(stepError.message);
+
+  let studentId: string | null = null;
+  if (decision === "approved") {
     const { data: slot } = await supabase
       .from("ptm_slots")
-      .select("pending_guardian_id")
+      .select("pending_guardian_id, booked_student_id")
       .eq("id", slotId)
       .single();
+    studentId = slot?.booked_student_id ?? null;
     if (slot?.pending_guardian_id) {
       const { error } = await supabase
         .from("ptm_slots")
@@ -213,13 +238,38 @@ export async function decidePtmBooking(
         .eq("id", slotId);
       if (error) throw new Error(error.message);
     }
-  } else if (status === "declined") {
+  } else {
+    const { data: slot } = await supabase
+      .from("ptm_slots")
+      .select("booked_student_id")
+      .eq("id", slotId)
+      .single();
+    studentId = slot?.booked_student_id ?? null;
     const { error } = await supabase
       .from("ptm_slots")
       .update({ pending_guardian_id: null, booked_student_id: null })
       .eq("id", slotId);
     if (error) throw new Error(error.message);
   }
+
+  const { data: teacherLinks } = await supabase
+    .from("ptm_meeting_teachers")
+    .select("teacher_id")
+    .eq("meeting_id", meetingId);
+  const { data: student } = studentId
+    ? await supabase.from("students").select("first_name, last_name").eq("id", studentId).maybeSingle()
+    : { data: null };
+  const studentName = student ? `${student.first_name} ${student.last_name}` : "a student";
+
+  await sendPush(
+    (teacherLinks ?? []).map((t) => ({ userId: t.teacher_id, role: "staff" as const })),
+    {
+      title: decision === "approved" ? "PTM slot approved" : "PTM slot declined",
+      body: `${studentName}'s slot was ${decision}.`,
+      url: `/console/ptm/${meetingId}`,
+    },
+    "ptm"
+  );
 
   revalidatePath(`/console/ptm/${meetingId}`);
   revalidatePath("/console/ptm");

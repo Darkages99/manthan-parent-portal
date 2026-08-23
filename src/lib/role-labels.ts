@@ -12,6 +12,7 @@ export const ROLE_LABELS: Record<Enums<"role">, string> = {
   principal: "Principal",
   super_admin: "Super admin",
   coordinator: "Coordinator",
+  admin: "Admin (PTM)",
 };
 
 export function roleLabel(role: Enums<"role">): string {

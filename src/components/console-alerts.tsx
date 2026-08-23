@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
+import { resolveStaffAlert } from "@/app/(staff)/console/staff/actions";
+import { useToast } from "./toast-provider";
 import {
   AlertTriangleIcon,
   AwardIcon,
@@ -13,8 +15,12 @@ import {
   ConsentIcon,
   ChevronRightIcon,
   ChevronDownIcon,
+  CloseIcon,
+  UsersIcon,
 } from "./icons";
 import type { ConsoleAlertData } from "@/lib/console-alerts";
+
+type StaffAlert = { id: string; message: string };
 
 const MAX_LOW_ATTENDANCE = 4;
 const MAX_LOW_SCORES = 4;
@@ -26,14 +32,21 @@ function truncateList(items: string[], max = MAX_NAMES_SHOWN): string {
   return `${items.slice(0, max).join(", ")}, etc.`;
 }
 
-export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
+export function ConsoleAlerts({
+  data,
+  staffAlerts = [],
+}: {
+  data: ConsoleAlertData;
+  staffAlerts?: StaffAlert[];
+}) {
   const { lowAttendance, pendingLeave, pendingStayBack, absentToday, lowScores } = data;
   const total =
     lowAttendance.length +
     (pendingLeave.length > 0 ? 1 : 0) +
     (pendingStayBack.length > 0 ? 1 : 0) +
     (absentToday.length > 0 ? 1 : 0) +
-    lowScores.length;
+    lowScores.length +
+    staffAlerts.length;
   const shownLow = lowAttendance.slice(0, MAX_LOW_ATTENDANCE);
   const extraLow = lowAttendance.length - shownLow.length;
   const shownScores = lowScores.slice(0, MAX_LOW_SCORES);
@@ -56,6 +69,11 @@ export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
           animate="show"
           className="flex max-h-[28rem] flex-col gap-2 overflow-y-auto pr-1"
         >
+          {/* Staff deactivated while holding a class/subject assignment. */}
+          {staffAlerts.map((a) => (
+            <StaffAlertRow key={a.id} alert={a} />
+          ))}
+
           {/* New leave requests awaiting a decision. */}
           {pendingLeave.length > 0 && (
             <motion.li variants={fadeUp}>
@@ -177,6 +195,45 @@ export function ConsoleAlerts({ data }: { data: ConsoleAlertData }) {
         </motion.ul>
       )}
     </div>
+  );
+}
+
+/** A reassignment needed after a staff deactivation — dismissible once handled. */
+function StaffAlertRow({ alert }: { alert: StaffAlert }) {
+  const toast = useToast();
+  const [dismissed, setDismissed] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  if (dismissed) return null;
+
+  return (
+    <motion.li variants={fadeUp}>
+      <div className="flex items-center gap-3 rounded-sm border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/50 dark:bg-amber-900/20">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+          <UsersIcon className="h-5 w-5" />
+        </span>
+        <p className="min-w-0 flex-1 text-base font-semibold text-maroon">{alert.message}</p>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() =>
+            startTransition(async () => {
+              try {
+                await resolveStaffAlert(alert.id);
+                setDismissed(true);
+                toast.success("Dismissed");
+              } catch {
+                // Leave it visible — the click just didn't take.
+              }
+            })
+          }
+          aria-label="Dismiss"
+          className="rounded-sm p-1.5 text-slate hover:text-rose-600 disabled:opacity-60"
+        >
+          <CloseIcon className="h-4 w-4" />
+        </button>
+      </div>
+    </motion.li>
   );
 }
 

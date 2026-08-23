@@ -14,15 +14,34 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const attendanceReminder = await shouldRemindAttendance(viewer.staff);
 
   // PTM meetings shown as collapsible sub-items under the PTMs nav entry.
-  // Class teachers see their own; principal / office roles see all.
+  // Class teachers see meetings they're named on; admins see ones assigned to
+  // them; principal-tier / office roles see all.
   const supabase = await createClient();
+  let meetingIds: string[] | null = null;
+  if (viewer.staff.role === "class_teacher") {
+    const { data: links } = await supabase
+      .from("ptm_meeting_teachers")
+      .select("meeting_id")
+      .eq("teacher_id", viewer.staff.id);
+    meetingIds = [...new Set((links ?? []).map((l) => l.meeting_id))];
+  } else if (viewer.staff.role === "admin") {
+    const { data: assigned } = await supabase
+      .from("ptm_meetings")
+      .select("id")
+      .eq("assigned_admin_id", viewer.staff.id);
+    meetingIds = (assigned ?? []).map((m) => m.id);
+  }
+
   let meetingsQuery = supabase
     .from("ptm_meetings")
     .select("id, meeting_date, class_sections(grade, section)")
     .order("meeting_date", { ascending: false })
     .limit(20);
-  if (viewer.staff.role === "class_teacher") {
-    meetingsQuery = meetingsQuery.eq("teacher_id", viewer.staff.id);
+  if (meetingIds !== null) {
+    meetingsQuery = meetingsQuery.in(
+      "id",
+      meetingIds.length ? meetingIds : ["00000000-0000-0000-0000-000000000000"]
+    );
   }
   const { data: meetings } = await meetingsQuery;
 

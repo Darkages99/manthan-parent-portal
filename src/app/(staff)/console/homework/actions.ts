@@ -120,3 +120,41 @@ export async function deleteHomework(id: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/console/homework");
 }
+
+/** Marks a student submitted (deletes their row) or not submitted (creates
+ * one) for a homework assignment. No row = submitted, by design — see
+ * migration 0034_homework_submissions.sql. */
+export async function toggleSubmission(homeworkId: string, studentId: string, submitted: boolean) {
+  const { classIds } = await scopedStaff();
+  if (!homeworkId || !studentId) throw new Error("Homework and student are required");
+
+  const supabase = await createClient();
+
+  if (classIds) {
+    const { data: existing } = await supabase
+      .from("homework_assignments")
+      .select("class_section_id")
+      .eq("id", homeworkId)
+      .single();
+    if (!existing || !classIds.includes(existing.class_section_id)) {
+      throw new Error("You can only manage homework for your own class");
+    }
+  }
+
+  if (submitted) {
+    const { error } = await supabase
+      .from("homework_submissions")
+      .delete()
+      .eq("homework_id", homeworkId)
+      .eq("student_id", studentId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("homework_submissions")
+      .upsert({ homework_id: homeworkId, student_id: studentId }, { onConflict: "homework_id,student_id" });
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath(`/console/homework/${homeworkId}`);
+  revalidatePath("/console/homework");
+}

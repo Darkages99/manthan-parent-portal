@@ -587,6 +587,45 @@ export type Database = {
           },
         ]
       }
+      homework_submissions: {
+        Row: {
+          created_at: string
+          homework_id: string
+          id: string
+          notified_at: string | null
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          homework_id: string
+          id?: string
+          notified_at?: string | null
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          homework_id?: string
+          id?: string
+          notified_at?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_submissions_homework_id_fkey"
+            columns: ["homework_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_paise: number
@@ -943,8 +982,39 @@ export type Database = {
           },
         ]
       }
+      ptm_meeting_teachers: {
+        Row: {
+          meeting_id: string
+          teacher_id: string
+        }
+        Insert: {
+          meeting_id: string
+          teacher_id: string
+        }
+        Update: {
+          meeting_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ptm_meeting_teachers_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "ptm_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptm_meeting_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ptm_meetings: {
         Row: {
+          assigned_admin_id: string | null
           class_section_id: string
           created_at: string
           id: string
@@ -957,6 +1027,7 @@ export type Database = {
           window_start: string | null
         }
         Insert: {
+          assigned_admin_id?: string | null
           class_section_id: string
           created_at?: string
           id?: string
@@ -969,6 +1040,7 @@ export type Database = {
           window_start?: string | null
         }
         Update: {
+          assigned_admin_id?: string | null
           class_section_id?: string
           created_at?: string
           id?: string
@@ -981,6 +1053,13 @@ export type Database = {
           window_start?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ptm_meetings_assigned_admin_id_fkey"
+            columns: ["assigned_admin_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ptm_meetings_class_section_id_fkey"
             columns: ["class_section_id"]
@@ -1303,8 +1382,9 @@ export type Database = {
           email: string | null
           id: string
           name: string
-          phone: string
+          phone: string | null
           role: Database["public"]["Enums"]["role"]
+          username: string
         }
         Insert: {
           active?: boolean
@@ -1313,8 +1393,9 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
-          phone: string
+          phone?: string | null
           role: Database["public"]["Enums"]["role"]
+          username: string
         }
         Update: {
           active?: boolean
@@ -1323,10 +1404,43 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
-          phone?: string
+          phone?: string | null
           role?: Database["public"]["Enums"]["role"]
+          username?: string
         }
         Relationships: []
+      }
+      staff_reassignment_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          resolved: boolean
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          resolved?: boolean
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          resolved?: boolean
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_reassignment_alerts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stay_back_consents: {
         Row: {
@@ -1647,6 +1761,7 @@ export type Database = {
         | "principal"
         | "super_admin"
         | "coordinator"
+        | "admin"
       stay_back_purpose:
         | "cultural"
         | "project"
@@ -1812,6 +1927,7 @@ export const Constants = {
         "principal",
         "super_admin",
         "coordinator",
+        "admin",
       ],
       stay_back_purpose: [
         "cultural",

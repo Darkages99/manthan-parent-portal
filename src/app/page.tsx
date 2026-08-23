@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 type Method = "password" | "otp" | "google";
 
 const TABS: { id: Method; label: string }[] = [
-  { id: "password", label: "Email" },
+  { id: "password", label: "Password" },
   { id: "otp", label: "Phone" },
   { id: "google", label: "Google" },
 ];
@@ -93,7 +93,10 @@ function LandingForm() {
     setPasswordError(null);
     setPasswordLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Staff without a personal email sign in with a bare username, which
+    // resolves to "<username>@staff.manthan.internal" — see createStaffAccount.
+    const identifier = email.includes("@") ? email.trim() : `${email.trim()}@staff.manthan.internal`;
+    const { error } = await supabase.auth.signInWithPassword({ email: identifier, password });
     setPasswordLoading(false);
     if (error) {
       setPasswordError(error.message);
@@ -208,15 +211,15 @@ function LandingForm() {
           {method === "password" && (
             <form onSubmit={handlePasswordSubmit} className="mt-3.5 flex w-full flex-col gap-3.5">
               <label className="flex flex-col gap-1.5 text-sm">
-                <span className="font-medium text-cream/85">Email</span>
+                <span className="font-medium text-cream/85">Username or email</span>
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
+                  autoComplete="username"
                   className={inputClass}
-                  placeholder="you@example.com"
+                  placeholder="you@example.com or your username"
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm">

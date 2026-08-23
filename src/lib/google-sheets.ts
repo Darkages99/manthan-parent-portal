@@ -29,6 +29,7 @@ const ROLE_VALUES: Enums<"role">[] = [
   "principal",
   "super_admin",
   "coordinator",
+  "admin",
 ];
 
 function getServiceAccountAuth() {
@@ -262,9 +263,10 @@ async function syncTeachers(
         }
         seen.add(id);
       } else {
+        const username = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_${phone.replace(/\D/g, "").slice(-4)}`;
         const { data: inserted, error } = await supabase
           .from("staff")
-          .insert(payload)
+          .insert({ ...payload, username })
           .select("id")
           .single();
         if (error || !inserted) {
@@ -764,29 +766,44 @@ async function queuePendingDeletions(supabase: AdminClient, seenIds: Record<stri
 
 export async function provisionSheet(): Promise<{ spreadsheetId: string; url: string }> {
   const existingId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-  const sheets = getSheetsClient();
+  // getServiceAccountAuth() already throws a clear "which env vars are
+  // missing" message — this just labels *where* that failure happened, since
+  // "not able to provision sheet" alone doesn't say whether credentials are
+  // missing, misformatted, or the Sheets/Drive API call itself failed.
+  let sheets: sheets_v4.Sheets;
+  try {
+    sheets = getSheetsClient();
+  } catch (e) {
+    throw new Error(`Can't provision the sheet — ${(e as Error).message}`);
+  }
   let spreadsheetId = existingId ?? null;
 
   if (!spreadsheetId) {
-    const { data: created } = await sheets.spreadsheets.create({
-      requestBody: {
-        properties: { title: "Manthan Parent Portal — Roster & Academic Config" },
-        sheets: TAB_NAMES.map((name) => ({ properties: { title: name } })),
-      },
-    });
-    if (!created.spreadsheetId) throw new Error("Google Sheets did not return a spreadsheetId");
-    spreadsheetId = created.spreadsheetId;
+    try {
+      const { data: created } = await sheets.spreadsheets.create({
+        requestBody: {
+          properties: { title: "Manthan Parent Portal — Roster & Academic Config" },
+          sheets: TAB_NAMES.map((name) => ({ properties: { title: name } })),
+        },
+      });
+      if (!created.spreadsheetId) throw new Error("Google Sheets did not return a spreadsheetId");
+      spreadsheetId = created.spreadsheetId;
 
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        valueInputOption: "RAW",
-        data: TAB_NAMES.map((name) => ({
-          range: `${name}!A1`,
-          values: [[...TAB_HEADERS[name]]],
-        })),
-      },
-    });
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: "RAW",
+          data: TAB_NAMES.map((name) => ({
+            range: `${name}!A1`,
+            values: [[...TAB_HEADERS[name]]],
+          })),
+        },
+      });
+    } catch (e) {
+      throw new Error(
+        `Google Sheets API call failed while creating the spreadsheet — check the service account has Sheets API access. (${(e as Error).message})`
+      );
+    }
   }
 
   const supabase = createAdminClient();

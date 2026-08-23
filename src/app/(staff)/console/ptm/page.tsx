@@ -11,10 +11,13 @@ export default async function StaffPtm() {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
 
+  const canCreate = viewer.staff.role === "super_admin" || viewer.staff.role === "principal";
+
   const supabase = await createClient();
-  const [{ data: allClasses }, { data: staff }] = await Promise.all([
+  const [{ data: allClasses }, { data: teachers }, { data: admins }] = await Promise.all([
     supabase.from("class_sections").select("*").order("grade"),
     supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name"),
+    supabase.from("staff").select("id, name").eq("role", "admin").order("name"),
   ]);
   const classes =
     viewer.staff.role === "class_teacher"
@@ -22,12 +25,30 @@ export default async function StaffPtm() {
       : (allClasses ?? []);
   const classIds = classes.map((c) => c.id);
 
+  let visibleMeetingIds: string[] | null = null;
+  if (viewer.staff.role === "class_teacher") {
+    const { data: links } = await supabase
+      .from("ptm_meeting_teachers")
+      .select("meeting_id")
+      .eq("teacher_id", viewer.staff.id);
+    visibleMeetingIds = [...new Set((links ?? []).map((l) => l.meeting_id))];
+  } else if (viewer.staff.role === "admin") {
+    const { data: assigned } = await supabase
+      .from("ptm_meetings")
+      .select("id")
+      .eq("assigned_admin_id", viewer.staff.id);
+    visibleMeetingIds = (assigned ?? []).map((m) => m.id);
+  }
+
   let meetingsQuery = supabase
     .from("ptm_meetings")
     .select("*")
     .order("meeting_date", { ascending: false });
-  if (viewer.staff.role === "class_teacher") {
-    meetingsQuery = meetingsQuery.eq("teacher_id", viewer.staff.id);
+  if (visibleMeetingIds !== null) {
+    meetingsQuery = meetingsQuery.in(
+      "id",
+      visibleMeetingIds.length ? visibleMeetingIds : ["00000000-0000-0000-0000-000000000000"]
+    );
   }
   const [{ data: meetings }, { data: slots }] = await Promise.all([
     meetingsQuery,
@@ -35,7 +56,7 @@ export default async function StaffPtm() {
   ]);
 
   const classLabel = (id: string) => {
-    const c = classes.find((cs) => cs.id === id);
+    const c = classes.find((cs) => cs.id === id) ?? (allClasses ?? []).find((cs) => cs.id === id);
     return c ? `Grade ${c.grade}-${c.section}` : "Class";
   };
   const slotStats = new Map<string, { total: number; booked: number }>();
@@ -46,9 +67,10 @@ export default async function StaffPtm() {
     slotStats.set(s.meeting_id, stat);
   }
 
-  const visibleMeetings = (meetings ?? []).filter(
-    (m) => classIds.length === 0 || classIds.includes(m.class_section_id)
-  );
+  const visibleMeetings =
+    viewer.staff.role === "class_teacher"
+      ? (meetings ?? []).filter((m) => classIds.length === 0 || classIds.includes(m.class_section_id))
+      : (meetings ?? []);
 
   return (
     <div className="flex flex-col gap-8">
@@ -56,11 +78,15 @@ export default async function StaffPtm() {
         <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Meetings</p>
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">PTMs</h1>
         <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          Create a parent–teacher meeting for a class, then open time slots for parents to book.
+          {canCreate
+            ? "Create a parent–teacher meeting for a class, assign its teachers and approving admin, then open time slots for parents to book."
+            : "Meetings you're involved in, and their booking slots."}
         </p>
       </div>
 
-      <CreatePtmForm classes={classes} staff={staff ?? []} />
+      {canCreate && (
+        <CreatePtmForm classes={allClasses ?? []} teachers={teachers ?? []} admins={admins ?? []} />
+      )}
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Your PTMs</h2>
@@ -68,7 +94,7 @@ export default async function StaffPtm() {
           <EmptyState
             icon={UsersIcon}
             title="No PTMs yet"
-            detail="Create one above to start opening booking slots for a class."
+            detail={canCreate ? "Create one above to start opening booking slots for a class." : "None assigned to you yet."}
           />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

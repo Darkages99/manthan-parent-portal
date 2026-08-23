@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requirePrincipal } from "@/lib/roles";
+import { getViewer } from "@/lib/session";
 
 /** Assigns (or clears, when staffId is null) the class teacher for a section. */
 export async function assignClassTeacher(classSectionId: string, staffId: string | null) {
@@ -21,9 +22,12 @@ export async function assignClassTeacher(classSectionId: string, staffId: string
 }
 
 /** Creates a subject if `name` doesn't already match one, and returns its id
- * either way — backs the class detail page's combined subject picker. */
+ * either way — backs every "Other…" subject picker (Classes, Homework, ...).
+ * Any signed-in staff member may call this, not just principal-tier, since
+ * class teachers need it from the homework form. */
 export async function findOrCreateSubject(name: string): Promise<string> {
-  await requirePrincipal();
+  const viewer = await getViewer();
+  if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Subject name is required");
 

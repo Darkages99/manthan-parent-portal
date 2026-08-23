@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   assignClassTeacher,
-  findOrCreateSubject,
   addClassSubjectTeacher,
   removeClassSubjectTeacher,
   copyTeacherToClass,
@@ -12,6 +11,7 @@ import {
 } from "@/app/(staff)/console/classes/actions";
 import { CloseIcon, PlusIcon } from "./icons";
 import { useToast } from "./toast-provider";
+import { SubjectPicker } from "./subject-picker";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -20,8 +20,6 @@ type StaffLite = { id: string; name: string; role: Tables<"staff">["role"] };
 type Named = { id: string; name: string };
 type Assignment = Tables<"class_subject_teachers">;
 type Student = Tables<"students">;
-
-const CUSTOM_SUBJECT = "__custom__";
 
 export function ClassDetail({
   cls,
@@ -122,8 +120,7 @@ function SubjectTeacherSection({
   staffName: Map<string, string>;
 }) {
   const toast = useToast();
-  const [subjectChoice, setSubjectChoice] = useState(subjects[0]?.id ?? CUSTOM_SUBJECT);
-  const [customSubject, setCustomSubject] = useState("");
+  const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? "");
   const [teacherId, setTeacherId] = useState(staff[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -132,14 +129,9 @@ function SubjectTeacherSection({
     setError(null);
     startTransition(async () => {
       try {
-        let subjectId = subjectChoice;
-        if (subjectChoice === CUSTOM_SUBJECT) {
-          if (!customSubject.trim()) throw new Error("Enter a subject name");
-          subjectId = await findOrCreateSubject(customSubject);
-        }
+        if (!subjectId) throw new Error("Pick or add a subject");
         if (!teacherId) throw new Error("Pick a teacher");
         await addClassSubjectTeacher({ classSectionId, subjectId, teacherId });
-        setCustomSubject("");
         toast.success("Teacher assigned");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't save");
@@ -168,30 +160,8 @@ function SubjectTeacherSection({
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-maroon">Subject</span>
-          <select
-            value={subjectChoice}
-            onChange={(e) => setSubjectChoice(e.target.value)}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
-          >
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-            <option value={CUSTOM_SUBJECT}>+ Custom…</option>
-          </select>
+          <SubjectPicker subjects={subjects} value={subjectId} onChange={setSubjectId} />
         </label>
-        {subjectChoice === CUSTOM_SUBJECT && (
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-maroon">New subject name</span>
-            <input
-              value={customSubject}
-              onChange={(e) => setCustomSubject(e.target.value)}
-              placeholder="e.g. Sanskrit"
-              className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
-            />
-          </label>
-        )}
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-maroon">Teacher</span>
           <select

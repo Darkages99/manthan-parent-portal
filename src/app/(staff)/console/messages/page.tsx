@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ComposeForm } from "@/components/compose-form";
 import { SentMessagesList } from "@/components/sent-messages-list";
-import { GroupAccessManager } from "@/components/group-access-manager";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
@@ -18,7 +17,7 @@ export default async function MessagesPage() {
 
   const isAdmin = isPrincipalRole(viewer.staff.role);
 
-  const [{ data: allClassSections }, { data: allStudents }, { data: allGroups }, { data: messages }, { data: groupAccess }, { data: teachers }] =
+  const [{ data: allClassSections }, { data: allStudents }, { data: allGroups }, { data: messages }, { data: groupAccess }] =
     await Promise.all([
       supabase.from("class_sections").select("*").order("grade", { ascending: true }),
       supabase
@@ -32,9 +31,6 @@ export default async function MessagesPage() {
         .not("sent_at", "is", null)
         .order("sent_at", { ascending: false }),
       supabase.from("custom_group_staff_access").select("custom_group_id, staff_id"),
-      isAdmin
-        ? supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name")
-        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     ]);
 
   // Teachers only see their own taught classes, their students, and groups
@@ -82,22 +78,22 @@ export default async function MessagesPage() {
           </p>
         </div>
         {isAdmin && (
-          <Link
-            href="/console/messages/permissions"
-            className="shrink-0 rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
-          >
-            Send permissions
-          </Link>
+          <div className="flex shrink-0 gap-2">
+            <Link
+              href="/console/messages/groups"
+              className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+            >
+              Manage custom groups
+            </Link>
+            <Link
+              href="/console/messages/permissions"
+              className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+            >
+              Send permissions
+            </Link>
+          </div>
         )}
       </div>
-
-      {isAdmin && (
-        <GroupAccessManager
-          groups={allGroups ?? []}
-          teachers={teachers ?? []}
-          initialAccess={new Set((groupAccess ?? []).map((a) => `${a.custom_group_id}:${a.staff_id}`))}
-        />
-      )}
 
       <ComposeForm
         classSections={classSections ?? []}

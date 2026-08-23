@@ -30,6 +30,7 @@ export function MeetingSlotManager({
   approvalSteps,
   viewerStaffId,
   viewerRole,
+  assignedAdminId,
 }: {
   meetingId: string;
   status: Enums<"ptm_status">;
@@ -42,7 +43,10 @@ export function MeetingSlotManager({
   approvalSteps: Record<string, ApprovalStep[]>;
   viewerStaffId: string;
   viewerRole: Enums<"role">;
+  /** Only this staff member (or a super_admin) may approve/decline slots. */
+  assignedAdminId: string | null;
 }) {
+  const canDecideMeeting = viewerStaffId === assignedAdminId || viewerRole === "super_admin";
   const router = useRouter();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +129,8 @@ export function MeetingSlotManager({
             const booked = !!s.booked_by_guardian_id;
             const pending = !!s.pending_guardian_id;
             const steps = approvalSteps[s.id];
-            const myStep = steps ? findMyOpenStep(steps, viewerRole, viewerStaffId) : null;
+            const myStep =
+              steps && canDecideMeeting ? findMyOpenStep(steps, viewerRole, viewerStaffId) : null;
             const guardianId = s.booked_by_guardian_id ?? s.pending_guardian_id;
             return (
               <li

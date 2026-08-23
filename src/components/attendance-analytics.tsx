@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { AttendanceMarker } from "./attendance-marker";
-import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon } from "./icons";
+import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from "./icons";
 import { ATTENDANCE_THRESHOLD, presentPercent } from "@/lib/attendance";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
@@ -116,12 +117,16 @@ export function AttendanceAnalytics({
       )}
 
       {/* Today snapshot */}
-      <section className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
+      <Link
+        href="/console/attendance/classes"
+        className="block rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)] transition hover:border-rust/60"
+      >
         <div className="mb-4 flex items-baseline justify-between gap-4">
           <h2 className="font-heading text-xl text-maroon">Today</h2>
-          <span className="text-sm text-slate">
+          <span className="flex items-center gap-1 text-sm text-slate">
             {markedToday} of {scopedStudents.length} marked
             {notMarked > 0 && ` · ${notMarked} not yet marked`}
+            <ChevronRightIcon className="h-4 w-4" />
           </span>
         </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -138,7 +143,8 @@ export function AttendanceAnalytics({
             </div>
           ))}
         </div>
-      </section>
+        <p className="mt-4 text-sm font-medium text-rust">See every class →</p>
+      </Link>
 
       {/* Absent today */}
       <section className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">

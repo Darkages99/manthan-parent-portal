@@ -88,8 +88,9 @@ function StaffRow({ staff, onChange }: { staff: StaffRow; onChange: (next: Staff
         </select>
       </td>
       <td className="px-5 py-3 text-sm text-slate-strong">
-        <div>{staff.phone}</div>
-        <div className="text-slate">{staff.email}</div>
+        <div>@{staff.username}</div>
+        {staff.phone && <div className="text-slate">{staff.phone}</div>}
+        {staff.email && <div className="text-slate">{staff.email}</div>}
       </td>
       <td className="px-5 py-3">
         <div className="flex items-center gap-3">
@@ -119,31 +120,36 @@ function StaffRow({ staff, onChange }: { staff: StaffRow; onChange: (next: Staff
 function CreateStaffForm({ onCreated }: { onCreated: (row: StaffRow) => void }) {
   const toast = useToast();
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Enums<"role">>("class_teacher");
   const [error, setError] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ username: string; email: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function submit() {
     setError(null);
-    setCredentials(null);
+    setCreated(null);
     startTransition(async () => {
       try {
-        const { tempPassword } = await createStaffAccount({ name, phone, email, role });
+        await createStaffAccount({ name, username, password, phone, email, role });
         onCreated({
           id: crypto.randomUUID(),
           auth_user_id: null,
           name,
-          phone,
-          email,
+          username: username.trim().toLowerCase(),
+          phone: phone || null,
+          email: email || null,
           role,
           active: true,
           created_at: new Date().toISOString(),
         });
-        setCredentials({ email, password: tempPassword });
+        setCreated({ username: username.trim().toLowerCase(), email });
         setName("");
+        setUsername("");
+        setPassword("");
         setPhone("");
         setEmail("");
         toast.success("Staff account created");
@@ -156,7 +162,7 @@ function CreateStaffForm({ onCreated }: { onCreated: (row: StaffRow) => void }) 
   return (
     <div className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
       <h2 className="mb-4 font-heading text-xl text-maroon">Add staff</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Name</span>
           <input
@@ -166,21 +172,44 @@ function CreateStaffForm({ onCreated }: { onCreated: (row: StaffRow) => void }) 
           />
         </label>
         <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Phone</span>
+          <span className="font-medium text-maroon">Username</span>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="letters, numbers, dots, dashes"
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Password</span>
+          <input
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Set their sign-in password"
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Phone (optional)</span>
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
           />
+          {!phone && (
+            <span className="text-sm text-slate">Without a phone, they can&apos;t use OTP sign-in or recovery.</span>
+          )}
         </label>
         <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Email</span>
+          <span className="font-medium text-maroon">Email (optional)</span>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
           />
+          {!email && <span className="text-sm text-slate">Without an email, they can&apos;t sign in with Google.</span>}
         </label>
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Role</span>
@@ -196,20 +225,26 @@ function CreateStaffForm({ onCreated }: { onCreated: (row: StaffRow) => void }) 
             ))}
           </select>
         </label>
-        <button
-          onClick={submit}
-          disabled={isPending || !name || !phone || !email}
-          className="inline-flex items-center justify-center gap-2 rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
-        >
-          <PlusIcon className="h-5 w-5" />
-          {isPending ? "Creating…" : "Create account"}
-        </button>
       </div>
+      <button
+        onClick={submit}
+        disabled={isPending || !name || !username || !password}
+        className="mt-4 inline-flex items-center justify-center gap-2 rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+      >
+        <PlusIcon className="h-5 w-5" />
+        {isPending ? "Creating…" : "Create account"}
+      </button>
       {error && <p className="mt-3 text-base text-rose-700">{error}</p>}
-      {credentials && (
+      {created && (
         <p className="mt-3 rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-200">
-          Account created for <strong>{credentials.email}</strong>. One-time password:{" "}
-          <strong>{credentials.password}</strong> — share this with them; it isn&apos;t shown again.
+          Account created. They sign in with username <strong>{created.username}</strong>
+          {created.email && (
+            <>
+              {" "}
+              (or email <strong>{created.email}</strong>)
+            </>
+          )}{" "}
+          and the password you set.
         </p>
       )}
     </div>

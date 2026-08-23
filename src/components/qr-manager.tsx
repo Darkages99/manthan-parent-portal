@@ -197,16 +197,24 @@ export function QrManager({
         </div>
 
         {canManage && (
-          <button
-            type="button"
-            onClick={generateAllMissing}
-            disabled={isPending || missingCount === 0}
-            className="self-start rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon transition hover:border-rust/60 disabled:opacity-50"
-          >
-            {missingCount === 0
-              ? "Every student has a code"
-              : `Generate for ${missingCount} without a code`}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={generateAllMissing}
+              disabled={isPending || missingCount === 0}
+              className="self-start rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon transition hover:border-rust/60 disabled:opacity-50"
+            >
+              {missingCount === 0
+                ? "Every student has a code"
+                : `Generate for ${missingCount} without a code`}
+            </button>
+            <a
+              href="/api/export/qr-codes"
+              className="self-start rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon transition hover:border-rust/60"
+            >
+              Download all (ZIP)
+            </a>
+          </div>
         )}
 
         <ul className="max-h-[28rem] divide-y divide-hairline overflow-y-auto rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">

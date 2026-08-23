@@ -283,3 +283,13 @@ export function EyeOffIcon(p: IconProps) {
     </Svg>
   );
 }
+
+export function DownloadIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3.5v11" />
+      <path d="M7.5 10.5 12 15l4.5-4.5" />
+      <path d="M4.5 17.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2" />
+    </Svg>
+  );
+}

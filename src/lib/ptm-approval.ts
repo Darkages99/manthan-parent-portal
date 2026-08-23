@@ -11,11 +11,19 @@ export type ApprovalStepRole = Enums<"approval_step_role">;
  * Maps a staff member's role onto the approval_step_role they act as when
  * deciding a PTM slot request. super_admin and coordinator both review as
  * principal — coordinator is treated as fully admin-equivalent throughout the
- * app (see src/lib/roles.ts PRINCIPAL_ROLES). Returns null for roles that
- * never approve PTM booking requests (e.g. accounts, parent).
+ * app (see src/lib/roles.ts PRINCIPAL_ROLES). The per-meeting `admin` role
+ * also maps here so its step shows as "theirs to decide" — decidePtmBooking
+ * then further restricts the actual decision to that meeting's
+ * assigned_admin_id (or a super_admin). Returns null for roles that never
+ * approve PTM booking requests (e.g. accounts, parent).
  */
 export function resolveApproverRole(staffRole: StaffRole): ApprovalStepRole | null {
-  if (staffRole === "principal" || staffRole === "super_admin" || staffRole === "coordinator") {
+  if (
+    staffRole === "principal" ||
+    staffRole === "super_admin" ||
+    staffRole === "coordinator" ||
+    staffRole === "admin"
+  ) {
     return "principal";
   }
   if (staffRole === "class_teacher" || staffRole === "front_office") {
