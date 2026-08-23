@@ -1,6 +1,7 @@
 import "server-only";
 import { google, type sheets_v4 } from "googleapis";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PENDING_DELETION_SUBJECT_LABEL, pendingDeletionLabel } from "@/lib/pending-deletion-label";
 import type { Enums } from "@/lib/supabase/database.types";
 
 // ---------------------------------------------------------------------------
@@ -191,6 +192,7 @@ export async function syncFromSheet(): Promise<void> {
     );
 
     await queuePendingDeletions(supabase, seenIds);
+    await writePendingDeletionsTab(sheets, spreadsheetId, supabase);
 
     await supabase
       .from("sheet_sync_runs")
@@ -754,6 +756,121 @@ async function queuePendingDeletions(supabase: AdminClient, seenIds: Record<stri
       });
       queuedKey.add(key);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pending-deletions mirror tab.
+//
+// A "pending deletion" is, by definition, a row that's no longer in its
+// source tab — so there's nothing left there to highlight. Instead this
+// writes the current unresolved queue into its own "Pending Deletions" tab,
+// red-highlighted, so a super admin who opens the sheet directly (not just
+// the console) can see at a glance what disappeared and is awaiting a
+// decision. Fully refreshed every sync run: resolved or re-added rows drop
+// off automatically since only the current unresolved set is written.
+// ---------------------------------------------------------------------------
+
+const PENDING_DELETIONS_TAB = "Pending Deletions";
+const PENDING_DELETIONS_HEADER = ["Type", "Name / label", "Record ID", "Missing since", "Last known details"];
+
+/** The numeric sheetId for a tab by its title, or null if no such tab exists yet. */
+async function findSheetIdByTitle(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  title: string
+): Promise<number | null> {
+  const { data } = await sheets.spreadsheets.get({ spreadsheetId, fields: "sheets.properties" });
+  const match = (data.sheets ?? []).find((s) => s.properties?.title === title);
+  return match?.properties?.sheetId ?? null;
+}
+
+/** Best-effort — a formatting hiccup here shouldn't fail the whole sync run. */
+async function writePendingDeletionsTab(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  supabase: AdminClient
+) {
+  try {
+    const { data: pending } = await supabase
+      .from("sheet_sync_pending_deletions")
+      .select("subject_type, subject_id, detected_at, sheet_row_snapshot")
+      .is("resolved_at", null)
+      .order("detected_at", { ascending: false });
+    const rows = pending ?? [];
+
+    let sheetId = await findSheetIdByTitle(sheets, spreadsheetId, PENDING_DELETIONS_TAB);
+    if (sheetId === null) {
+      const { data: created } = await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: { requests: [{ addSheet: { properties: { title: PENDING_DELETIONS_TAB } } }] },
+      });
+      sheetId = created.replies?.[0]?.addSheet?.properties?.sheetId ?? null;
+      if (sheetId === null) throw new Error("Could not create the Pending Deletions tab");
+    }
+
+    const values = [
+      PENDING_DELETIONS_HEADER,
+      ...rows.map((r) => [
+        PENDING_DELETION_SUBJECT_LABEL[r.subject_type] ?? r.subject_type,
+        pendingDeletionLabel(r.subject_id, r.sheet_row_snapshot),
+        r.subject_id,
+        new Date(r.detected_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+        JSON.stringify(r.sheet_row_snapshot ?? {}),
+      ]),
+    ];
+
+    // Clear a generous range first — the queue can shrink between runs, and
+    // stale rows below the new content would otherwise linger.
+    await sheets.spreadsheets.values.clear({ spreadsheetId, range: `${PENDING_DELETIONS_TAB}!A1:E5000` });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${PENDING_DELETIONS_TAB}!A1`,
+      valueInputOption: "RAW",
+      requestBody: { values },
+    });
+
+    const formatRequests: sheets_v4.Schema$Request[] = [
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 },
+          cell: {
+            userEnteredFormat: {
+              textFormat: { bold: true },
+              backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+            },
+          },
+          fields: "userEnteredFormat(textFormat,backgroundColor)",
+        },
+      },
+    ];
+    if (rows.length > 0) {
+      formatRequests.push({
+        repeatCell: {
+          range: {
+            sheetId,
+            startRowIndex: 1,
+            endRowIndex: rows.length + 1,
+            startColumnIndex: 0,
+            endColumnIndex: 5,
+          },
+          cell: { userEnteredFormat: { backgroundColor: { red: 0.98, green: 0.8, blue: 0.8 } } },
+          fields: "userEnteredFormat.backgroundColor",
+        },
+      });
+    }
+    // Clear formatting on any rows left over from a longer previous queue.
+    formatRequests.push({
+      repeatCell: {
+        range: { sheetId, startRowIndex: rows.length + 1, startColumnIndex: 0, endColumnIndex: 5 },
+        cell: { userEnteredFormat: {} },
+        fields: "userEnteredFormat.backgroundColor",
+      },
+    });
+
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: formatRequests } });
+  } catch (e) {
+    console.error("[google-sheets] failed to refresh the Pending Deletions tab:", e);
   }
 }
 

@@ -26,18 +26,33 @@ export default async function ConsoleSync() {
       .is("resolved_at", null),
   ]);
 
-  const hasSpreadsheet = Boolean(process.env.GOOGLE_SHEETS_SPREADSHEET_ID);
+  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const hasSpreadsheet = Boolean(spreadsheetId);
+  const sheetUrl = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : null;
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Administration</p>
-        <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Sheet sync</h1>
-        <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          Students, guardians, teachers, class sections, subjects and the timetable are managed in a
-          Google Sheet — additions and edits there apply here automatically. Rows removed from the
-          sheet are never auto-deleted; they wait for a super admin to confirm.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Administration</p>
+          <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Sheet sync</h1>
+          <p className="mt-2 max-w-prose text-lg text-slate-strong">
+            Students, guardians, teachers, class sections, subjects and the timetable are managed in a
+            Google Sheet — additions and edits there apply here automatically. Rows removed from the
+            sheet are never auto-deleted; they wait for a super admin to confirm, and are mirrored,
+            highlighted in red, in the sheet&apos;s own &quot;Pending Deletions&quot; tab.
+          </p>
+        </div>
+        {sheetUrl && (
+          <a
+            href={sheetUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 rounded-sm bg-maroon px-4 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong"
+          >
+            Open Google Sheet →
+          </a>
+        )}
       </div>
 
       <section className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">

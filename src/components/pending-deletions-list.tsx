@@ -3,32 +3,10 @@
 import { useState, useTransition } from "react";
 import { confirmPendingDeletion } from "@/app/(staff)/console/sync/pending-deletions/actions";
 import { formatSlotTime } from "@/lib/format";
+import { PENDING_DELETION_SUBJECT_LABEL, pendingDeletionLabel } from "@/lib/pending-deletion-label";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type PendingDeletion = Tables<"sheet_sync_pending_deletions">;
-
-const SUBJECT_LABEL: Record<string, string> = {
-  students: "Student",
-  guardians: "Guardian",
-  staff: "Teacher / staff",
-  class_sections: "Class section",
-  subjects: "Subject",
-  timetable_entries: "Timetable entry",
-};
-
-/** Best-effort human label pulled out of the row's last known values. */
-function snapshotLabel(row: PendingDeletion): string {
-  const snap = row.sheet_row_snapshot as Record<string, unknown> | null;
-  if (!snap) return row.subject_id;
-  if (typeof snap.first_name === "string" || typeof snap.last_name === "string") {
-    return [snap.first_name, snap.last_name].filter(Boolean).join(" ") || row.subject_id;
-  }
-  if (typeof snap.name === "string") return snap.name;
-  if (typeof snap.grade === "string" && typeof snap.section === "string") {
-    return `Grade ${snap.grade} - ${snap.section}`;
-  }
-  return row.subject_id;
-}
 
 export function PendingDeletionsList({
   pending,
@@ -62,7 +40,8 @@ export function PendingDeletionsList({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-base font-semibold text-maroon">
-                {SUBJECT_LABEL[row.subject_type] ?? row.subject_type} — {snapshotLabel(row)}
+                {PENDING_DELETION_SUBJECT_LABEL[row.subject_type] ?? row.subject_type} —{" "}
+                {pendingDeletionLabel(row.subject_id, row.sheet_row_snapshot)}
               </p>
               <p className="mt-1 text-sm text-slate">
                 Missing from the sheet since {formatSlotTime(row.detected_at)}
