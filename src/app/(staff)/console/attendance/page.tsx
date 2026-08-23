@@ -5,6 +5,8 @@ import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
+type AttendanceSummary = { student_id: string; total: number; present_pct: number };
+
 /** Today's date in IST as YYYY-MM-DD (matches how attendance is marked). */
 function istToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -30,13 +32,28 @@ export default async function StaffAttendance({
       : (allClasses ?? []);
 
   const classIds = classes.map((c) => c.id);
-  const [{ data: students }, { data: records }, { data: leaves }] = await Promise.all([
-    classIds.length
-      ? supabase.from("students").select("*").in("class_section_id", classIds).order("roll_no")
-      : Promise.resolve({ data: [] as Tables<"students">[] }),
-    classIds.length
-      ? supabase.from("attendance_records").select("*")
+
+  // Students first — their ids scope every attendance read below so we never
+  // pull the whole attendance_records table (which exceeds PostgREST's row cap
+  // once it grows, dropping recent rows and making saves look like no-ops).
+  const { data: students } = classIds.length
+    ? await supabase.from("students").select("*").in("class_section_id", classIds).order("roll_no")
+    : { data: [] as Tables<"students">[] };
+  const studentIds = (students ?? []).map((s) => s.id);
+
+  const [{ data: todayRecords }, { data: summaries }, { data: leaves }] = await Promise.all([
+    // Only today's rows drive the snapshot / absent list / marker baseline.
+    studentIds.length
+      ? supabase
+          .from("attendance_records")
+          .select("*")
+          .eq("date", today)
+          .in("student_id", studentIds)
       : Promise.resolve({ data: [] as Tables<"attendance_records">[] }),
+    // Term percentages are aggregated in the DB — one row per student.
+    studentIds.length
+      ? supabase.rpc("attendance_summary", { p_student_ids: studentIds })
+      : Promise.resolve({ data: [] as AttendanceSummary[] }),
     supabase
       .from("leave_requests")
       .select("student_id")
@@ -67,7 +84,8 @@ export default async function StaffAttendance({
         <AttendanceAnalytics
           classes={classes}
           students={students ?? []}
-          records={records ?? []}
+          todayRecords={todayRecords ?? []}
+          summaries={(summaries as AttendanceSummary[]) ?? []}
           approvedTodayStudentIds={approvedTodayStudentIds}
           today={today}
           initialClassId={requestedClassId}

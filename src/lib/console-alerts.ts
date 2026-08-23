@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { ATTENDANCE_THRESHOLD, presentPercent } from "@/lib/attendance";
+import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type LowAttendanceStudent = {
@@ -75,19 +75,35 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
     return { lowAttendance: [], pendingLeave: [], pendingStayBack: [], absentToday: [], lowScores: [] };
   }
 
+  // Students first — their ids scope the attendance reads below so we never
+  // pull the whole attendance_records table (which exceeds PostgREST's row cap
+  // once it grows, dropping recent rows from the result).
+  const { data: students } = await supabase
+    .from("students")
+    .select("id, first_name, last_name, class_section_id")
+    .in("class_section_id", classIds);
+  const studentList = students ?? [];
+  const studentIds = new Set(studentList.map((s) => s.id));
+  const studentIdList = studentList.map((s) => s.id);
+
   const [
-    { data: students },
-    { data: records },
+    { data: summaries },
+    { data: todayRecords },
     { data: leaves },
     { data: pendingLeaves },
     { data: pendingStayBacks },
     { data: examResults },
   ] = await Promise.all([
-      supabase
-        .from("students")
-        .select("id, first_name, last_name, class_section_id")
-        .in("class_section_id", classIds),
-      supabase.from("attendance_records").select("student_id, date, status"),
+      studentIdList.length
+        ? supabase.rpc("attendance_summary", { p_student_ids: studentIdList })
+        : Promise.resolve({ data: [] as { student_id: string; total: number; present_pct: number }[] }),
+      studentIdList.length
+        ? supabase
+            .from("attendance_records")
+            .select("student_id, status")
+            .eq("date", today)
+            .in("student_id", studentIdList)
+        : Promise.resolve({ data: [] as { student_id: string; status: Tables<"attendance_records">["status"] }[] }),
       supabase
         .from("leave_requests")
         .select("student_id, from_date, to_date, reason, status")
@@ -104,9 +120,6 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
         .eq("status", "pending"),
       supabase.from("exam_results").select("student_id, subject, marks, max_marks"),
     ]);
-
-  const studentList = students ?? [];
-  const studentIds = new Set(studentList.map((s) => s.id));
   const nameOf = (id: string) => {
     const s = studentList.find((st) => st.id === id);
     return s ? `${s.first_name} ${s.last_name}` : "Student";
@@ -116,25 +129,18 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
     return s ? classLabel(s.class_section_id) : "";
   };
 
-  // --- Low attendance (below the school minimum) ---
-  const recordsByStudent = new Map<string, { status: Tables<"attendance_records">["status"] }[]>();
-  for (const r of records ?? []) {
-    if (!studentIds.has(r.student_id)) continue;
-    const arr = recordsByStudent.get(r.student_id) ?? [];
-    arr.push({ status: r.status });
-    recordsByStudent.set(r.student_id, arr);
-  }
+  // --- Low attendance (below the school minimum) — from the DB aggregate ---
+  const summaryByStudent = new Map((summaries ?? []).map((s) => [s.student_id, s]));
   const lowAttendance: LowAttendanceStudent[] = [];
   for (const s of studentList) {
-    const recs = recordsByStudent.get(s.id) ?? [];
-    if (recs.length === 0) continue;
-    const pct = presentPercent(recs);
-    if (pct < ATTENDANCE_THRESHOLD) {
+    const summary = summaryByStudent.get(s.id);
+    if (!summary || summary.total === 0) continue;
+    if (summary.present_pct < ATTENDANCE_THRESHOLD) {
       lowAttendance.push({
         id: s.id,
         name: `${s.first_name} ${s.last_name}`,
         className: classLabel(s.class_section_id),
-        pct,
+        pct: summary.present_pct,
       });
     }
   }
@@ -151,8 +157,8 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
 
   // --- Everyone absent today, one alert — approved-leave reason, or uninformed ---
   const approvedTodayReason = new Map((leaves ?? []).map((l) => [l.student_id, l.reason]));
-  const absentToday: AbsentToday[] = (records ?? [])
-    .filter((r) => r.date === today && r.status === "absent" && studentIds.has(r.student_id))
+  const absentToday: AbsentToday[] = (todayRecords ?? [])
+    .filter((r) => r.status === "absent" && studentIds.has(r.student_id))
     .map((r) => ({
       id: r.student_id,
       name: nameOf(r.student_id),

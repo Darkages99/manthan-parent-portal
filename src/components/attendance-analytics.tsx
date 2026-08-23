@@ -4,13 +4,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AttendanceMarker } from "./attendance-marker";
 import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from "./icons";
-import { ATTENDANCE_THRESHOLD, presentPercent } from "@/lib/attendance";
+import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
 type Student = Tables<"students">;
 type AttendanceRecord = Tables<"attendance_records">;
 type Status = Enums<"attendance_status">;
+/** Per-student term aggregate from the attendance_summary RPC. */
+type AttendanceSummary = { student_id: string; total: number; present_pct: number };
 
 const STATUS_META: Record<Status, { label: string; color: string }> = {
   present: { label: "Present", color: "#10b981" },
@@ -22,7 +24,8 @@ const STATUS_META: Record<Status, { label: string; color: string }> = {
 export function AttendanceAnalytics({
   classes,
   students,
-  records,
+  todayRecords,
+  summaries,
   approvedTodayStudentIds,
   today,
   initialClassId,
@@ -30,7 +33,10 @@ export function AttendanceAnalytics({
 }: {
   classes: ClassSection[];
   students: Student[];
-  records: AttendanceRecord[];
+  /** Attendance rows for `today` only — drives the snapshot and absent list. */
+  todayRecords: AttendanceRecord[];
+  /** DB-aggregated term percentages, one per student — drives below-threshold. */
+  summaries: AttendanceSummary[];
   /** Students with an approved leave covering today (→ "informed" absence). */
   approvedTodayStudentIds: string[];
   today: string;
@@ -41,19 +47,22 @@ export function AttendanceAnalytics({
 }) {
   const [classFilter, setClassFilter] = useState<string>(initialClassId ?? "all");
   const [markOpen, setMarkOpen] = useState(Boolean(initialMarkOpen));
-  // Records just saved by AttendanceMarker, merged in immediately rather than
-  // waiting on the server round trip that repopulates the `records` prop —
+  // Today's rows just saved by AttendanceMarker, merged in immediately rather
+  // than waiting on the server round trip that repopulates `todayRecords` —
   // keeps the "Today" snapshot in sync with the save the instant it succeeds.
   const [justSaved, setJustSaved] = useState<AttendanceRecord[]>([]);
 
-  const effectiveRecords = useMemo(() => {
-    if (justSaved.length === 0) return records;
-    const byKey = new Map(records.map((r) => [`${r.student_id}|${r.date}`, r]));
-    for (const r of justSaved) byKey.set(`${r.student_id}|${r.date}`, r);
-    return [...byKey.values()];
-  }, [records, justSaved]);
+  const effectiveTodayRecords = useMemo(() => {
+    if (justSaved.length === 0) return todayRecords;
+    const byStudent = new Map(todayRecords.map((r) => [r.student_id, r]));
+    for (const r of justSaved) byStudent.set(r.student_id, r);
+    return [...byStudent.values()];
+  }, [todayRecords, justSaved]);
 
   function onAttendanceSaved(date: string, entries: { studentId: string; status: Status }[]) {
+    // Only today's save affects the on-page snapshot; past-date edits are
+    // reflected on the next refresh (router.refresh runs after every save).
+    if (date !== today) return;
     setJustSaved((prev) => [
       ...prev,
       ...entries.map((e) => ({
@@ -82,8 +91,8 @@ export function AttendanceAnalytics({
 
   // --- Today snapshot ---
   const todayByStudent = new Map<string, Status>();
-  for (const r of effectiveRecords) {
-    if (r.date === today && scopedIds.has(r.student_id)) todayByStudent.set(r.student_id, r.status);
+  for (const r of effectiveTodayRecords) {
+    if (scopedIds.has(r.student_id)) todayByStudent.set(r.student_id, r.status);
   }
   const todayCounts: Record<Status, number> = { present: 0, absent: 0, late: 0, half_day: 0 };
   for (const status of todayByStudent.values()) todayCounts[status] += 1;
@@ -101,22 +110,16 @@ export function AttendanceAnalytics({
     }));
   const uninformedCount = absentToday.filter((a) => !a.informed).length;
 
-  // --- Below threshold (term) ---
-  const recordsByStudent = new Map<string, AttendanceRecord[]>();
-  for (const r of effectiveRecords) {
-    if (!scopedIds.has(r.student_id)) continue;
-    const arr = recordsByStudent.get(r.student_id) ?? [];
-    arr.push(r);
-    recordsByStudent.set(r.student_id, arr);
-  }
+  // --- Below threshold (term) — from the DB aggregate, one row per student ---
+  const summaryByStudent = new Map(summaries.map((s) => [s.student_id, s]));
   const belowThreshold = scopedStudents
     .map((s) => {
-      const recs = recordsByStudent.get(s.id) ?? [];
+      const summary = summaryByStudent.get(s.id);
       return {
         id: s.id,
         name: `${s.first_name} ${s.last_name}`,
         className: classLabel(s.class_section_id),
-        pct: recs.length ? presentPercent(recs) : null,
+        pct: summary && summary.total > 0 ? summary.present_pct : null,
       };
     })
     .filter((s): s is { id: string; name: string; className: string; pct: number } => s.pct !== null && s.pct < ATTENDANCE_THRESHOLD)
@@ -264,7 +267,8 @@ export function AttendanceAnalytics({
               <AttendanceMarker
                 classes={classes}
                 studentsByClass={studentsByClass}
-                records={effectiveRecords}
+                todayRecords={effectiveTodayRecords}
+                today={today}
                 initialClassId={initialClassId}
                 onSaved={onAttendanceSaved}
               />

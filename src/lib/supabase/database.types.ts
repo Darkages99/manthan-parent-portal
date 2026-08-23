@@ -1722,6 +1722,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attendance_summary: {
+        Args: { p_student_ids: string[] }
+        Returns: { student_id: string; total: number; present_pct: number }[]
+      }
       current_guardian_id: { Args: never; Returns: string }
       current_staff_id: { Args: never; Returns: string }
       current_staff_role: {

@@ -8,6 +8,30 @@ import type { Enums } from "@/lib/supabase/database.types";
 
 type Entry = { studentId: string; status: Enums<"attendance_status"> };
 
+/**
+ * Attendance records for a single date, scoped to the given students. Used by
+ * the marker to load the baseline for whatever date is selected — fetched on
+ * demand (one date at a time) so it never hits PostgREST's row cap the way a
+ * full-table read of attendance_records does once the table grows large.
+ */
+export async function getAttendanceForDate(
+  date: string,
+  studentIds: string[]
+): Promise<{ student_id: string; status: Enums<"attendance_status"> }[]> {
+  const viewer = await getViewer();
+  if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
+  if (!date || studentIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("attendance_records")
+    .select("student_id, status")
+    .eq("date", date)
+    .in("student_id", studentIds);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export async function saveAttendance(date: string, entries: Entry[]) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
