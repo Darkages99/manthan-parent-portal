@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Alegreya, Yatra_One } from "next/font/google";
 import Script from "next/script";
 import { MotionConfig } from "framer-motion";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const alegreya = Alegreya({
@@ -47,6 +48,7 @@ export default function RootLayout({
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         <Script src="/register-sw.js" strategy="afterInteractive" />
         <MotionConfig reducedMotion="user">{children}</MotionConfig>
+        <SpeedInsights />
       </body>
     </html>
   );
