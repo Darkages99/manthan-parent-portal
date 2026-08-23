@@ -6,14 +6,7 @@ import type { Enums } from "@/lib/supabase/database.types";
 
 type NotificationCategory = Enums<"notification_category">;
 
-const ALL_CATEGORIES: NotificationCategory[] = [
-  "stay_back",
-  "leave",
-  "ptm",
-  "messages",
-  "reminders",
-  "defaulters",
-];
+const ALL_CATEGORIES: NotificationCategory[] = ["stay_back", "leave", "ptm", "messages", "defaulters"];
 
 export default async function NotificationSettingsPage() {
   const viewer = await getViewer();

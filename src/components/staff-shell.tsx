@@ -22,15 +22,26 @@ import {
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type PtmNavMeeting = { id: string; label: string };
+export type ClassNavItem = { id: string; label: string };
 
-const PRINCIPAL_ROLES: Tables<"staff">["role"][] = ["principal", "super_admin"];
+const PRINCIPAL_ROLES: Tables<"staff">["role"][] = ["principal", "super_admin", "coordinator"];
 
-function buildNavItems(role: Tables<"staff">["role"], ptmMeetings: PtmNavMeeting[]): NavItem[] {
+function buildNavItems(
+  role: Tables<"staff">["role"],
+  ptmMeetings: PtmNavMeeting[],
+  attendanceReminder: boolean,
+  classes: ClassNavItem[]
+): NavItem[] {
   const isPrincipal = PRINCIPAL_ROLES.includes(role);
   return [
     { href: "/console", label: "Dashboard", icon: HomeIcon, exact: true },
     { href: "/console/messages", label: "Messages", icon: MailIcon },
-    { href: "/console/attendance", label: "Attendance", icon: CheckCircleIcon },
+    {
+      href: "/console/attendance",
+      label: "Attendance",
+      icon: CheckCircleIcon,
+      badge: attendanceReminder ? 1 : undefined,
+    },
     { href: "/console/leave", label: "Leave", icon: LeaveIcon },
     { href: "/console/stay-back", label: "Stay-back approvals", icon: ConsentIcon },
     {
@@ -49,7 +60,18 @@ function buildNavItems(role: Tables<"staff">["role"], ptmMeetings: PtmNavMeeting
     // Principal-only administration.
     ...(isPrincipal
       ? [
-          { href: "/console/classes", label: "Classes", icon: ClassIcon },
+          {
+            href: "/console/classes",
+            label: "Classes",
+            icon: ClassIcon,
+            exact: true,
+            children: classes.map((c) => ({
+              href: `/console/classes/${c.id}`,
+              label: c.label,
+              icon: ClassIcon,
+            })),
+          },
+          { href: "/console/staff", label: "Staff", icon: UsersIcon },
           { href: "/console/results", label: "Results", icon: AwardIcon },
           { href: "/console/competitions", label: "Competitions", icon: AwardIcon },
         ]
@@ -70,6 +92,8 @@ export function StaffShell({
   staffName,
   role,
   ptmMeetings = [],
+  attendanceReminder = false,
+  classes = [],
   children,
 }: {
   staffName: string;
@@ -77,10 +101,28 @@ export function StaffShell({
   role: Tables<"staff">["role"];
   /** PTM meetings shown as collapsible sub-items under the PTMs nav entry. */
   ptmMeetings?: PtmNavMeeting[];
+  /** When true, shows a "mark attendance" nudge banner and nav badge. */
+  attendanceReminder?: boolean;
+  /** Classes shown as collapsible sub-items under the Classes nav entry (principal-only). */
+  classes?: ClassNavItem[];
   children: React.ReactNode;
 }) {
   return (
-    <AppShell navItems={buildNavItems(role, ptmMeetings)} subtitle="Staff console" accountName={staffName}>
+    <AppShell
+      navItems={buildNavItems(role, ptmMeetings, attendanceReminder, classes)}
+      subtitle="Staff console"
+      accountName={staffName}
+      banner={
+        attendanceReminder ? (
+          <a
+            href="/console/attendance"
+            className="mb-5 flex items-center gap-3 rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-base font-semibold text-amber-900 shadow-[var(--shadow-card)] transition hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/40"
+          >
+            Mark attendance for today →
+          </a>
+        ) : undefined
+      }
+    >
       {children}
     </AppShell>
   );

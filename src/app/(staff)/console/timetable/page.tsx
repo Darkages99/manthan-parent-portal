@@ -5,6 +5,7 @@ import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { sortPeriods } from "@/lib/timetable";
 import { createClient } from "@/lib/supabase/server";
+import { getSubjects, getTimetablePeriods } from "@/lib/reference-data";
 
 export default async function ConsoleTimetable() {
   const viewer = await getViewer();
@@ -13,16 +14,23 @@ export default async function ConsoleTimetable() {
   const canEdit = isPrincipalRole(viewer.staff.role);
   const supabase = await createClient();
 
-  const [{ data: periods }, { data: classes }, { data: subjects }, { data: teachers }, { data: entries }] =
-    await Promise.all([
-      supabase.from("timetable_periods").select("*"),
-      supabase.from("class_sections").select("id, grade, section").order("grade").order("section"),
-      supabase.from("subjects").select("id, name").order("name"),
-      supabase.from("staff").select("id, name").order("name"),
-      supabase.from("timetable_entries").select("*"),
-    ]);
+  const [
+    periods,
+    { data: classes },
+    subjects,
+    { data: teachers },
+    { data: entries },
+    { data: classSubjectTeachers },
+  ] = await Promise.all([
+    getTimetablePeriods(),
+    supabase.from("class_sections").select("id, grade, section").order("grade").order("section"),
+    getSubjects(),
+    supabase.from("staff").select("id, name").order("name"),
+    supabase.from("timetable_entries").select("*"),
+    supabase.from("class_subject_teachers").select("class_section_id, subject_id, teacher_id"),
+  ]);
 
-  const orderedPeriods = sortPeriods(periods ?? []);
+  const orderedPeriods = sortPeriods(periods);
 
   return (
     <div className="flex flex-col gap-8">
@@ -46,6 +54,7 @@ export default async function ConsoleTimetable() {
         teachers={teachers ?? []}
         initialEntries={entries ?? []}
         myStaffId={viewer.staff.id}
+        classSubjectTeachers={classSubjectTeachers ?? []}
       />
     </div>
   );

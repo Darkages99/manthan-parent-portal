@@ -1,7 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { updateSendPermission } from "@/app/(staff)/console/messages/permissions/actions";
+import { roleLabel } from "@/lib/role-labels";
 import type { Enums } from "@/lib/supabase/database.types";
 
 type Role = Enums<"role">;
@@ -15,20 +16,35 @@ const SCOPES: { value: ScopeType; label: string }[] = [
   { value: "group", label: "Custom group" },
 ];
 
+function key(role: Role, scope: ScopeType) {
+  return `${role}:${scope}`;
+}
+
 export function MessagePermissionsGrid({
   permissions,
 }: {
   permissions: { role: Role; scope_type: ScopeType; allowed: boolean }[];
 }) {
   const [, startTransition] = useTransition();
+  // Optimistic overrides on top of the server-fetched permissions, so a click
+  // flips the checkbox immediately instead of waiting for revalidation.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
 
   function isAllowed(role: Role, scope: ScopeType) {
+    const k = key(role, scope);
+    if (k in overrides) return overrides[k];
     return permissions.find((p) => p.role === role && p.scope_type === scope)?.allowed ?? false;
   }
 
   function toggle(role: Role, scope: ScopeType, next: boolean) {
-    startTransition(() => {
-      updateSendPermission(role, scope, next).catch(() => {});
+    const k = key(role, scope);
+    setOverrides((prev) => ({ ...prev, [k]: next }));
+    startTransition(async () => {
+      try {
+        await updateSendPermission(role, scope, next);
+      } catch {
+        setOverrides((prev) => ({ ...prev, [k]: !next }));
+      }
     });
   }
 
@@ -48,7 +64,7 @@ export function MessagePermissionsGrid({
         <tbody>
           {ROLES.map((role) => (
             <tr key={role} className="border-b border-hairline last:border-0">
-              <td className="p-4 text-base font-semibold capitalize text-maroon">{role.replace("_", " ")}</td>
+              <td className="p-4 text-base font-semibold text-maroon">{roleLabel(role)}</td>
               {SCOPES.map((s) => {
                 const checked = isAllowed(role, s.value);
                 return (

@@ -2,16 +2,20 @@ import "server-only";
 import { getViewer, type StaffViewer } from "@/lib/session";
 import type { Enums } from "@/lib/supabase/database.types";
 
-/** Roles that run the school: full access to classes, timetable and results. */
-export const PRINCIPAL_ROLES: Enums<"role">[] = ["principal", "super_admin"];
+/**
+ * Roles that run the school: full access to classes, timetable and results.
+ * Coordinator is treated as fully admin-equivalent — same standing as
+ * principal/super_admin everywhere this list gates an action.
+ */
+export const PRINCIPAL_ROLES: Enums<"role">[] = ["principal", "super_admin", "coordinator"];
 
 export function isPrincipalRole(role: Enums<"role">): boolean {
   return PRINCIPAL_ROLES.includes(role);
 }
 
 /**
- * Guards a server action to the principal / super_admin. Throws otherwise.
- * (Reads are additionally enforced by RLS via current_staff_role().)
+ * Guards a server action to the principal / super_admin / coordinator. Throws
+ * otherwise. (Reads are additionally enforced by RLS via current_staff_role().)
  */
 export async function requirePrincipal(): Promise<StaffViewer> {
   const viewer = await getViewer();
@@ -21,6 +25,7 @@ export async function requirePrincipal(): Promise<StaffViewer> {
   }
   return viewer;
 }
+
 
 /**
  * Guards a server action to super_admin only — stricter than requirePrincipal().

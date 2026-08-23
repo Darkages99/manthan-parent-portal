@@ -10,6 +10,7 @@ import {
   deleteMeeting,
 } from "@/app/(staff)/console/ptm/actions";
 import { ApprovalChecklist } from "./approval-checklist";
+import { useToast } from "./toast-provider";
 import { formatClock, formatTime } from "@/lib/format";
 import { findMyOpenStep } from "@/lib/ptm-approval";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
@@ -43,6 +44,7 @@ export function MeetingSlotManager({
   viewerRole: Enums<"role">;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -51,6 +53,7 @@ export function MeetingSlotManager({
     startTransition(async () => {
       try {
         await fn();
+        toast.success("Done");
       } catch (e) {
         setError((e as Error).message);
       }

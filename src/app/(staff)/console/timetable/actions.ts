@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requirePrincipal } from "@/lib/roles";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -88,6 +88,7 @@ export async function addPeriod(input: {
 
   if (error) throw new Error(error.message);
   revalidatePath("/console/timetable");
+  updateTag("timetable-periods");
   return data;
 }
 
@@ -115,6 +116,7 @@ export async function updatePeriod(input: {
 
   if (error) throw new Error(error.message);
   revalidatePath("/console/timetable");
+  updateTag("timetable-periods");
   return data;
 }
 
@@ -127,4 +129,5 @@ export async function deletePeriod(id: string) {
   const { error } = await supabase.from("timetable_periods").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/console/timetable");
+  updateTag("timetable-periods");
 }

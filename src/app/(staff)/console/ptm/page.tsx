@@ -12,7 +12,10 @@ export default async function StaffPtm() {
   if (!viewer || viewer.type !== "staff") redirect("/");
 
   const supabase = await createClient();
-  const { data: allClasses } = await supabase.from("class_sections").select("*").order("grade");
+  const [{ data: allClasses }, { data: staff }] = await Promise.all([
+    supabase.from("class_sections").select("*").order("grade"),
+    supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name"),
+  ]);
   const classes =
     viewer.staff.role === "class_teacher"
       ? (allClasses ?? []).filter((c) => c.class_teacher_id === viewer.staff.id)
@@ -57,7 +60,7 @@ export default async function StaffPtm() {
         </p>
       </div>
 
-      <CreatePtmForm classes={classes} />
+      <CreatePtmForm classes={classes} staff={staff ?? []} />
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Your PTMs</h2>

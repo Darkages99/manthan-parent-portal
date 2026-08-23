@@ -7,9 +7,16 @@ import { PlusIcon } from "./icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
+type StaffOption = { id: string; name: string };
 
 /** Creates a PTM meeting for a class + date, then jumps to its slot page. */
-export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
+export function CreatePtmForm({
+  classes,
+  staff,
+}: {
+  classes: ClassSection[];
+  staff: StaffOption[];
+}) {
   const router = useRouter();
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [date, setDate] = useState("");
@@ -17,8 +24,18 @@ export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
   const [windowStart, setWindowStart] = useState("09:00");
   const [windowEnd, setWindowEnd] = useState("11:00");
   const [slotMinutes, setSlotMinutes] = useState(15);
+  const defaultTeacherId = classes.find((c) => c.id === classId)?.class_teacher_id ?? "";
+  const [teacherId, setTeacherId] = useState(defaultTeacherId);
+  const [teacherTouched, setTeacherTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  function onClassChange(next: string) {
+    setClassId(next);
+    if (!teacherTouched) {
+      setTeacherId(classes.find((c) => c.id === next)?.class_teacher_id ?? "");
+    }
+  }
 
   function submit() {
     setError(null);
@@ -31,6 +48,7 @@ export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
           windowStart,
           windowEnd,
           slotMinutes,
+          teacherId: teacherId || undefined,
         });
         router.push(`/console/ptm/${id}`);
       } catch (e) {
@@ -51,12 +69,30 @@ export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
           <span className="font-medium text-maroon">Class</span>
           <select
             value={classId}
-            onChange={(e) => setClassId(e.target.value)}
+            onChange={(e) => onClassChange(e.target.value)}
             className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
           >
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 Grade {c.grade} - {c.section}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Teacher</span>
+          <select
+            value={teacherId}
+            onChange={(e) => {
+              setTeacherTouched(true);
+              setTeacherId(e.target.value);
+            }}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          >
+            <option value="">Class teacher (default)</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
             ))}
           </select>

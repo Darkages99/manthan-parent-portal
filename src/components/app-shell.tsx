@@ -7,6 +7,7 @@ import { SidebarNav, type NavItem } from "./sidebar-nav";
 import { Jaali, JaaliField } from "./jaali";
 import { ThemeToggle } from "./theme-toggle";
 import { PushToggle } from "./push-toggle";
+import { ToastProvider } from "./toast-provider";
 import {
   LeaveIcon,
   ChevronLeftIcon,
@@ -28,6 +29,7 @@ export function AppShell({
   accountName,
   footer,
   childSwitcher,
+  banner,
   children,
 }: {
   navItems: NavItem[];
@@ -40,6 +42,9 @@ export function AppShell({
   /** Optional sidebar-footer control (e.g. the parent portal's child switcher).
    * Staff console has no "child" concept, so `StaffShell` simply omits it. */
   childSwitcher?: React.ReactNode;
+  /** Optional persistent banner rendered above page content, e.g. a "mark
+   * attendance" nudge on the staff console. */
+  banner?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -50,6 +55,7 @@ export function AppShell({
   }
 
   return (
+    <ToastProvider>
     <div className="relative isolate flex min-h-dvh">
       {/* Decorative jaali — a seamless lattice covers the whole field (slowly
           drifting). Two large star-rosettes turn in opposite corners, each on
@@ -132,12 +138,14 @@ export function AppShell({
         </header>
 
         <main className="relative z-10 mx-auto w-full max-w-5xl flex-1 px-[clamp(1rem,4vw,2rem)] py-[clamp(1.75rem,4vw,3rem)]">
+          {banner}
           {children}
         </main>
 
         {footer}
       </div>
     </div>
+    </ToastProvider>
   );
 }
 

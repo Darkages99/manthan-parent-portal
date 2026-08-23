@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { StatusPill } from "@/components/status-pill";
 import { ApprovalChecklist } from "@/components/approval-checklist";
 import { decideStayBack } from "@/app/(staff)/console/stay-back/actions";
+import { useToast } from "@/components/toast-provider";
 import { resolveApproverMatch } from "@/lib/approval-match";
 import { buildWhatsAppLink } from "@/lib/notifications/whatsapp";
 import { formatTime } from "@/lib/format";
@@ -29,6 +30,7 @@ export function StayBackApprovalList({
   stepsByConsent: Record<string, Tables<"approval_steps">[]>;
 }) {
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
 
   return (
     <motion.ul
@@ -45,13 +47,18 @@ export function StayBackApprovalList({
 
         const steps = stepsByConsent[c.id] ?? [];
         const match = resolveApproverMatch(viewer.role, viewer.id, c.teacher_id);
-        const myStep = match
+        let myStep = match
           ? steps.find(
               (s) =>
                 s.approver_role === match.approverRole &&
                 (!match.matchByStaffId || c.teacher_id === viewer.id),
             )
           : undefined;
+        // Coordinator is admin-equivalent: grade 8+ chains have no dedicated
+        // coordinator step, so fall back to the principal step.
+        if (!myStep && viewer.role === "coordinator") {
+          myStep = steps.find((s) => s.approver_role === "principal");
+        }
         const canDecide = c.status === "pending" && !!myStep && myStep.decision === null;
 
         return (
@@ -82,7 +89,12 @@ export function StayBackApprovalList({
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   disabled={isPending}
-                  onClick={() => startTransition(() => decideStayBack(c.id, "approved"))}
+                  onClick={() =>
+                    startTransition(async () => {
+                      await decideStayBack(c.id, "approved");
+                      toast.success("Approved");
+                    })
+                  }
                   className="rounded-sm bg-maroon px-4 py-2 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
                 >
                   Approve
@@ -90,7 +102,12 @@ export function StayBackApprovalList({
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   disabled={isPending}
-                  onClick={() => startTransition(() => decideStayBack(c.id, "declined"))}
+                  onClick={() =>
+                    startTransition(async () => {
+                      await decideStayBack(c.id, "declined");
+                      toast.success("Declined");
+                    })
+                  }
                   className="rounded-sm border border-hairline bg-mist px-4 py-2 text-base font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
                 >
                   Decline

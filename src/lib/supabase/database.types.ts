@@ -129,6 +129,52 @@ export type Database = {
           },
         ]
       }
+      class_subject_teachers: {
+        Row: {
+          class_section_id: string
+          created_at: string
+          id: string
+          subject_id: string
+          teacher_id: string
+        }
+        Insert: {
+          class_section_id: string
+          created_at?: string
+          id?: string
+          subject_id: string
+          teacher_id: string
+        }
+        Update: {
+          class_section_id?: string
+          created_at?: string
+          id?: string
+          subject_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_subject_teachers_class_section_id_fkey"
+            columns: ["class_section_id"]
+            isOneToOne: false
+            referencedRelation: "class_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_subject_teachers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_subject_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitions: {
         Row: {
           created_at: string
@@ -164,6 +210,49 @@ export type Database = {
           {
             foreignKeyName: "competitions_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_group_staff_access: {
+        Row: {
+          created_at: string
+          custom_group_id: string
+          granted_by: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_group_id: string
+          granted_by: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_group_id?: string
+          granted_by?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_group_staff_access_custom_group_id_fkey"
+            columns: ["custom_group_id"]
+            isOneToOne: false
+            referencedRelation: "custom_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custom_group_staff_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custom_group_staff_access_staff_id_fkey"
+            columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
@@ -1208,6 +1297,7 @@ export type Database = {
       }
       staff: {
         Row: {
+          active: boolean
           auth_user_id: string | null
           created_at: string
           email: string | null
@@ -1217,6 +1307,7 @@ export type Database = {
           role: Database["public"]["Enums"]["role"]
         }
         Insert: {
+          active?: boolean
           auth_user_id?: string | null
           created_at?: string
           email?: string | null
@@ -1226,6 +1317,7 @@ export type Database = {
           role: Database["public"]["Enums"]["role"]
         }
         Update: {
+          active?: boolean
           auth_user_id?: string | null
           created_at?: string
           email?: string | null

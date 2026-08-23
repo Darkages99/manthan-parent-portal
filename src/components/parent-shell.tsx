@@ -18,7 +18,6 @@ import {
   MailIcon,
   BellIcon,
   ClassIcon,
-  ClockIcon,
   FlagIcon,
 } from "./icons";
 
@@ -37,7 +36,6 @@ function buildNavItems(unreadMessages: number): NavItem[] {
     { href: "/results", label: "Results", icon: AwardIcon },
     { href: "/competitions", label: "Competitions", icon: AwardIcon },
     { href: "/defaulters", label: "Defaulters", icon: AlertTriangleIcon },
-    { href: "/reminders", label: "Reminders", icon: ClockIcon },
     { href: "/report-issue", label: "Report an issue", icon: FlagIcon },
     { href: "/gallery", label: "Gallery", icon: ImageIcon },
     { href: "/settings/notifications", label: "Notifications", icon: BellIcon },

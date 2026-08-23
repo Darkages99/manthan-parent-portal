@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
+import { requirePrincipal } from "@/lib/roles";
+import { getTaughtClassIds } from "@/lib/teacher-scope";
 import { sendPush } from "@/lib/notifications/push";
 import { getSmsRelay } from "@/lib/notifications/sms";
-import type { Enums } from "@/lib/supabase/database.types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, Enums } from "@/lib/supabase/database.types";
 
 type Recipient = { id: string; phone: string };
 
@@ -25,6 +28,85 @@ async function requireSendPermission(
     .maybeSingle();
   if (!data?.allowed) {
     throw new Error(`Your role isn't permitted to send ${scopeType}-scoped messages.`);
+  }
+}
+
+/**
+ * Enforces that a `class_teacher`-role sender's target actually falls within
+ * their own taught classes/students/groups. Other roles are unrestricted here
+ * (the role x scope grid in message_send_permissions is the gate for them).
+ * Throws on any out-of-scope target.
+ */
+async function requireTeacherScope(
+  supabase: SupabaseClient<Database>,
+  staffId: string,
+  role: Enums<"role">,
+  input: {
+    scopeType: Enums<"message_scope_type">;
+    classSectionIds: string[];
+    studentIds: string[];
+    groupIds: string[];
+  }
+): Promise<void> {
+  if (role !== "class_teacher") return;
+
+  if (input.scopeType === "school") {
+    throw new Error("Teachers can't send whole-school messages.");
+  }
+
+  const taughtClassIds = new Set(await getTaughtClassIds(supabase, staffId));
+
+  if (input.scopeType === "class") {
+    if (input.classSectionIds.some((id) => !taughtClassIds.has(id))) {
+      throw new Error("You can only message classes you teach.");
+    }
+  } else if (input.scopeType === "student") {
+    const { data: students } = await supabase
+      .from("students")
+      .select("id, class_section_id")
+      .in("id", input.studentIds);
+    const ok = (students ?? []).every((s) => taughtClassIds.has(s.class_section_id));
+    if (!ok || (students?.length ?? 0) !== input.studentIds.length) {
+      throw new Error("You can only message students you teach.");
+    }
+  } else if (input.scopeType === "group") {
+    const { data: groups } = await supabase
+      .from("custom_groups")
+      .select("id, created_by")
+      .in("id", input.groupIds);
+    const { data: access } = await supabase
+      .from("custom_group_staff_access")
+      .select("custom_group_id")
+      .eq("staff_id", staffId)
+      .in("custom_group_id", input.groupIds);
+    const accessible = new Set([
+      ...(groups ?? []).filter((g) => g.created_by === staffId).map((g) => g.id),
+      ...(access ?? []).map((a) => a.custom_group_id),
+    ]);
+    const remaining = input.groupIds.filter((id) => !accessible.has(id));
+    if (remaining.length > 0) {
+      // Fall back: a group made entirely of students the teacher teaches is
+      // still fair game, even if the teacher didn't create it themselves.
+      const { data: members } = await supabase
+        .from("custom_group_students")
+        .select("custom_group_id, student_id")
+        .in("custom_group_id", remaining);
+      const studentIds = [...new Set((members ?? []).map((m) => m.student_id))];
+      const { data: students } = studentIds.length
+        ? await supabase.from("students").select("id, class_section_id").in("id", studentIds)
+        : { data: [] as { id: string; class_section_id: string }[] };
+      const classById = new Map((students ?? []).map((s) => [s.id, s.class_section_id]));
+      for (const groupId of remaining) {
+        const groupMemberIds = (members ?? []).filter((m) => m.custom_group_id === groupId).map((m) => m.student_id);
+        const ok =
+          groupMemberIds.length > 0 &&
+          groupMemberIds.every((sid) => {
+            const classId = classById.get(sid);
+            return classId && taughtClassIds.has(classId);
+          });
+        if (!ok) throw new Error("You don't have access to one of those groups.");
+      }
+    }
   }
 }
 
@@ -128,6 +210,8 @@ export async function sendMessage(input: {
     throw new Error("Pick at least one group");
 
   const supabase = await createClient();
+  await requireTeacherScope(supabase, viewer.staff.id, viewer.staff.role, input);
+
   const { data: message, error } = await supabase
     .from("messages")
     .insert({
@@ -191,6 +275,19 @@ export async function createCustomGroup(name: string, studentIds: string[]): Pro
   if (studentIds.length === 0) throw new Error("Pick at least one student first");
 
   const supabase = await createClient();
+
+  if (viewer.staff.role === "class_teacher") {
+    const taughtClassIds = new Set(await getTaughtClassIds(supabase, viewer.staff.id));
+    const { data: students } = await supabase
+      .from("students")
+      .select("id, class_section_id")
+      .in("id", studentIds);
+    const ok =
+      (students?.length ?? 0) === studentIds.length &&
+      (students ?? []).every((s) => taughtClassIds.has(s.class_section_id));
+    if (!ok) throw new Error("You can only group students you teach.");
+  }
+
   const { data: group, error } = await supabase
     .from("custom_groups")
     .insert({ name: trimmed, created_by: viewer.staff.id })
@@ -207,4 +304,34 @@ export async function createCustomGroup(name: string, studentIds: string[]): Pro
 
   revalidatePath("/console/messages");
   return group.id as string;
+}
+
+/**
+ * Grants (or revokes) a teacher's access to send to a custom group they
+ * didn't create — e.g. a cross-class group the principal put together for a
+ * competition, then handed to the teachers running it. Principal-only.
+ */
+export async function setGroupStaffAccess(
+  groupId: string,
+  staffId: string,
+  granted: boolean
+): Promise<void> {
+  const viewer = await requirePrincipal();
+  const supabase = await createClient();
+
+  if (granted) {
+    const { error } = await supabase
+      .from("custom_group_staff_access")
+      .upsert({ custom_group_id: groupId, staff_id: staffId, granted_by: viewer.staff.id });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("custom_group_staff_access")
+      .delete()
+      .eq("custom_group_id", groupId)
+      .eq("staff_id", staffId);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/console/messages");
 }

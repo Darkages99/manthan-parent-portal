@@ -730,11 +730,18 @@ async function queuePendingDeletions(supabase: AdminClient, seenIds: Record<stri
   const queuedKey = new Set((alreadyQueued ?? []).map((r) => `${r.subject_type}:${r.subject_id}`));
 
   for (const table of TABLES_FOR_DELETION_CHECK) {
-    const { data: rows } = await supabase.from(table).select("*");
+    // Two-pass: fetch just ids first (cheap), and only pull full rows (for
+    // the deletion-queue snapshot) for the subset that's actually missing —
+    // avoids a full-table, all-column scan on every sync run.
+    const { data: idRows } = await supabase.from(table).select("id");
+    const missingIds = (idRows ?? [])
+      .map((r) => (r as { id: string }).id)
+      .filter((id) => !seenIds[table].has(id));
+    if (missingIds.length === 0) continue;
+
+    const { data: rows } = await supabase.from(table).select("*").in("id", missingIds);
     const subjectType = table;
-    const missing = (rows ?? []).filter(
-      (row) => !seenIds[table].has((row as { id: string }).id)
-    );
+    const missing = rows ?? [];
     for (const row of missing) {
       const subjectId = (row as { id: string }).id;
       const key = `${subjectType}:${subjectId}`;

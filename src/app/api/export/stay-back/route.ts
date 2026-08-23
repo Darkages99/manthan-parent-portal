@@ -3,16 +3,16 @@ import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatTime } from "@/lib/format";
 import { toCsv } from "@/lib/csv";
+import { rangeFrom } from "@/lib/date-range";
 
-// GET /api/export/stay-back?from=YYYY-MM-DD&to=YYYY-MM-DD
+// GET /api/export/stay-back?range=week|month|6months|year|all
 // Exports the caller's visible stay-back consent requests as CSV, filtered on `stay_date`.
 export async function GET(request: NextRequest) {
   const viewer = await getViewer();
   if (!viewer) return new Response("Unauthorized", { status: 401 });
 
   const { searchParams } = request.nextUrl;
-  const from = searchParams.get("from");
-  const to = searchParams.get("to");
+  const from = rangeFrom(searchParams.get("range"));
 
   const supabase = await createClient();
 
@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (from) query = query.gte("stay_date", from);
-  if (to) query = query.lte("stay_date", to);
 
   const { data: consents, error } = await query;
   if (error) return new Response(error.message, { status: 500 });
@@ -55,9 +54,6 @@ export async function GET(request: NextRequest) {
   const rows = (consents ?? []).map((c) => ({
     "Student name": studentNames[c.student_id] ?? c.student_id,
     "Teacher name": teacherNames[c.teacher_id] ?? c.teacher_id,
-    Purpose: c.purpose,
-    "Purpose detail": c.purpose_detail ?? "",
-    "Mode of transport": c.mode_of_transport ?? "",
     "Stay date": c.stay_date,
     "From time": formatTime(c.from_time),
     "To time": formatTime(c.to_time),

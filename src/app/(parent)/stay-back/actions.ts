@@ -6,7 +6,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
 import { sendPush } from "@/lib/notifications/push";
 import { createApprovalChain } from "@/lib/approvals";
-import type { Enums } from "@/lib/supabase/database.types";
 
 export async function raiseStayBack(formData: FormData) {
   const viewer = await getViewer();
@@ -18,18 +17,27 @@ export async function raiseStayBack(formData: FormData) {
   const date = String(formData.get("date"));
   const fromTime = String(formData.get("fromTime"));
   const toTime = String(formData.get("toTime"));
-  const purpose = String(formData.get("purpose") || "others") as Enums<"stay_back_purpose">;
-  const purposeDetailRaw = formData.get("purposeDetail");
-  const purposeDetail =
-    purpose === "others" && purposeDetailRaw ? String(purposeDetailRaw).trim() || null : null;
-  const modeOfTransportRaw = formData.get("modeOfTransport");
-  const modeOfTransport = modeOfTransportRaw ? String(modeOfTransportRaw).trim() || null : null;
+  const foodTransportAgreed = formData.get("foodTransportAgreed") === "on";
 
   if (!studentId || !teacherId || !reason || !date || !fromTime || !toTime) {
     throw new Error("All fields are required");
   }
+  if (!foodTransportAgreed) {
+    throw new Error("Please confirm you'll arrange food and transportation for your child");
+  }
 
   const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("class_section_id, class_sections(grade)")
+    .eq("id", studentId)
+    .single();
+  const grade = (student?.class_sections as { grade: string } | null)?.grade;
+  // The principal acts as coordinator for senior classes, so grade 8+ skips
+  // the dedicated coordinator step (coordinator is admin-equivalent either
+  // way — see src/lib/roles.ts PRINCIPAL_ROLES).
+  const skipCoordinator = grade !== undefined && grade !== null && Number(grade) >= 8;
+
   const { data: consent, error } = await supabase
     .from("stay_back_consents")
     .insert({
@@ -40,21 +48,24 @@ export async function raiseStayBack(formData: FormData) {
       stay_date: date,
       from_time: fromTime,
       to_time: toTime,
-      purpose,
-      purpose_detail: purposeDetail,
-      mode_of_transport: modeOfTransport,
+      mode_of_transport: "Parent-arranged",
     })
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[stay-back] insert failed:", error.message);
+    throw new Error(error.message);
+  }
 
-  // 4-step approval chain: the named teacher specifically, then front office,
-  // coordinator, and finally principal (or super_admin, handled at decision time).
-  await createApprovalChain(supabase, "stay_back_consent", consent.id, [
+  // Named teacher, then front office, [coordinator for grades below 8,] then principal.
+  // RLS only lets staff write approval_steps, so use the admin client here
+  // (mirrors src/app/(parent)/ptm/actions.ts bookSlot).
+  const admin = createAdminClient();
+  await createApprovalChain(admin, "stay_back_consent", consent.id, [
     { approverRole: "class_teacher", approverStaffId: teacherId },
     { approverRole: "front_office" },
-    { approverRole: "coordinator" },
+    ...(skipCoordinator ? [] : [{ approverRole: "coordinator" as const }]),
     { approverRole: "principal" },
   ]);
 
@@ -63,7 +74,6 @@ export async function raiseStayBack(formData: FormData) {
   // get an immediate heads-up. Front office and coordinator pick requests up
   // from their console queue.
   try {
-    const admin = createAdminClient();
     const { data: principals } = await admin
       .from("staff")
       .select("id")

@@ -17,6 +17,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassLite = Pick<Tables<"class_sections">, "id" | "grade" | "section">;
 type Named = { id: string; name: string };
+type ClassSubjectTeacher = { class_section_id: string; subject_id: string; teacher_id: string };
 
 export function TimetableConsole({
   canEdit,
@@ -26,6 +27,7 @@ export function TimetableConsole({
   teachers,
   initialEntries,
   myStaffId,
+  classSubjectTeachers = [],
 }: {
   canEdit: boolean;
   periods: Period[];
@@ -34,6 +36,7 @@ export function TimetableConsole({
   teachers: Named[];
   initialEntries: TimetableEntry[];
   myStaffId: string;
+  classSubjectTeachers?: ClassSubjectTeacher[];
 }) {
   const [entries, setEntries] = useState<TimetableEntry[]>(initialEntries);
   const [selectedClassId, setSelectedClassId] = useState(classes[0]?.id ?? "");
@@ -95,6 +98,7 @@ export function TimetableConsole({
           subjects={subjects}
           teachers={teachers}
           conflictCells={collidingCellsForClass(collisions, selectedClassId)}
+          classSubjectTeachers={classSubjectTeachers}
         />
       </div>
     );
@@ -235,6 +239,7 @@ function BuilderGrid({
   subjects,
   teachers,
   conflictCells,
+  classSubjectTeachers,
 }: {
   classSectionId: string;
   periods: Period[];
@@ -243,11 +248,25 @@ function BuilderGrid({
   subjects: Named[];
   teachers: Named[];
   conflictCells: Set<string>;
+  classSubjectTeachers: ClassSubjectTeacher[];
 }) {
   const ordered = sortPeriods(periods);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  // Suggests the teacher already assigned to teach this subject in this class
+  // (from the Classes page's subject/teacher manager), so picking a subject
+  // pre-fills its teacher instead of leaving the cell half-set.
+  const suggestedTeacherFor = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const cst of classSubjectTeachers) {
+      if (cst.class_section_id !== classSectionId) continue;
+      const key = cst.subject_id;
+      if (!m.has(key)) m.set(key, cst.teacher_id);
+    }
+    return (subjectId: string) => m.get(subjectId);
+  }, [classSubjectTeachers, classSectionId]);
 
   const byCell = useMemo(() => {
     const m = new Map<string, TimetableEntry>();
@@ -339,9 +358,12 @@ function BuilderGrid({
                           <select
                             value={entry?.subject_id ?? ""}
                             disabled={savingKey === cellKeyFull}
-                            onChange={(e) =>
-                              change(d.n, p.id, e.target.value || null, entry?.teacher_id ?? null)
-                            }
+                            onChange={(e) => {
+                              const nextSubjectId = e.target.value || null;
+                              const nextTeacherId =
+                                entry?.teacher_id ?? (nextSubjectId ? suggestedTeacherFor(nextSubjectId) ?? null : null);
+                              change(d.n, p.id, nextSubjectId, nextTeacherId);
+                            }}
                             className="w-full rounded-sm border border-hairline bg-mist px-1.5 py-1 text-xs text-slate-strong"
                             aria-label="Subject"
                           >

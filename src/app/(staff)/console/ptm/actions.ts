@@ -31,6 +31,7 @@ export async function createMeeting(input: {
   windowStart: string;
   windowEnd: string;
   slotMinutes: number;
+  teacherId?: string;
 }) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
@@ -41,12 +42,15 @@ export async function createMeeting(input: {
   if (input.slotMinutes < 5) throw new Error("Slot length is too short");
 
   const supabase = await createClient();
-  const { data: cls } = await supabase
-    .from("class_sections")
-    .select("class_teacher_id")
-    .eq("id", input.classSectionId)
-    .single();
-  const teacherId = cls?.class_teacher_id ?? viewer.staff.id;
+  let teacherId = input.teacherId;
+  if (!teacherId) {
+    const { data: cls } = await supabase
+      .from("class_sections")
+      .select("class_teacher_id")
+      .eq("id", input.classSectionId)
+      .single();
+    teacherId = cls?.class_teacher_id ?? viewer.staff.id;
+  }
 
   const { data, error } = await supabase
     .from("ptm_meetings")

@@ -54,6 +54,7 @@ export const getViewer = cache(async (): Promise<Viewer> => {
     .from("staff")
     .select("*")
     .eq("auth_user_id", user.id)
+    .eq("active", true)
     .maybeSingle();
 
   if (staff) return { type: "staff", staff };

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessage, createCustomGroup } from "@/app/(staff)/console/messages/compose/actions";
 import { CloseIcon } from "./icons";
+import { useToast } from "./toast-provider";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type RecipientMode = Enums<"message_scope_type">;
@@ -16,12 +17,16 @@ export function ComposeForm({
   classSections,
   students,
   groups,
+  isTeacher = false,
 }: {
   classSections: Tables<"class_sections">[];
   students: StudentOption[];
   groups: GroupOption[];
+  /** Teachers never get the "whole school" recipient mode. */
+  isTeacher?: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [mode, setMode] = useState<RecipientMode>("class");
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
@@ -134,6 +139,7 @@ export function ComposeForm({
       setSelectedGroups([]);
       setAttachment(null);
       router.refresh();
+      toast.success("Message sent");
       setTimeout(() => setSent(false), 4000);
     } catch (err) {
       setError((err as Error).message);
@@ -156,7 +162,10 @@ export function ComposeForm({
         <div>
           <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate">Recipients</p>
           <div className="flex flex-wrap gap-2">
-            {(["school", "class", "student", "group"] as RecipientMode[]).map((m) => (
+            {(isTeacher
+              ? (["class", "student", "group"] as RecipientMode[])
+              : (["school", "class", "student", "group"] as RecipientMode[])
+            ).map((m) => (
               <button
                 key={m}
                 type="button"

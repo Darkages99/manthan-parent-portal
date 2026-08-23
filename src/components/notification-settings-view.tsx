@@ -6,12 +6,14 @@ import type { Enums } from "@/lib/supabase/database.types";
 
 type NotificationCategory = Enums<"notification_category">;
 
-const CATEGORY_META: Record<NotificationCategory, { label: string; description: string }> = {
+// The "reminders" category is dead (the Reminders tab was removed) but stays
+// in the DB enum, so this is intentionally a Partial — not every category
+// gets a settings row.
+const CATEGORY_META: Partial<Record<NotificationCategory, { label: string; description: string }>> = {
   stay_back: { label: "Stay-back consent", description: "New requests, approvals and declines." },
   leave: { label: "Leave", description: "Leave request decisions." },
   ptm: { label: "PTM booking", description: "Slot confirmations and approval updates." },
   messages: { label: "Messages", description: "School announcements and class messages." },
-  reminders: { label: "Reminders", description: "Reminders you've set for yourself." },
   defaulters: { label: "Defaulter room", description: "New discipline incidents recorded." },
 };
 
@@ -45,8 +47,8 @@ export function NotificationSettingsView({
           className="flex items-center justify-between gap-4 rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]"
         >
           <div>
-            <p className="font-heading text-lg text-maroon">{CATEGORY_META[category].label}</p>
-            <p className="mt-1 text-sm text-slate-strong">{CATEGORY_META[category].description}</p>
+            <p className="font-heading text-lg text-maroon">{CATEGORY_META[category]!.label}</p>
+            <p className="mt-1 text-sm text-slate-strong">{CATEGORY_META[category]!.description}</p>
           </div>
           <button
             type="button"

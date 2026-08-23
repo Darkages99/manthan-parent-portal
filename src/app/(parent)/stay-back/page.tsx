@@ -4,17 +4,19 @@ import { StayBackForm } from "@/components/stay-back-form";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatTime } from "@/lib/format";
+import { DATE_RANGE_OPTIONS, rangeFrom } from "@/lib/date-range";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export default async function StayBackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ range?: string }>;
 }) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "guardian") redirect("/");
 
-  const { from, to } = await searchParams;
+  const { range } = await searchParams;
+  const from = rangeFrom(range);
 
   const supabase = await createClient();
   const studentIds = viewer.students.map((s) => s.id);
@@ -25,17 +27,13 @@ export default async function StayBackPage({
     .in("student_id", studentIds)
     .order("created_at", { ascending: false });
   if (from) consentsQuery = consentsQuery.gte("stay_date", from);
-  if (to) consentsQuery = consentsQuery.lte("stay_date", to);
 
   const [{ data: consents }, { data: teachers }] = await Promise.all([
     consentsQuery,
     supabase.from("staff").select("*").in("role", ["class_teacher", "principal"]),
   ]);
 
-  const exportQuery = new URLSearchParams({
-    ...(from ? { from } : {}),
-    ...(to ? { to } : {}),
-  }).toString();
+  const exportQuery = range ? new URLSearchParams({ range }).toString() : "";
 
   const consentIds = (consents ?? []).map((c) => c.id);
   const { data: steps } =
@@ -64,52 +62,57 @@ export default async function StayBackPage({
         <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Approval workflow</p>
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Stay-back consent</h1>
         <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          Raising a request starts a 4-step approval chain — the named teacher, then front office,
-          coordinator, and principal. The named teacher and principal get a push notification
-          right away.
+          Raising a request starts an approval chain — the named teacher, then front office
+          (and coordinator, for classes below Grade 8), then principal. The named teacher and
+          principal get a push notification right away.
         </p>
       </div>
 
       <StayBackForm students={viewer.students} teachers={teachers ?? []} />
 
-      <form
-        method="GET"
-        className="flex flex-wrap items-end gap-3 rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]"
-      >
-        <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">From</span>
-          <input
-            type="date"
-            name="from"
-            defaultValue={from ?? ""}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">To</span>
-          <input
-            type="date"
-            name="to"
-            defaultValue={to ?? ""}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
-          />
-        </label>
-        <button
-          type="submit"
-          className="rounded-sm bg-maroon px-4 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong"
-        >
-          Filter
-        </button>
-        <a
-          href={`/api/export/stay-back${exportQuery ? `?${exportQuery}` : ""}`}
-          className="rounded-sm border border-hairline bg-mist px-4 py-2.5 text-base font-semibold text-maroon hover:bg-parchment"
-        >
-          Download CSV
-        </a>
-      </form>
-
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Your requests</h2>
+
+        <form
+          method="GET"
+          className="mb-4 flex flex-wrap items-end gap-3 rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]"
+        >
+          <label className="flex flex-col gap-1.5 text-base">
+            <span className="font-medium text-maroon">Filter</span>
+            <select
+              name="range"
+              defaultValue={range ?? "all"}
+              className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
+            >
+              {DATE_RANGE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="rounded-sm bg-maroon px-4 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong"
+          >
+            Apply
+          </button>
+          {range && (
+            <a
+              href="/stay-back"
+              className="rounded-sm border border-hairline bg-mist px-4 py-2.5 text-base font-semibold text-maroon hover:bg-parchment"
+            >
+              Clear filter
+            </a>
+          )}
+          <a
+            href={`/api/export/stay-back${exportQuery ? `?${exportQuery}` : ""}`}
+            className="ml-auto rounded-sm border border-hairline bg-mist px-4 py-2.5 text-base font-semibold text-maroon hover:bg-parchment"
+          >
+            Download CSV
+          </a>
+        </form>
+
         <ul className="flex flex-col gap-3">
           {(consents ?? []).map((c) => {
             const student = studentById(c.student_id);

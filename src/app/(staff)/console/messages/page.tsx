@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ComposeForm } from "@/components/compose-form";
 import { SentMessagesList } from "@/components/sent-messages-list";
+import { GroupAccessManager } from "@/components/group-access-manager";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
+import { getTaughtClassIds } from "@/lib/teacher-scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function MessagesPage() {
@@ -11,34 +13,62 @@ export default async function MessagesPage() {
   if (!viewer || viewer.type !== "staff") redirect("/");
 
   const supabase = await createClient();
-  const [{ data: classSections }, { data: students }, { data: groups }, { data: messages }] =
+  const isTeacher = viewer.staff.role === "class_teacher";
+  const taughtClassIds = isTeacher ? new Set(await getTaughtClassIds(supabase, viewer.staff.id)) : null;
+
+  const isAdmin = isPrincipalRole(viewer.staff.role);
+
+  const [{ data: allClassSections }, { data: allStudents }, { data: allGroups }, { data: messages }, { data: groupAccess }, { data: teachers }] =
     await Promise.all([
       supabase.from("class_sections").select("*").order("grade", { ascending: true }),
       supabase
         .from("students")
         .select("id, first_name, last_name, class_section_id")
         .order("first_name"),
-      supabase.from("custom_groups").select("id, name").order("name"),
+      supabase.from("custom_groups").select("id, name, created_by").order("name"),
       supabase
         .from("messages")
         .select("*, staff(name), message_attachments(*), message_targets(*)")
         .not("sent_at", "is", null)
         .order("sent_at", { ascending: false }),
+      supabase.from("custom_group_staff_access").select("custom_group_id, staff_id"),
+      isAdmin
+        ? supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name")
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     ]);
 
-  const studentOptions = (students ?? []).map((s) => ({
+  // Teachers only see their own taught classes, their students, and groups
+  // they created or were explicitly assigned to (or that are made up entirely
+  // of their own students — mirrors the server-side check in compose/actions.ts).
+  const classSections = isTeacher
+    ? (allClassSections ?? []).filter((c) => taughtClassIds!.has(c.id))
+    : (allClassSections ?? []);
+  const students = isTeacher
+    ? (allStudents ?? []).filter((s) => taughtClassIds!.has(s.class_section_id))
+    : (allStudents ?? []);
+  const accessibleGroupIds = new Set(
+    (groupAccess ?? []).filter((a) => a.staff_id === viewer.staff.id).map((a) => a.custom_group_id)
+  );
+  const groups = isTeacher
+    ? (allGroups ?? []).filter((g) => g.created_by === viewer.staff.id || accessibleGroupIds.has(g.id))
+    : (allGroups ?? []);
+
+  const studentOptions = students.map((s) => ({
     id: s.id,
     label: `${s.first_name} ${s.last_name}`,
     classSectionId: s.class_section_id,
   }));
 
+  // Sent-message history can reference classes/students/groups outside the
+  // viewer's current scope (e.g. a teacher reassigned since sending), so
+  // label lookups use the unfiltered lists.
   const classNames = Object.fromEntries(
-    (classSections ?? []).map((c) => [c.id, `Grade ${c.grade}-${c.section}`])
+    (allClassSections ?? []).map((c) => [c.id, `Grade ${c.grade}-${c.section}`])
   );
   const studentNames = Object.fromEntries(
-    (students ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`])
+    (allStudents ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`])
   );
-  const groupNames = Object.fromEntries((groups ?? []).map((g) => [g.id, g.name]));
+  const groupNames = Object.fromEntries((allGroups ?? []).map((g) => [g.id, g.name]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,7 +81,7 @@ export default async function MessagesPage() {
             everything you&apos;ve sent.
           </p>
         </div>
-        {isPrincipalRole(viewer.staff.role) && (
+        {isAdmin && (
           <Link
             href="/console/messages/permissions"
             className="shrink-0 rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
@@ -61,10 +91,19 @@ export default async function MessagesPage() {
         )}
       </div>
 
+      {isAdmin && (
+        <GroupAccessManager
+          groups={allGroups ?? []}
+          teachers={teachers ?? []}
+          initialAccess={new Set((groupAccess ?? []).map((a) => `${a.custom_group_id}:${a.staff_id}`))}
+        />
+      )}
+
       <ComposeForm
         classSections={classSections ?? []}
         students={studentOptions}
         groups={groups ?? []}
+        isTeacher={isTeacher}
       />
 
       <section>
