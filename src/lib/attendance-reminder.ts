@@ -33,11 +33,15 @@ export async function shouldRemindAttendance(staff: Tables<"staff">): Promise<bo
   const classIds = (classes ?? []).map((c) => c.id);
   if (classIds.length === 0) return false;
 
-  const { data: holidays } = await supabase
-    .from("dtr_events")
-    .select("id, dtr_event_classes(class_section_id)")
-    .eq("event_date", today)
-    .eq("category", "holiday");
+  // Holidays and the class roster are independent lookups — fetch together.
+  const [{ data: holidays }, { data: students }] = await Promise.all([
+    supabase
+      .from("dtr_events")
+      .select("id, dtr_event_classes(class_section_id)")
+      .eq("event_date", today)
+      .eq("category", "holiday"),
+    supabase.from("students").select("id").in("class_section_id", classIds),
+  ]);
   const isHolidayToday = (holidays ?? []).some((h) => {
     const classRows = (h.dtr_event_classes ?? []) as { class_section_id: string | null }[];
     // No linked classes = whole-school holiday; otherwise only for the linked classes.
@@ -45,10 +49,6 @@ export async function shouldRemindAttendance(staff: Tables<"staff">): Promise<bo
   });
   if (isHolidayToday) return false;
 
-  const { data: students } = await supabase
-    .from("students")
-    .select("id")
-    .in("class_section_id", classIds);
   const studentIds = (students ?? []).map((s) => s.id);
   if (studentIds.length === 0) return false;
 

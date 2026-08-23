@@ -11,6 +11,10 @@ type RecipientMode = Enums<"message_scope_type">;
 type StudentOption = { id: string; label: string; classSectionId: string };
 type GroupOption = { id: string; name: string };
 
+function classCode(c: Tables<"class_sections">): string {
+  return `${c.grade}${c.section}`;
+}
+
 export function ComposeForm({
   classSections,
   students,
@@ -44,9 +48,14 @@ export function ComposeForm({
     () => classSections.map((c) => ({ id: c.id, label: `Grade ${c.grade} - ${c.section}` })),
     [classSections]
   );
+  const classCodeById = useMemo(
+    () => new Map(classSections.map((c) => [c.id, classCode(c)])),
+    [classSections]
+  );
   const studentOptions: TypeaheadOption[] = useMemo(
-    () => students.map((s) => ({ id: s.id, label: s.label })),
-    [students]
+    () =>
+      students.map((s) => ({ id: s.id, label: s.label, sublabel: classCodeById.get(s.classSectionId) })),
+    [students, classCodeById]
   );
   const groupOptions: TypeaheadOption[] = useMemo(
     () => groups.map((g) => ({ id: g.id, label: g.name })),

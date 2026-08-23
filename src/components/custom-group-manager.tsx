@@ -125,7 +125,7 @@ function GroupCard({
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
 
-  const studentLabelById = new Map(students.map((s) => [s.id, s.label]));
+  const studentById = new Map(students.map((s) => [s.id, s]));
 
   function saveName() {
     setEditingName(false);
@@ -234,7 +234,13 @@ function GroupCard({
             />
             <div className="mt-2">
               <MemberScrollList
-                items={memberIds.map((id) => ({ id, label: studentLabelById.get(id) ?? id }))}
+                items={memberIds
+                  .map((id) => ({
+                    id,
+                    label: studentById.get(id)?.label ?? id,
+                    sublabel: studentById.get(id)?.sublabel,
+                  }))
+                  .sort((a, b) => a.label.localeCompare(b.label))}
                 onRemove={(id) => onMembersChange(memberIds.filter((m) => m !== id))}
                 emptyLabel="No students in this group yet."
               />

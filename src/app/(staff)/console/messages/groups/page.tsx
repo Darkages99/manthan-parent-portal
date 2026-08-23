@@ -15,15 +15,19 @@ export default async function MessageGroupsPage() {
     { data: groups },
     { data: memberRows },
     { data: students },
+    { data: classSections },
     { data: teachers },
     { data: accessRows },
   ] = await Promise.all([
     supabase.from("custom_groups").select("id, name").order("name"),
     supabase.from("custom_group_students").select("custom_group_id, student_id"),
-    supabase.from("students").select("id, first_name, last_name").order("first_name"),
+    supabase.from("students").select("id, first_name, last_name, class_section_id").order("first_name"),
+    supabase.from("class_sections").select("id, grade, section"),
     supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name"),
     supabase.from("custom_group_staff_access").select("custom_group_id, staff_id"),
   ]);
+
+  const classCodeById = new Map((classSections ?? []).map((c) => [c.id, `${c.grade}${c.section}`]));
 
   const members: Record<string, string[]> = {};
   for (const r of memberRows ?? []) {
@@ -51,7 +55,11 @@ export default async function MessageGroupsPage() {
       <CustomGroupManager
         groups={groups ?? []}
         members={members}
-        students={(students ?? []).map((s) => ({ id: s.id, label: `${s.first_name} ${s.last_name}` }))}
+        students={(students ?? []).map((s) => ({
+          id: s.id,
+          label: `${s.first_name} ${s.last_name}`,
+          sublabel: classCodeById.get(s.class_section_id),
+        }))}
         teachers={(teachers ?? []).map((t) => ({ id: t.id, label: t.name }))}
         access={access}
       />

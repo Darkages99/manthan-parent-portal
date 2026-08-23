@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { saveAttendance } from "@/app/(staff)/console/attendance/actions";
+import { useToast } from "./toast-provider";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -31,6 +33,8 @@ export function AttendanceMarker({
   records: AttendanceRecord[];
   initialClassId?: string;
 }) {
+  const router = useRouter();
+  const toast = useToast();
   const [classId, setClassId] = useState(
     (initialClassId && classes.some((c) => c.id === initialClassId) ? initialClassId : classes[0]?.id) ?? ""
   );
@@ -74,8 +78,15 @@ export function AttendanceMarker({
         await saveAttendance(date, entries);
         setSaved(true);
         setOverrides({});
+        toast.success(`Attendance saved for ${entries.length} student${entries.length === 1 ? "" : "s"}`);
+        // Belt-and-suspenders: the server action already revalidates this path,
+        // but an explicit refresh guarantees the "Today" counts and the class
+        // cards pick up the new records immediately, not just on next navigation.
+        router.refresh();
       } catch (e) {
-        setError((e as Error).message);
+        const message = (e as Error).message;
+        setError(message);
+        toast.error(message || "Couldn't save attendance");
       }
     });
   }

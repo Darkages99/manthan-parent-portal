@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { CloseIcon } from "./icons";
 
-export type TypeaheadOption = { id: string; label: string };
+export type TypeaheadOption = {
+  id: string;
+  label: string;
+  /** Short context shown next to the label, e.g. a student's class code ("10A"). */
+  sublabel?: string;
+};
 
 /** Search-narrowing multi-select with removable chips — replaces long
  * checkbox lists (picking students/teachers/classes out of a few dozen
@@ -32,13 +37,13 @@ export function TypeaheadPicker({
   const [open, setOpen] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const labelById = useMemo(() => new Map(options.map((o) => [o.id, o.label])), [options]);
+  const optionById = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     return options
       .filter((o) => !selectedSet.has(o.id))
-      .filter((o) => !q || o.label.toLowerCase().includes(q))
+      .filter((o) => !q || o.label.toLowerCase().includes(q) || o.sublabel?.toLowerCase().includes(q))
       .slice(0, maxResults);
   }, [options, query, selectedSet, maxResults]);
 
@@ -60,7 +65,10 @@ export function TypeaheadPicker({
               key={id}
               className="inline-flex items-center gap-1 rounded-full border border-hairline bg-mist px-2.5 py-1 text-sm text-maroon"
             >
-              {labelById.get(id) ?? id}
+              {optionById.get(id)?.label ?? id}
+              {optionById.get(id)?.sublabel && (
+                <span className="text-slate">· {optionById.get(id)!.sublabel}</span>
+              )}
               <button
                 type="button"
                 onClick={() => remove(id)}
@@ -95,9 +103,10 @@ export function TypeaheadPicker({
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => add(o.id)}
-                  className="block w-full px-3 py-2 text-left text-base text-slate-strong hover:bg-mist"
+                  className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-base text-slate-strong hover:bg-mist"
                 >
-                  {o.label}
+                  <span>{o.label}</span>
+                  {o.sublabel && <span className="text-sm text-slate">{o.sublabel}</span>}
                 </button>
               </li>
             ))}

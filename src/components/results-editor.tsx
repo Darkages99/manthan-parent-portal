@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { upsertResult, deleteResult } from "@/app/(staff)/console/results/actions";
 import { GRADE_OPTIONS, TERM_OPTIONS, withCurrentValue } from "@/lib/grades";
+import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Result = Tables<"exam_results">;
@@ -64,6 +65,7 @@ function ResultRow({
   const [grade, setGrade] = useState(result.grade ?? "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const dirty =
     term !== result.term ||
@@ -85,8 +87,11 @@ function ResultRow({
           maxMarks: Number(max),
           grade: grade || null,
         });
+        toast.success("Mark saved");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't save");
+        const message = e instanceof Error ? e.message : "Couldn't save";
+        setError(message);
+        toast.error(message);
       }
     });
   }
@@ -97,8 +102,11 @@ function ResultRow({
     startTransition(async () => {
       try {
         await deleteResult(result.id);
+        toast.success("Mark deleted");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't delete");
+        const message = e instanceof Error ? e.message : "Couldn't delete";
+        setError(message);
+        toast.error(message);
       }
     });
   }
@@ -165,6 +173,7 @@ function AddResultRow({ studentId, subjects }: { studentId: string; subjects: st
   const [grade, setGrade] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   function add() {
     setError(null);
@@ -183,8 +192,11 @@ function AddResultRow({ studentId, subjects }: { studentId: string; subjects: st
         setMarks("");
         setMax("100");
         setGrade("");
+        toast.success("Mark added");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't add");
+        const message = e instanceof Error ? e.message : "Couldn't add";
+        setError(message);
+        toast.error(message);
       }
     });
   }
