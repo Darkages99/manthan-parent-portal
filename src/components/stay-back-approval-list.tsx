@@ -19,6 +19,7 @@ export function StayBackApprovalList({
   students,
   teachers,
   guardianPhones,
+  staffNames,
   viewer,
   stepsByConsent,
 }: {
@@ -26,6 +27,8 @@ export function StayBackApprovalList({
   students: Tables<"students">[];
   teachers: Tables<"staff">[];
   guardianPhones: Record<string, string>;
+  /** staff id → display name, for showing who acted on / owns each step. */
+  staffNames: Record<string, string>;
   viewer: Tables<"staff">;
   stepsByConsent: Record<string, Tables<"approval_steps">[]>;
 }) {
@@ -81,8 +84,11 @@ export function StayBackApprovalList({
             </div>
 
             <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-              <div className="w-56">
-                <ApprovalChecklist steps={steps} />
+              <div className="min-w-[16rem] flex-1">
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate">
+                  Approval chain
+                </p>
+                <ApprovalChecklist steps={steps} staffNames={staffNames} />
               </div>
               {c.status === "pending" && steps.some((s) => s.decision === null) && (
                 <motion.button
@@ -90,13 +96,17 @@ export function StayBackApprovalList({
                   disabled={isPending}
                   onClick={() =>
                     startTransition(async () => {
-                      await remindStayBackApprovers(c.id);
-                      toast.success("Reminder sent");
+                      try {
+                        await remindStayBackApprovers(c.id);
+                        toast.success("Reminder sent to pending approvers");
+                      } catch (err) {
+                        toast.error((err as Error).message || "Couldn't send reminder");
+                      }
                     })
                   }
                   className="rounded-sm border border-hairline bg-mist px-3 py-1.5 text-sm font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
                 >
-                  Remind approvers
+                  Remind pending approvers
                 </motion.button>
               )}
             </div>

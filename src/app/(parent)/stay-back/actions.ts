@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
 import { sendPush } from "@/lib/notifications/push";
 import { createApprovalChain } from "@/lib/approvals";
+import { buildStayBackChainSteps } from "@/lib/stay-back-chain";
 
 export async function raiseStayBack(formData: FormData) {
   const viewer = await getViewer();
@@ -33,10 +34,6 @@ export async function raiseStayBack(formData: FormData) {
     .eq("id", studentId)
     .single();
   const grade = (student?.class_sections as { grade: string } | null)?.grade;
-  // The principal acts as coordinator for senior classes, so grade 8+ skips
-  // the dedicated coordinator step (coordinator is admin-equivalent either
-  // way — see src/lib/roles.ts PRINCIPAL_ROLES).
-  const skipCoordinator = grade !== undefined && grade !== null && Number(grade) >= 8;
 
   const { data: consent, error } = await supabase
     .from("stay_back_consents")
@@ -62,12 +59,12 @@ export async function raiseStayBack(formData: FormData) {
   // RLS only lets staff write approval_steps, so use the admin client here
   // (mirrors src/app/(parent)/ptm/actions.ts bookSlot).
   const admin = createAdminClient();
-  await createApprovalChain(admin, "stay_back_consent", consent.id, [
-    { approverRole: "class_teacher", approverStaffId: teacherId },
-    { approverRole: "front_office" },
-    ...(skipCoordinator ? [] : [{ approverRole: "coordinator" as const }]),
-    { approverRole: "principal" },
-  ]);
+  await createApprovalChain(
+    admin,
+    "stay_back_consent",
+    consent.id,
+    buildStayBackChainSteps(teacherId, grade),
+  );
 
   // Best-effort: notify the named teacher (first approval step) plus every
   // principal/super_admin (last step) so the two named/most-senior parties
