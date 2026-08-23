@@ -29,7 +29,6 @@ const ROLE_VALUES: Enums<"role">[] = [
   "principal",
   "super_admin",
   "coordinator",
-  "admin",
 ];
 
 function getServiceAccountAuth() {

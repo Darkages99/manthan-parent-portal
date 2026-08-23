@@ -84,7 +84,7 @@ export default async function PtmMeetingPage({
           {meeting.title ?? "Parent–teacher meeting"} · {formatDate(meeting.meeting_date)}
         </p>
         <p className="mt-1 text-sm text-slate">
-          Admin: {assignedAdmin?.name ?? "Unassigned"}
+          Front office: {assignedAdmin?.name ?? "Unassigned"}
           {teacherNames.length > 0 && ` · Teachers: ${teacherNames.join(", ")}`}
         </p>
       </div>

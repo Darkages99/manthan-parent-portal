@@ -17,7 +17,7 @@ export default async function StaffPtm() {
   const [{ data: allClasses }, { data: teachers }, { data: admins }] = await Promise.all([
     supabase.from("class_sections").select("*").order("grade"),
     supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name"),
-    supabase.from("staff").select("id, name").eq("role", "admin").order("name"),
+    supabase.from("staff").select("id, name").eq("role", "front_office").order("name"),
   ]);
   const classes =
     viewer.staff.role === "class_teacher"
@@ -32,7 +32,7 @@ export default async function StaffPtm() {
       .select("meeting_id")
       .eq("teacher_id", viewer.staff.id);
     visibleMeetingIds = [...new Set((links ?? []).map((l) => l.meeting_id))];
-  } else if (viewer.staff.role === "admin") {
+  } else if (viewer.staff.role === "front_office") {
     const { data: assigned } = await supabase
       .from("ptm_meetings")
       .select("id")
@@ -79,7 +79,7 @@ export default async function StaffPtm() {
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">PTMs</h1>
         <p className="mt-2 max-w-prose text-lg text-slate-strong">
           {canCreate
-            ? "Create a parent–teacher meeting for a class, assign its teachers and approving admin, then open time slots for parents to book."
+            ? "Create a parent–teacher meeting for a class, assign its teachers and an approving front office staff member, then open time slots for parents to book."
             : "Meetings you're involved in, and their booking slots."}
         </p>
       </div>

@@ -25,6 +25,8 @@ export function AttendanceAnalytics({
   records,
   approvedTodayStudentIds,
   today,
+  initialClassId,
+  initialMarkOpen,
 }: {
   classes: ClassSection[];
   students: Student[];
@@ -32,9 +34,13 @@ export function AttendanceAnalytics({
   /** Students with an approved leave covering today (→ "informed" absence). */
   approvedTodayStudentIds: string[];
   today: string;
+  /** Preselects a class (e.g. arriving from a "Mark manually" link) and, when
+   * paired with initialMarkOpen, jumps straight into the marking form. */
+  initialClassId?: string;
+  initialMarkOpen?: boolean;
 }) {
-  const [classFilter, setClassFilter] = useState<string>("all");
-  const [markOpen, setMarkOpen] = useState(false);
+  const [classFilter, setClassFilter] = useState<string>(initialClassId ?? "all");
+  const [markOpen, setMarkOpen] = useState(Boolean(initialMarkOpen));
 
   const classLabel = (id: string) => {
     const c = classes.find((cs) => cs.id === id);
@@ -231,7 +237,12 @@ export function AttendanceAnalytics({
             {classes.length === 0 ? (
               <p className="text-base text-slate">No class is assigned to you for marking.</p>
             ) : (
-              <AttendanceMarker classes={classes} studentsByClass={studentsByClass} records={records} />
+              <AttendanceMarker
+                classes={classes}
+                studentsByClass={studentsByClass}
+                records={records}
+                initialClassId={initialClassId}
+              />
             )}
           </div>
         )}

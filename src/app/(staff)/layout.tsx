@@ -14,8 +14,8 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const attendanceReminder = await shouldRemindAttendance(viewer.staff);
 
   // PTM meetings shown as collapsible sub-items under the PTMs nav entry.
-  // Class teachers see meetings they're named on; admins see ones assigned to
-  // them; principal-tier / office roles see all.
+  // Class teachers see meetings they're named on; front office staff see ones
+  // assigned to them; principal-tier roles see all.
   const supabase = await createClient();
   let meetingIds: string[] | null = null;
   if (viewer.staff.role === "class_teacher") {
@@ -24,7 +24,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
       .select("meeting_id")
       .eq("teacher_id", viewer.staff.id);
     meetingIds = [...new Set((links ?? []).map((l) => l.meeting_id))];
-  } else if (viewer.staff.role === "admin") {
+  } else if (viewer.staff.role === "front_office") {
     const { data: assigned } = await supabase
       .from("ptm_meetings")
       .select("id")

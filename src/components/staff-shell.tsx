@@ -69,6 +69,7 @@ function buildNavItems(
               href: `/console/classes/${c.id}`,
               label: c.label,
               icon: ClassIcon,
+              classSectionId: c.id,
             })),
           },
           { href: "/console/staff", label: "Staff", icon: UsersIcon },

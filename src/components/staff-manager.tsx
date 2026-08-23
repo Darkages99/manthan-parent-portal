@@ -8,14 +8,69 @@ import { useToast } from "./toast-provider";
 import type { Enums, Tables } from "@/lib/supabase/database.types";
 
 type StaffRow = Tables<"staff">;
-const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as Enums<"role">[];
+// "admin" is a retired role (PTM approval now uses front_office) — excluded
+// so it can't be assigned to new or existing staff from this picker.
+const ROLE_OPTIONS: Enums<"role">[] = (Object.keys(ROLE_LABELS) as Enums<"role">[]).filter(
+  (r) => r !== "admin"
+);
 
 export function StaffManager({ staff }: { staff: StaffRow[] }) {
   const [list, setList] = useState(staff);
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<Enums<"role"> | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+
+  const filtered = list.filter((s) => {
+    if (roleFilter !== "all" && s.role !== roleFilter) return false;
+    if (statusFilter === "active" && !s.active) return false;
+    if (statusFilter === "inactive" && s.active) return false;
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return [s.name, s.username, s.phone, s.email].some((v) => v?.toLowerCase().includes(q));
+  });
 
   return (
     <div className="flex flex-col gap-6">
       <CreateStaffForm onCreated={(row) => setList((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)))} />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-1 min-w-[200px] flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Search</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Name, username, phone, or email"
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Role</span>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as Enums<"role"> | "all")}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          >
+            <option value="all">All roles</option>
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r} value={r}>
+                {roleLabel(r)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Status</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="inactive">Deactivated</option>
+          </select>
+        </label>
+      </div>
 
       <div className="overflow-hidden rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
         <table className="w-full text-left">
@@ -28,9 +83,16 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline">
-            {list.map((s) => (
+            {filtered.map((s) => (
               <StaffRow key={s.id} staff={s} onChange={(next) => setList((prev) => prev.map((p) => (p.id === next.id ? next : p)))} />
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-5 py-6 text-center text-base text-slate">
+                  No staff match this search.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -80,7 +142,7 @@ function StaffRow({ staff, onChange }: { staff: StaffRow; onChange: (next: Staff
           onChange={(e) => onRoleChange(e.target.value as Enums<"role">)}
           className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong disabled:opacity-60"
         >
-          {ROLE_OPTIONS.map((r) => (
+          {(ROLE_OPTIONS.includes(staff.role) ? ROLE_OPTIONS : [staff.role, ...ROLE_OPTIONS]).map((r) => (
             <option key={r} value={r}>
               {roleLabel(r)}
             </option>

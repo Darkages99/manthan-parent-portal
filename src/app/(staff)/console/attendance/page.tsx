@@ -10,9 +10,14 @@ function istToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
-export default async function StaffAttendance() {
+export default async function StaffAttendance({
+  searchParams,
+}: {
+  searchParams: Promise<{ classId?: string; mark?: string }>;
+}) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
+  const { classId: requestedClassId, mark } = await searchParams;
 
   const supabase = await createClient();
   const today = istToday();
@@ -65,6 +70,8 @@ export default async function StaffAttendance() {
           records={records ?? []}
           approvedTodayStudentIds={approvedTodayStudentIds}
           today={today}
+          initialClassId={requestedClassId}
+          initialMarkOpen={mark === "1"}
         />
       )}
     </div>

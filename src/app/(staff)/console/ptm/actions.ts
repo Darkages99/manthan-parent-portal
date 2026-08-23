@@ -23,8 +23,8 @@ function addMinutes(hhmm: string, mins: number): string {
 /** Creates a PTM meeting for a class on a date, with its own booking window
  * and slot length. Only super_admin/principal may create one; it must name
  * one or more teachers (notified on every booking decision) and exactly one
- * `admin`-role staff member, who — along with any super_admin — is the only
- * one who can approve or decline that meeting's slot bookings. The card
+ * `front_office`-role staff member, who — along with any super_admin — is the
+ * only one who can approve or decline that meeting's slot bookings. The card
  * appears immediately; slots are opened separately from the meeting's own
  * page, generated from the window stored here. */
 export async function createMeeting(input: {
@@ -44,7 +44,7 @@ export async function createMeeting(input: {
   }
   if (!input.classSectionId || !input.meetingDate) throw new Error("Class and date are required");
   if (input.teacherIds.length === 0) throw new Error("Assign at least one teacher");
-  if (!input.adminId) throw new Error("Assign an admin to approve bookings for this PTM");
+  if (!input.adminId) throw new Error("Assign a front office staff member to approve bookings for this PTM");
   if (input.windowStart && input.windowEnd && input.windowEnd <= input.windowStart) {
     throw new Error("End time must be after start time");
   }
@@ -53,7 +53,7 @@ export async function createMeeting(input: {
   const supabase = await createClient();
 
   const { data: admin } = await supabase.from("staff").select("role").eq("id", input.adminId).single();
-  if (admin?.role !== "admin") throw new Error("The assigned admin must have the Admin (PTM) role");
+  if (admin?.role !== "front_office") throw new Error("The assigned approver must have the Front office role");
 
   const { data, error } = await supabase
     .from("ptm_meetings")
@@ -184,11 +184,11 @@ export async function deleteSlot(slotId: string, meetingId: string) {
 
 /**
  * Records the caller's decision on a PTM slot booking request. Only the
- * meeting's assigned admin, or any super_admin, may decide — a single
- * decision-maker rather than the generic multi-role approval chain used
- * elsewhere. Once approved, the provisional hold becomes the final booking;
- * a decline reopens the slot. Either way, every teacher on the meeting gets
- * a lightweight push notification.
+ * meeting's assigned front-office approver, or any super_admin, may decide —
+ * a single decision-maker rather than the generic multi-role approval chain
+ * used elsewhere. Once approved, the provisional hold becomes the final
+ * booking; a decline reopens the slot. Either way, every teacher on the
+ * meeting gets a lightweight push notification.
  */
 export async function decidePtmBooking(
   slotId: string,
@@ -206,7 +206,7 @@ export async function decidePtmBooking(
     .single();
   if (!meeting) throw new Error("Meeting not found");
   if (viewer.staff.id !== meeting.assigned_admin_id && viewer.staff.role !== "super_admin") {
-    throw new Error("Only this PTM's assigned admin (or a super admin) can decide bookings");
+    throw new Error("Only this PTM's assigned front office approver (or a super admin) can decide bookings");
   }
 
   const { error: stepError } = await supabase.from("approval_steps").upsert(

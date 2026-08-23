@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDownIcon } from "./icons";
+import { useToast } from "./toast-provider";
+import { copyTeacherToClass, moveStudentToClass } from "@/app/(staff)/console/classes/actions";
 
 export type NavItem = {
   href: string;
@@ -16,7 +18,12 @@ export type NavItem = {
   badge?: number;
   /** Nested items rendered as a collapsible disclosure under this one. */
   children?: NavItem[];
+  /** Set on a class's nav entry — turns it into a drop target for the
+   * teacher/student drag cards on the class detail page (see class-detail.tsx). */
+  classSectionId?: string;
 };
+
+const DRAG_MIME = "application/x-manthan-drag";
 
 function isActive(item: NavItem, pathname: string): boolean {
   return item.exact
@@ -76,6 +83,38 @@ function NavLink({
   const active = isActive(item, pathname);
   const Icon = item.icon;
   const badge = badgeLabel(item.badge);
+  const toast = useToast();
+  const [dragOver, setDragOver] = useState(false);
+  const [, startTransition] = useTransition();
+
+  const dropTarget = item.classSectionId;
+
+  function onDrop(e: React.DragEvent) {
+    if (!dropTarget) return;
+    e.preventDefault();
+    setDragOver(false);
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    if (!raw) return;
+    let payload: { type: "teacher" | "student"; id: string };
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        if (payload.type === "teacher") {
+          await copyTeacherToClass(payload.id, dropTarget);
+          toast.success("Teacher also assigned to that class");
+        } else {
+          await moveStudentToClass(payload.id, dropTarget);
+          toast.success("Student moved to that class");
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Couldn't complete the move");
+      }
+    });
+  }
 
   return (
     <Link
@@ -83,12 +122,24 @@ function NavLink({
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       aria-current={active ? "page" : undefined}
+      onDragOver={
+        dropTarget
+          ? (e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={dropTarget ? () => setDragOver(false) : undefined}
+      onDrop={dropTarget ? onDrop : undefined}
       className={`group flex items-center rounded-sm font-medium transition ${
         nested ? "text-[0.9rem]" : "text-[0.95rem]"
       } ${collapsed ? "justify-center px-2.5 py-2.5" : "gap-3 px-3 py-2.5"} ${
-        active
-          ? "bg-maroon text-cream shadow-sm dark:ring-1 dark:ring-[color:var(--color-hairline)]"
-          : "text-slate-strong hover:bg-mist"
+        dragOver
+          ? "bg-rust/15 text-maroon ring-2 ring-rust"
+          : active
+            ? "bg-maroon text-cream shadow-sm dark:ring-1 dark:ring-[color:var(--color-hairline)]"
+            : "text-slate-strong hover:bg-mist"
       }`}
     >
       <span className="relative shrink-0">

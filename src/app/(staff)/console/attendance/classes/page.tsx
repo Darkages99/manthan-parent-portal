@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { AlertTriangleIcon } from "@/components/icons";
+import { NotifyTeacherButton } from "@/components/notify-teacher-button";
+import { isPrincipalRole } from "@/lib/roles";
 import type { Enums } from "@/lib/supabase/database.types";
 
 type Status = Enums<"attendance_status">;
@@ -62,8 +64,17 @@ export default async function AttendanceByClass() {
         marked += 1;
       }
     }
-    return { id: c.id, label: `Grade ${c.grade} - ${c.section}`, total: studentIds.length, marked, counts };
+    return {
+      id: c.id,
+      label: `Grade ${c.grade} - ${c.section}`,
+      total: studentIds.length,
+      marked,
+      counts,
+      classTeacherId: c.class_teacher_id,
+    };
   });
+
+  const canManage = isPrincipalRole(viewer.staff.role);
 
   const unmarked = rows.filter((r) => r.total > 0 && r.marked === 0);
   const markedOrEmpty = rows.filter((r) => r.total === 0 || r.marked > 0);
@@ -98,6 +109,17 @@ export default async function AttendanceByClass() {
                   {r.label}
                 </p>
                 <p className="mt-1 text-sm text-slate-strong">{r.total} students · not marked</p>
+                {canManage && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {r.classTeacherId && <NotifyTeacherButton classSectionId={r.id} />}
+                    <Link
+                      href={`/console/attendance?classId=${r.id}&mark=1`}
+                      className="rounded-sm bg-maroon px-3 py-1.5 text-sm font-semibold text-cream hover:bg-maroon-strong"
+                    >
+                      Mark manually
+                    </Link>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

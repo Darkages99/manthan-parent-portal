@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { motion } from "framer-motion";
 import { StatusPill } from "@/components/status-pill";
 import { ApprovalChecklist } from "@/components/approval-checklist";
-import { decideStayBack } from "@/app/(staff)/console/stay-back/actions";
+import { decideStayBack, remindStayBackApprovers } from "@/app/(staff)/console/stay-back/actions";
 import { useToast } from "@/components/toast-provider";
 import { resolveApproverMatch } from "@/lib/approval-match";
 import { buildWhatsAppLink } from "@/lib/notifications/whatsapp";
@@ -80,8 +80,25 @@ export function StayBackApprovalList({
               <StatusPill status={c.status} />
             </div>
 
-            <div className="mt-3 w-56">
-              <ApprovalChecklist steps={steps} />
+            <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+              <div className="w-56">
+                <ApprovalChecklist steps={steps} />
+              </div>
+              {c.status === "pending" && steps.some((s) => s.decision === null) && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  disabled={isPending}
+                  onClick={() =>
+                    startTransition(async () => {
+                      await remindStayBackApprovers(c.id);
+                      toast.success("Reminder sent");
+                    })
+                  }
+                  className="rounded-sm border border-hairline bg-mist px-3 py-1.5 text-sm font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
+                >
+                  Remind approvers
+                </motion.button>
+              )}
             </div>
 
             {canDecide ? (

@@ -293,3 +293,13 @@ export function DownloadIcon(p: IconProps) {
     </Svg>
   );
 }
+
+export function FilterIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M3.5 5.5h17" />
+      <path d="M7 12h10" />
+      <path d="M10.25 18.5h3.5" />
+    </Svg>
+  );
+}

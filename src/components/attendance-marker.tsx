@@ -15,18 +15,25 @@ const STATUSES: { value: Enums<"attendance_status">; label: string; active: stri
   { value: "half_day", label: "H", active: "bg-slate-500 text-white border-slate-500" },
 ];
 
-const TODAY = new Date().toISOString().slice(0, 10);
+// IST calendar date — must match how attendance-analytics.tsx and
+// console/attendance/classes/page.tsx compute "today", otherwise a save near
+// midnight lands on the wrong date and looks like it silently did nothing.
+const TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
 export function AttendanceMarker({
   classes,
   studentsByClass,
   records,
+  initialClassId,
 }: {
   classes: ClassSection[];
   studentsByClass: Record<string, Student[]>;
   records: AttendanceRecord[];
+  initialClassId?: string;
 }) {
-  const [classId, setClassId] = useState(classes[0]?.id ?? "");
+  const [classId, setClassId] = useState(
+    (initialClassId && classes.some((c) => c.id === initialClassId) ? initialClassId : classes[0]?.id) ?? ""
+  );
   const [date, setDate] = useState(TODAY);
   const [overrides, setOverrides] = useState<Record<string, Enums<"attendance_status">>>({});
   const [saved, setSaved] = useState(false);

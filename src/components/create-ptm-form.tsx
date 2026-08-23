@@ -71,7 +71,7 @@ export function CreatePtmForm({
   if (admins.length === 0) {
     return (
       <p className="rounded-sm border border-amber-300 bg-amber-50 p-4 text-base text-amber-900 dark:border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-200">
-        Create a staff account with the &ldquo;Admin (PTM)&rdquo; role first — PTMs need one assigned to
+        Create a staff account with the &ldquo;Front office&rdquo; role first — PTMs need one assigned to
         approve bookings.
       </p>
     );
@@ -126,7 +126,7 @@ export function CreatePtmForm({
           />
         </label>
         <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Admin (approves bookings)</span>
+          <span className="font-medium text-maroon">Front office (approves bookings)</span>
           <select
             value={adminId}
             onChange={(e) => setAdminId(e.target.value)}

@@ -12,7 +12,9 @@ export const ROLE_LABELS: Record<Enums<"role">, string> = {
   principal: "Principal",
   super_admin: "Super admin",
   coordinator: "Coordinator",
-  admin: "Admin (PTM)",
+  // Retired role — PTM approval now uses "front_office" instead. Kept only so
+  // any pre-existing staff row with this legacy value still renders sensibly.
+  admin: "Front office",
 };
 
 export function roleLabel(role: Enums<"role">): string {

@@ -45,6 +45,9 @@ manthan-portal-*.json
 *service-account*.json
 *-sheets-sync*.json
 
+# Google OAuth client secrets (downloaded from Cloud Console credentials page)
+client_secret_*.json
+
 # vercel
 .vercel
 

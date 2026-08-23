@@ -16,7 +16,6 @@ const ROLES: Role[] = [
   "principal",
   "super_admin",
   "coordinator",
-  "admin",
 ];
 const SCOPES: { value: ScopeType; label: string }[] = [
   { value: "school", label: "Whole school" },

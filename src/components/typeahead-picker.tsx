@@ -15,6 +15,7 @@ export function TypeaheadPicker({
   placeholder = "Search…",
   disabled,
   maxResults = 8,
+  hideChips = false,
 }: {
   options: TypeaheadOption[];
   selected: string[];
@@ -22,6 +23,10 @@ export function TypeaheadPicker({
   placeholder?: string;
   disabled?: boolean;
   maxResults?: number;
+  /** Suppresses the built-in "selected" chip row — use when the caller
+   * renders its own list of the current selection (e.g. a scrollable list
+   * instead of tags). */
+  hideChips?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -48,7 +53,7 @@ export function TypeaheadPicker({
 
   return (
     <div className="flex flex-col gap-2">
-      {selected.length > 0 && (
+      {!hideChips && selected.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {selected.map((id) => (
             <li

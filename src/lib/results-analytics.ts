@@ -6,8 +6,11 @@ type ExamResult = Pick<
 >;
 type StudentLite = { id: string; first_name: string; last_name: string };
 
-const FAIL_THRESHOLD_PCT = 40;
+export const FAIL_THRESHOLD_PCT = 40;
 const EXCELLENCE_THRESHOLD_PCT = 90;
+/** A class (or a subject within a class) averaging below this is "weak" —
+ * triggers the principal alert in console/results/actions.ts. */
+export const WEAK_THRESHOLD_PCT = 65;
 
 export type StudentAverage = {
   studentId: string;

@@ -9,6 +9,8 @@ import {
 } from "@/app/(staff)/console/messages/groups/actions";
 import { setGroupStaffAccess } from "@/app/(staff)/console/messages/compose/actions";
 import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
+import { MemberScrollList } from "./member-scroll-list";
+import { ChevronDownIcon } from "./icons";
 import { useToast } from "./toast-provider";
 
 type Group = { id: string; name: string };
@@ -120,7 +122,10 @@ function GroupCard({
   const [editingName, setEditingName] = useState(false);
   const [memberIds, setMemberIds] = useState(initialMembers);
   const [accessIds, setAccessIds] = useState(initialAccess);
+  const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
+
+  const studentLabelById = new Map(students.map((s) => [s.id, s.label]));
 
   function saveName() {
     setEditingName(false);
@@ -171,57 +176,83 @@ function GroupCard({
   }
 
   return (
-    <li className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between gap-3">
-        {editingName ? (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={saveName}
-            onKeyDown={(e) => e.key === "Enter" && saveName()}
-            className="rounded-sm border border-hairline bg-mist px-2 py-1 text-lg font-semibold text-maroon"
+    <li className="rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between gap-3 p-5">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <ChevronDownIcon
+            className={`h-4 w-4 shrink-0 text-slate transition-transform ${expanded ? "" : "-rotate-90"}`}
           />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditingName(true)}
-            className="font-heading text-lg text-maroon hover:underline"
-          >
-            {group.name}
-          </button>
-        )}
+          {editingName ? (
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={saveName}
+              onKeyDown={(e) => e.key === "Enter" && saveName()}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-sm border border-hairline bg-mist px-2 py-1 text-lg font-semibold text-maroon"
+            />
+          ) : (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingName(true);
+              }}
+              className="truncate font-heading text-lg text-maroon hover:underline"
+            >
+              {group.name}
+            </span>
+          )}
+          <span className="shrink-0 text-sm text-slate">{memberIds.length} student{memberIds.length === 1 ? "" : "s"}</span>
+        </button>
         <button
           type="button"
           onClick={onDelete}
-          className="rounded-sm border border-hairline px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
+          className="shrink-0 rounded-sm border border-hairline px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
         >
           Delete
         </button>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
-          <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-slate">Members</p>
-          <TypeaheadPicker
-            options={students}
-            selected={memberIds}
-            onChange={onMembersChange}
-            placeholder="Add a student…"
-          />
+      {expanded && (
+        <div className="grid gap-4 border-t border-hairline p-5 sm:grid-cols-2">
+          <div>
+            <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-slate">Members</p>
+            <TypeaheadPicker
+              options={students}
+              selected={memberIds}
+              onChange={onMembersChange}
+              placeholder="Add a student…"
+              hideChips
+            />
+            <div className="mt-2">
+              <MemberScrollList
+                items={memberIds.map((id) => ({ id, label: studentLabelById.get(id) ?? id }))}
+                onRemove={(id) => onMembersChange(memberIds.filter((m) => m !== id))}
+                emptyLabel="No students in this group yet."
+              />
+            </div>
+          </div>
+          <div>
+            <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-slate">
+              Teachers with access
+            </p>
+            <TypeaheadPicker
+              options={teachers}
+              selected={accessIds}
+              onChange={onAccessChange}
+              placeholder="Add a teacher…"
+            />
+          </div>
         </div>
-        <div>
-          <p className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-slate">
-            Teachers with access
-          </p>
-          <TypeaheadPicker
-            options={teachers}
-            selected={accessIds}
-            onChange={onAccessChange}
-            placeholder="Add a teacher…"
-          />
-        </div>
-      </div>
+      )}
     </li>
   );
 }

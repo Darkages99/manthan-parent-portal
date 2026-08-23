@@ -13,21 +13,14 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
   if (!isPrincipalRole(viewer.staff.role)) redirect("/console");
 
   const supabase = await createClient();
-  const [
-    { data: cls },
-    { data: allClasses },
-    { data: staff },
-    subjects,
-    { data: classSubjectTeachers },
-    { data: students },
-  ] = await Promise.all([
-    supabase.from("class_sections").select("*").eq("id", id).maybeSingle(),
-    supabase.from("class_sections").select("id, grade, section, academic_year").order("grade").order("section"),
-    supabase.from("staff").select("id, name, role").order("name"),
-    getSubjects(),
-    supabase.from("class_subject_teachers").select("*").eq("class_section_id", id),
-    supabase.from("students").select("*").eq("class_section_id", id).order("roll_no"),
-  ]);
+  const [{ data: cls }, { data: staff }, subjects, { data: classSubjectTeachers }, { data: students }] =
+    await Promise.all([
+      supabase.from("class_sections").select("*").eq("id", id).maybeSingle(),
+      supabase.from("staff").select("id, name, role").order("name"),
+      getSubjects(),
+      supabase.from("class_subject_teachers").select("*").eq("class_section_id", id),
+      supabase.from("students").select("*").eq("class_section_id", id).order("roll_no"),
+    ]);
 
   if (!cls) notFound();
 
@@ -47,7 +40,6 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
 
       <ClassDetail
         cls={cls}
-        otherClasses={(allClasses ?? []).filter((c) => c.id !== id)}
         staff={staff ?? []}
         subjects={subjects}
         classSubjectTeachers={classSubjectTeachers ?? []}

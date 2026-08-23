@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import {
   assignClassTeacher,
   addClassSubjectTeacher,
   removeClassSubjectTeacher,
-  copyTeacherToClass,
-  moveStudentToClass,
 } from "@/app/(staff)/console/classes/actions";
 import { CloseIcon, PlusIcon } from "./icons";
 import { useToast } from "./toast-provider";
@@ -15,7 +12,6 @@ import { SubjectPicker } from "./subject-picker";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
-type ClassLite = Pick<ClassSection, "id" | "grade" | "section" | "academic_year">;
 type StaffLite = { id: string; name: string; role: Tables<"staff">["role"] };
 type Named = { id: string; name: string };
 type Assignment = Tables<"class_subject_teachers">;
@@ -23,14 +19,12 @@ type Student = Tables<"students">;
 
 export function ClassDetail({
   cls,
-  otherClasses,
   staff,
   subjects,
   classSubjectTeachers,
   students,
 }: {
   cls: ClassSection;
-  otherClasses: ClassLite[];
   staff: StaffLite[];
   subjects: Named[];
   classSubjectTeachers: Assignment[];
@@ -40,21 +34,17 @@ export function ClassDetail({
   const staffName = new Map(staff.map((s) => [s.id, s.name]));
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
-      <div className="flex flex-col gap-8">
-        <ClassTeacherSection cls={cls} staff={staff} />
-        <SubjectTeacherSection
-          classSectionId={cls.id}
-          subjects={subjects}
-          staff={staff}
-          assignments={classSubjectTeachers}
-          subjectName={subjectName}
-          staffName={staffName}
-        />
-        <StudentSection classSectionId={cls.id} students={students} />
-      </div>
-
-      <DropRail otherClasses={otherClasses} />
+    <div className="flex flex-col gap-8">
+      <ClassTeacherSection cls={cls} staff={staff} />
+      <SubjectTeacherSection
+        classSectionId={cls.id}
+        subjects={subjects}
+        staff={staff}
+        assignments={classSubjectTeachers}
+        subjectName={subjectName}
+        staffName={staffName}
+      />
+      <StudentSection classSectionId={cls.id} students={students} />
     </div>
   );
 }
@@ -154,7 +144,7 @@ function SubjectTeacherSection({
     <section className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
       <h2 className="font-heading text-xl text-maroon">Subjects &amp; teachers</h2>
       <p className="mt-1 text-sm text-slate">
-        Drag a teacher onto another class in the rail to also assign them there.
+        Drag a teacher onto a class in the sidebar&apos;s Classes list to also assign them there.
       </p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -221,7 +211,7 @@ function StudentSection({ classSectionId, students }: { classSectionId: string; 
     <section className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
       <h2 className="font-heading text-xl text-maroon">Students</h2>
       <p className="mt-1 text-sm text-slate">
-        Drag a student onto another class in the rail to move them there.
+        Drag a student onto a class in the sidebar&apos;s Classes list to move them there.
       </p>
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
         {students.length === 0 && <li className="text-sm text-slate">No students in this class.</li>}
@@ -245,65 +235,5 @@ function StudentSection({ classSectionId, students }: { classSectionId: string; 
         ))}
       </ul>
     </section>
-  );
-}
-
-function DropRail({ otherClasses }: { otherClasses: { id: string; grade: string; section: string }[] }) {
-  const toast = useToast();
-  const [overId, setOverId] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
-
-  function onDrop(e: React.DragEvent, targetClassSectionId: string) {
-    e.preventDefault();
-    setOverId(null);
-    const raw = e.dataTransfer.getData("application/x-manthan-drag");
-    if (!raw) return;
-    const payload = JSON.parse(raw) as { type: "teacher" | "student"; id: string };
-    startTransition(async () => {
-      try {
-        if (payload.type === "teacher") {
-          await copyTeacherToClass(payload.id, targetClassSectionId);
-          setStatus("Teacher also assigned to that class.");
-        } else {
-          await moveStudentToClass(payload.id, targetClassSectionId);
-          setStatus("Student moved to that class.");
-        }
-        toast.success("Done");
-      } catch (err) {
-        setStatus(err instanceof Error ? err.message : "Couldn't complete the move");
-      }
-    });
-  }
-
-  return (
-    <aside className="flex flex-col gap-3">
-      <h2 className="font-heading text-lg text-maroon">Other classes</h2>
-      <p className="text-sm text-slate">Drop a teacher or student card here.</p>
-      {status && <p className="text-sm text-rust">{status}</p>}
-      <ul className="flex flex-col gap-2">
-        {otherClasses.map((c) => (
-          <li key={c.id}>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setOverId(c.id);
-              }}
-              onDragLeave={() => setOverId((v) => (v === c.id ? null : v))}
-              onDrop={(e) => onDrop(e, c.id)}
-              className={`rounded-sm border px-3 py-2.5 text-sm transition ${
-                overId === c.id
-                  ? "border-rust bg-rust/10 text-maroon"
-                  : "border-hairline bg-surface text-slate-strong"
-              }`}
-            >
-              <Link href={`/console/classes/${c.id}`} className="font-semibold text-maroon hover:underline">
-                Grade {c.grade}-{c.section}
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </aside>
   );
 }
