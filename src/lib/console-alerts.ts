@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAttendanceForDate } from "@/lib/attendance-today";
+import { fetchInChunks } from "@/lib/supabase/chunked-in";
 import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -93,7 +94,7 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
     { data: leaves },
     { data: pendingLeaves },
     { data: pendingStayBacks },
-    { data: examResults },
+    examResults,
   ] = await Promise.all([
       studentIdList.length
         ? supabase.rpc("attendance_summary", { p_student_ids: studentIdList })
@@ -114,7 +115,13 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
         .from("stay_back_consents")
         .select("id, student_id")
         .eq("status", "pending"),
-      supabase.from("exam_results").select("student_id, subject, marks, max_marks"),
+      // Chunked and scoped to these classes' students — an unfiltered read of
+      // the whole exam_results table hits PostgREST's 1000-row cap once the
+      // school has more marks than that, silently dropping most of them.
+      fetchInChunks<{ student_id: string; subject: string; marks: number; max_marks: number }>(
+        studentIdList,
+        (chunk) => supabase.from("exam_results").select("student_id, subject, marks, max_marks").in("student_id", chunk)
+      ),
     ]);
   const nameOf = (id: string) => {
     const s = studentList.find((st) => st.id === id);

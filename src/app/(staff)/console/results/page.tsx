@@ -8,7 +8,10 @@ import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
 import { createClient } from "@/lib/supabase/server";
+import { fetchInChunks } from "@/lib/supabase/chunked-in";
 import { computeClassAnalytics, computeStudentAnalytics, distinctTerms } from "@/lib/results-analytics";
+
+type ExamResultRow = { student_id: string; term: string; subject: string; marks: number; max_marks: number };
 
 export default async function ConsoleResults({
   searchParams,
@@ -85,12 +88,12 @@ export default async function ConsoleResults({
       .select("id, first_name, last_name, class_section_id")
       .in("class_section_id", classIds);
     const allStudentIds = (allStudents ?? []).map((s) => s.id);
-    const { data: allResults } = allStudentIds.length
-      ? await supabase
-          .from("exam_results")
-          .select("student_id, term, subject, marks, max_marks")
-          .in("student_id", allStudentIds)
-      : { data: [] as { student_id: string; term: string; subject: string; marks: number; max_marks: number }[] };
+    // Chunked — a whole-school id list can exceed a single request's URL
+    // limit, and an ignored failure there used to read back as "no results"
+    // and show "No marks entered yet" even when the school had thousands.
+    const allResults = await fetchInChunks<ExamResultRow>(allStudentIds, (chunk) =>
+      supabase.from("exam_results").select("student_id, term, subject, marks, max_marks").in("student_id", chunk)
+    );
     const overviewTerms = distinctTerms(allResults ?? []);
     overviewTerm = overviewTerms[0] ?? null;
 

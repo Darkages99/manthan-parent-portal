@@ -4,7 +4,10 @@ import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
 import { createClient } from "@/lib/supabase/server";
+import { fetchInChunks } from "@/lib/supabase/chunked-in";
 import { computeClassAnalytics, distinctTerms, WEAK_THRESHOLD_PCT } from "@/lib/results-analytics";
+
+type ExamResultRow = { student_id: string; term: string; subject: string; marks: number; max_marks: number };
 
 export default async function ResultsByClass() {
   const viewer = await getViewer();
@@ -33,12 +36,9 @@ export default async function ResultsByClass() {
     : { data: [] as { id: string; first_name: string; last_name: string; class_section_id: string }[] };
   const studentIds = (students ?? []).map((s) => s.id);
 
-  const { data: results } = studentIds.length
-    ? await supabase
-        .from("exam_results")
-        .select("student_id, term, subject, marks, max_marks")
-        .in("student_id", studentIds)
-    : { data: [] as { student_id: string; term: string; subject: string; marks: number; max_marks: number }[] };
+  const results = await fetchInChunks<ExamResultRow>(studentIds, (chunk) =>
+    supabase.from("exam_results").select("student_id, term, subject, marks, max_marks").in("student_id", chunk)
+  );
 
   const term = distinctTerms(results ?? [])[0] ?? null;
 

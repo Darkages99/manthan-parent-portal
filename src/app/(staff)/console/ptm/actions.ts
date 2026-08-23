@@ -94,22 +94,56 @@ export async function setMeetingStatus(meetingId: string, status: Enums<"ptm_sta
   revalidatePath("/console/ptm");
 }
 
-/** Deletes a meeting (and its open slots). Refuses if any slot is already
- * booked or has a booking under review. */
+/**
+ * Deletes a meeting and its slots (both cascade). If any slot was booked or
+ * had a booking under review, every affected guardian gets a push notice that
+ * the meeting was cancelled — deleting isn't blocked on bookings existing,
+ * since a school sometimes genuinely needs to cancel a PTM after parents have
+ * already reserved a time.
+ */
 export async function deleteMeeting(meetingId: string) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
 
   const supabase = await createClient();
-  const { count } = await supabase
+  const { data: meeting } = await supabase
+    .from("ptm_meetings")
+    .select("title, meeting_date, class_sections(grade, section)")
+    .eq("id", meetingId)
+    .maybeSingle();
+  if (!meeting) throw new Error("Meeting not found");
+
+  const { data: affectedSlots } = await supabase
     .from("ptm_slots")
-    .select("*", { count: "exact", head: true })
+    .select("booked_by_guardian_id, pending_guardian_id")
     .eq("meeting_id", meetingId)
     .or("booked_by_guardian_id.not.is.null,pending_guardian_id.not.is.null");
-  if ((count ?? 0) > 0) throw new Error("Can't delete — some slots are booked or under review.");
+
+  const affectedGuardianIds = [
+    ...new Set(
+      (affectedSlots ?? [])
+        .flatMap((s) => [s.booked_by_guardian_id, s.pending_guardian_id])
+        .filter((v): v is string => !!v)
+    ),
+  ];
 
   const { error } = await supabase.from("ptm_meetings").delete().eq("id", meetingId);
   if (error) throw new Error(error.message);
+
+  if (affectedGuardianIds.length > 0) {
+    const cls = meeting.class_sections as { grade: string; section: string } | null;
+    const classLabel = cls ? `Grade ${cls.grade}-${cls.section}` : "your class";
+    await sendPush(
+      affectedGuardianIds.map((userId) => ({ userId, role: "guardian" as const })),
+      {
+        title: "PTM cancelled",
+        body: `${meeting.title ?? "The parent-teacher meeting"} for ${classLabel} on ${meeting.meeting_date} has been cancelled. Your booked slot no longer applies.`,
+        url: "/ptm",
+      },
+      "ptm"
+    );
+  }
+
   revalidatePath("/console/ptm");
   revalidatePath("/console", "layout");
 }

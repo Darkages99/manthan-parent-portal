@@ -3,13 +3,14 @@
 import { useTransition } from "react";
 import { motion } from "framer-motion";
 import { StatusPill } from "@/components/status-pill";
-import { ApprovalChecklist } from "@/components/approval-checklist";
+import { ApprovalChain } from "@/components/approval-chain";
 import { decideStayBack, remindStayBackApprovers } from "@/app/(staff)/console/stay-back/actions";
 import { useToast } from "@/components/toast-provider";
 import { resolveApproverMatch } from "@/lib/approval-match";
 import { buildWhatsAppLink } from "@/lib/notifications/whatsapp";
 import { formatTime } from "@/lib/format";
 import { fadeUp, staggerContainer } from "@/lib/motion";
+import { BellIcon } from "@/components/icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Consent = Tables<"stay_back_consents">;
@@ -68,14 +69,15 @@ export function StayBackApprovalList({
           <motion.li
             key={c.id}
             variants={fadeUp}
-            className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]"
+            className="overflow-hidden rounded-lg border border-hairline bg-surface shadow-[var(--shadow-card)]"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-base font-semibold text-maroon">
-                  {student?.first_name} {student?.last_name} — {c.reason}
+            <div className="flex items-start justify-between gap-4 px-5 pt-5">
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-maroon">
+                  {student?.first_name} {student?.last_name}
+                  <span className="font-normal text-slate-strong"> — {c.reason}</span>
                 </p>
-                <p className="mt-1 text-base text-slate-strong">
+                <p className="mt-1 text-sm text-slate-strong">
                   {c.stay_date} · {formatTime(c.from_time)}–{formatTime(c.to_time)} · Named teacher:{" "}
                   {teacher?.name}
                 </p>
@@ -83,43 +85,45 @@ export function StayBackApprovalList({
               <StatusPill status={c.status} />
             </div>
 
-            <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-[16rem] flex-1">
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate">
-                  Approval chain
-                </p>
-                <ApprovalChecklist steps={steps} staffNames={staffNames} />
+            <div className="mt-4 border-t border-hairline bg-mist/40 px-5 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <ApprovalChain steps={steps} staffNames={staffNames} highlightStepId={myStep?.id} />
+                {c.status === "pending" && steps.some((s) => s.decision === null) && (
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    disabled={isPending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        try {
+                          await remindStayBackApprovers(c.id);
+                          toast.success("Reminder sent to pending approvers");
+                        } catch (err) {
+                          toast.error((err as Error).message || "Couldn't send reminder");
+                        }
+                      })
+                    }
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-hairline bg-surface px-3 py-1.5 text-sm font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
+                  >
+                    <BellIcon className="h-4 w-4" />
+                    Remind pending
+                  </motion.button>
+                )}
               </div>
-              {c.status === "pending" && steps.some((s) => s.decision === null) && (
+            </div>
+
+            {canDecide ? (
+              <div className="flex flex-wrap gap-2 px-5 pb-5 pt-4">
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   disabled={isPending}
                   onClick={() =>
                     startTransition(async () => {
                       try {
-                        await remindStayBackApprovers(c.id);
-                        toast.success("Reminder sent to pending approvers");
+                        await decideStayBack(c.id, "approved");
+                        toast.success("Approved");
                       } catch (err) {
-                        toast.error((err as Error).message || "Couldn't send reminder");
+                        toast.error((err as Error).message || "Couldn't approve");
                       }
-                    })
-                  }
-                  className="rounded-sm border border-hairline bg-mist px-3 py-1.5 text-sm font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
-                >
-                  Remind pending approvers
-                </motion.button>
-              )}
-            </div>
-
-            {canDecide ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  disabled={isPending}
-                  onClick={() =>
-                    startTransition(async () => {
-                      await decideStayBack(c.id, "approved");
-                      toast.success("Approved");
                     })
                   }
                   className="rounded-sm bg-maroon px-4 py-2 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
@@ -131,8 +135,12 @@ export function StayBackApprovalList({
                   disabled={isPending}
                   onClick={() =>
                     startTransition(async () => {
-                      await decideStayBack(c.id, "declined");
-                      toast.success("Declined");
+                      try {
+                        await decideStayBack(c.id, "declined");
+                        toast.success("Declined");
+                      } catch (err) {
+                        toast.error((err as Error).message || "Couldn't decline");
+                      }
                     })
                   }
                   className="rounded-sm border border-hairline bg-mist px-4 py-2 text-base font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
@@ -143,7 +151,7 @@ export function StayBackApprovalList({
             ) : (
               c.status !== "pending" &&
               parentPhone && (
-                <div className="mt-4">
+                <div className="px-5 pb-5 pt-4">
                   <a
                     href={buildWhatsAppLink(parentPhone, nudgeMessage)}
                     target="_blank"

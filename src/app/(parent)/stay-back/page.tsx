@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ApprovalChecklist } from "@/components/approval-checklist";
+import { ApprovalChain } from "@/components/approval-chain";
 import { StayBackForm } from "@/components/stay-back-form";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -55,6 +55,7 @@ export default async function StayBackPage({
 
   const studentById = (id: string) => viewer.students.find((s) => s.id === id);
   const teacherById = (id: string) => (teachers ?? []).find((t) => t.id === id);
+  const staffNames = Object.fromEntries((teachers ?? []).map((t) => [t.id, t.name]));
 
   return (
     <div className="flex flex-col gap-8">
@@ -118,21 +119,19 @@ export default async function StayBackPage({
             const student = studentById(c.student_id);
             const teacher = teacherById(c.teacher_id);
             return (
-              <li key={c.id} className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-base font-semibold text-maroon">
-                      {student?.first_name} — {c.reason}
-                    </p>
-                    <p className="mt-1 text-base text-slate-strong">
-                      {c.stay_date} · {formatTime(c.from_time)}–{formatTime(c.to_time)} · Notified{" "}
-                      {teacher?.name}
-                      {teacher?.role === "class_teacher" ? " + Principal" : ""}
-                    </p>
-                  </div>
-                  <div className="w-44 shrink-0">
-                    <ApprovalChecklist steps={stepsByConsent.get(c.id) ?? []} />
-                  </div>
+              <li className="overflow-hidden rounded-lg border border-hairline bg-surface shadow-[var(--shadow-card)]" key={c.id}>
+                <div className="px-5 pt-5">
+                  <p className="text-base font-semibold text-maroon">
+                    {student?.first_name} — {c.reason}
+                  </p>
+                  <p className="mt-1 text-base text-slate-strong">
+                    {c.stay_date} · {formatTime(c.from_time)}–{formatTime(c.to_time)} · Notified{" "}
+                    {teacher?.name}
+                    {teacher?.role === "class_teacher" ? " + Principal" : ""}
+                  </p>
+                </div>
+                <div className="mt-4 border-t border-hairline bg-mist/40 px-5 py-4">
+                  <ApprovalChain steps={stepsByConsent.get(c.id) ?? []} staffNames={staffNames} />
                 </div>
               </li>
             );
