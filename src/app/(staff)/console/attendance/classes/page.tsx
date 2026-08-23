@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAttendanceForDate } from "@/lib/attendance-today";
 import { AlertTriangleIcon } from "@/components/icons";
 import { NotifyTeacherButton } from "@/components/notify-teacher-button";
 import { isPrincipalRole } from "@/lib/roles";
@@ -37,13 +38,7 @@ export default async function AttendanceByClass() {
     : { data: [] as { id: string; class_section_id: string }[] };
   const studentIds = (students ?? []).map((s) => s.id);
 
-  const { data: records } = studentIds.length
-    ? await supabase
-        .from("attendance_records")
-        .select("student_id, status")
-        .eq("date", today)
-        .in("student_id", studentIds)
-    : { data: [] as { student_id: string; status: Status }[] };
+  const records = await fetchAttendanceForDate(supabase, today, studentIds);
 
   const studentsByClass = new Map<string, string[]>();
   for (const s of students ?? []) {

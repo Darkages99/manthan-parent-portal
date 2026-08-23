@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAttendanceForDate } from "@/lib/attendance-today";
 import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -88,7 +89,7 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
 
   const [
     { data: summaries },
-    { data: todayRecords },
+    todayRecords,
     { data: leaves },
     { data: pendingLeaves },
     { data: pendingStayBacks },
@@ -97,13 +98,8 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
       studentIdList.length
         ? supabase.rpc("attendance_summary", { p_student_ids: studentIdList })
         : Promise.resolve({ data: [] as { student_id: string; total: number; present_pct: number }[] }),
-      studentIdList.length
-        ? supabase
-            .from("attendance_records")
-            .select("student_id, status")
-            .eq("date", today)
-            .in("student_id", studentIdList)
-        : Promise.resolve({ data: [] as { student_id: string; status: Tables<"attendance_records">["status"] }[] }),
+      // Scoped without an oversized query URL (see fetchAttendanceForDate).
+      fetchAttendanceForDate(supabase, today, studentIdList),
       supabase
         .from("leave_requests")
         .select("student_id, from_date, to_date, reason, status")

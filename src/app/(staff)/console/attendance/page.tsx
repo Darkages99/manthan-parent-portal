@@ -3,6 +3,7 @@ import { AttendanceAnalytics } from "@/components/attendance-analytics";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAttendanceForDate } from "@/lib/attendance-today";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type AttendanceSummary = { student_id: string; total: number; present_pct: number };
@@ -41,16 +42,11 @@ export default async function StaffAttendance({
     : { data: [] as Tables<"students">[] };
   const studentIds = (students ?? []).map((s) => s.id);
 
-  const [{ data: todayRecords }, { data: summaries }, { data: leaves }] = await Promise.all([
+  const [todayRecords, { data: summaries }, { data: leaves }] = await Promise.all([
     // Only today's rows drive the snapshot / absent list / marker baseline.
-    studentIds.length
-      ? supabase
-          .from("attendance_records")
-          .select("*")
-          .eq("date", today)
-          .in("student_id", studentIds)
-      : Promise.resolve({ data: [] as Tables<"attendance_records">[] }),
-    // Term percentages are aggregated in the DB — one row per student.
+    fetchAttendanceForDate(supabase, today, studentIds),
+    // Term percentages are aggregated in the DB — one row per student. Passed
+    // in the POST body, so no query-URL size limit even for the whole school.
     studentIds.length
       ? supabase.rpc("attendance_summary", { p_student_ids: studentIds })
       : Promise.resolve({ data: [] as AttendanceSummary[] }),
@@ -84,7 +80,7 @@ export default async function StaffAttendance({
         <AttendanceAnalytics
           classes={classes}
           students={students ?? []}
-          todayRecords={todayRecords ?? []}
+          todayRecords={todayRecords}
           summaries={(summaries as AttendanceSummary[]) ?? []}
           approvedTodayStudentIds={approvedTodayStudentIds}
           today={today}
