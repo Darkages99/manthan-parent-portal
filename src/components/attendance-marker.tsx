@@ -27,11 +27,16 @@ export function AttendanceMarker({
   studentsByClass,
   records,
   initialClassId,
+  onSaved,
 }: {
   classes: ClassSection[];
   studentsByClass: Record<string, Student[]>;
   records: AttendanceRecord[];
   initialClassId?: string;
+  /** Called with the just-saved entries so a parent holding its own snapshot
+   * (e.g. the "Today" counts) can update immediately, without waiting on a
+   * server round trip to repopulate the `records` prop. */
+  onSaved?: (date: string, entries: { studentId: string; status: Enums<"attendance_status"> }[]) => void;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -79,9 +84,11 @@ export function AttendanceMarker({
         setSaved(true);
         setOverrides({});
         toast.success(`Attendance saved for ${entries.length} student${entries.length === 1 ? "" : "s"}`);
+        // Update the parent's own snapshot immediately — don't rely solely on
+        // the server round trip picking up the new records.
+        onSaved?.(date, entries);
         // Belt-and-suspenders: the server action already revalidates this path,
-        // but an explicit refresh guarantees the "Today" counts and the class
-        // cards pick up the new records immediately, not just on next navigation.
+        // and this refresh also keeps the class-cards page in sync once visited.
         router.refresh();
       } catch (e) {
         const message = (e as Error).message;

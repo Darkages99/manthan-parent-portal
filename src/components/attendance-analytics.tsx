@@ -41,6 +41,30 @@ export function AttendanceAnalytics({
 }) {
   const [classFilter, setClassFilter] = useState<string>(initialClassId ?? "all");
   const [markOpen, setMarkOpen] = useState(Boolean(initialMarkOpen));
+  // Records just saved by AttendanceMarker, merged in immediately rather than
+  // waiting on the server round trip that repopulates the `records` prop —
+  // keeps the "Today" snapshot in sync with the save the instant it succeeds.
+  const [justSaved, setJustSaved] = useState<AttendanceRecord[]>([]);
+
+  const effectiveRecords = useMemo(() => {
+    if (justSaved.length === 0) return records;
+    const byKey = new Map(records.map((r) => [`${r.student_id}|${r.date}`, r]));
+    for (const r of justSaved) byKey.set(`${r.student_id}|${r.date}`, r);
+    return [...byKey.values()];
+  }, [records, justSaved]);
+
+  function onAttendanceSaved(date: string, entries: { studentId: string; status: Status }[]) {
+    setJustSaved((prev) => [
+      ...prev,
+      ...entries.map((e) => ({
+        id: `optimistic-${e.studentId}-${date}`,
+        student_id: e.studentId,
+        date,
+        status: e.status,
+        marked_by: null,
+      })),
+    ]);
+  }
 
   const classLabel = (id: string) => {
     const c = classes.find((cs) => cs.id === id);
@@ -58,7 +82,7 @@ export function AttendanceAnalytics({
 
   // --- Today snapshot ---
   const todayByStudent = new Map<string, Status>();
-  for (const r of records) {
+  for (const r of effectiveRecords) {
     if (r.date === today && scopedIds.has(r.student_id)) todayByStudent.set(r.student_id, r.status);
   }
   const todayCounts: Record<Status, number> = { present: 0, absent: 0, late: 0, half_day: 0 };
@@ -79,7 +103,7 @@ export function AttendanceAnalytics({
 
   // --- Below threshold (term) ---
   const recordsByStudent = new Map<string, AttendanceRecord[]>();
-  for (const r of records) {
+  for (const r of effectiveRecords) {
     if (!scopedIds.has(r.student_id)) continue;
     const arr = recordsByStudent.get(r.student_id) ?? [];
     arr.push(r);
@@ -240,8 +264,9 @@ export function AttendanceAnalytics({
               <AttendanceMarker
                 classes={classes}
                 studentsByClass={studentsByClass}
-                records={records}
+                records={effectiveRecords}
                 initialClassId={initialClassId}
+                onSaved={onAttendanceSaved}
               />
             )}
           </div>
