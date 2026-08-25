@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { assignClassTeacher } from "@/app/(staff)/console/classes/actions";
+import { ComboBox } from "./combobox";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -73,19 +74,21 @@ function ClassRow({ cls, staff }: { cls: ClassSection; staff: StaffLite[] }) {
       </td>
       <td className="px-5 py-3">
         <div className="flex items-center gap-3">
-          <select
-            value={value}
-            disabled={pending}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full max-w-xs rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong disabled:opacity-60"
-          >
-            <option value="">— Unassigned —</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} · {ROLE_LABEL[s.role] ?? s.role}
-              </option>
-            ))}
-          </select>
+          <div className="w-full max-w-xs">
+            <ComboBox
+              options={staff.map((s) => ({
+                value: s.id,
+                label: s.name,
+                sublabel: ROLE_LABEL[s.role] ?? s.role,
+              }))}
+              value={value}
+              disabled={pending}
+              onChange={onChange}
+              emptyLabel="— Unassigned —"
+              placeholder="Search staff…"
+              ariaLabel="Class teacher"
+            />
+          </div>
           {pending && <span className="text-sm text-slate">Saving…</span>}
           {error && <span className="text-sm text-rose-600">{error}</span>}
         </div>

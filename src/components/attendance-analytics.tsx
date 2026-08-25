@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AttendanceMarker } from "./attendance-marker";
 import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from "./icons";
 import { DonutChart, Legend, type Segment } from "./charts";
+import { ComboBox } from "./combobox";
 import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
@@ -139,20 +140,23 @@ export function AttendanceAnalytics({
   return (
     <div className="flex flex-col gap-6">
       {classes.length > 1 && (
-        <label className="flex w-fit flex-col gap-1.5 text-base">
+        <label className="flex w-64 flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Class</span>
-          <select
+          <ComboBox
+            options={[
+              { value: "all", label: "All classes" },
+              ...classes.map((c) => ({
+                value: c.id,
+                label: `Grade ${c.grade} - ${c.section}`,
+              })),
+            ]}
             value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-          >
-            <option value="all">All classes</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                Grade {c.grade} - {c.section}
-              </option>
-            ))}
-          </select>
+            onChange={setClassFilter}
+            required
+            placeholder="Search class…"
+            ariaLabel="Class"
+            recallKey="attendance-analytics-class"
+          />
         </label>
       )}
 

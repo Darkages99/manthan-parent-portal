@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMeeting } from "@/app/(staff)/console/ptm/actions";
 import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
+import { ComboBox } from "./combobox";
 import { Button } from "./button";
 import { PlusIcon } from "./icons";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -84,17 +85,18 @@ export function CreatePtmForm({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Class</span>
-          <select
+          <ComboBox
+            options={classes.map((c) => ({
+              value: c.id,
+              label: `Grade ${c.grade} - ${c.section}`,
+            }))}
             value={classId}
-            onChange={(e) => onClassChange(e.target.value)}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-          >
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                Grade {c.grade} - {c.section}
-              </option>
-            ))}
-          </select>
+            onChange={onClassChange}
+            required
+            placeholder="Search class…"
+            ariaLabel="Class"
+            recallKey="ptm-class"
+          />
         </label>
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Date</span>
@@ -128,17 +130,15 @@ export function CreatePtmForm({
         </label>
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Front office (approves bookings)</span>
-          <select
+          <ComboBox
+            options={admins.map((a) => ({ value: a.id, label: a.name }))}
             value={adminId}
-            onChange={(e) => setAdminId(e.target.value)}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-          >
-            {admins.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+            onChange={setAdminId}
+            required
+            placeholder="Search staff…"
+            ariaLabel="Front office"
+            recallKey="ptm-admin"
+          />
         </label>
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Window from</span>

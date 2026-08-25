@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { findOrCreateSubject } from "@/app/(staff)/console/classes/actions";
+import { ComboBox } from "./combobox";
 
 const CUSTOM_SUBJECT = "__custom__";
 
@@ -76,26 +77,24 @@ export function SubjectPicker({
   }
 
   return (
-    <select
+    <ComboBox
+      options={[
+        ...subjects.map((s) => ({ value: s.id, label: s.name })),
+        { value: CUSTOM_SUBJECT, label: "Other…" },
+      ]}
       value={value}
       disabled={disabled}
-      onChange={(e) => {
-        if (e.target.value === CUSTOM_SUBJECT) {
+      onChange={(next) => {
+        if (next === CUSTOM_SUBJECT) {
           setCustomMode(true);
           return;
         }
-        onChange(e.target.value);
+        onChange(next);
       }}
-      className={selectCls}
-      aria-label="Subject"
-    >
-      <option value="">— Subject —</option>
-      {subjects.map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.name}
-        </option>
-      ))}
-      <option value={CUSTOM_SUBJECT}>Other…</option>
-    </select>
+      placeholder="Subject…"
+      ariaLabel="Subject"
+      recallKey="subject"
+      className={className}
+    />
   );
 }

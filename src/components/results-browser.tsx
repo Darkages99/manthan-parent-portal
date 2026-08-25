@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ComboBox } from "./combobox";
 
 type ClassLite = { id: string; grade: string; section: string };
 type StudentLite = { id: string; first_name: string; last_name: string };
@@ -30,37 +31,34 @@ export function ResultsBrowser({
 
   return (
     <div className="flex flex-wrap gap-4">
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-strong">
+      <label className="flex w-56 flex-col gap-1 text-sm font-medium text-slate-strong">
         Class
-        <select
+        <ComboBox
+          options={classes.map((c) => ({
+            value: c.id,
+            label: `Grade ${c.grade}-${c.section}`,
+          }))}
           value={selectedClassId}
-          onChange={(e) => selectClass(e.target.value)}
-          className="w-56 rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong"
-        >
-          <option value="">— Select a class —</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              Grade {c.grade}-{c.section}
-            </option>
-          ))}
-        </select>
+          onChange={selectClass}
+          placeholder="Select a class…"
+          ariaLabel="Class"
+          recallKey="results-class"
+        />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-strong">
+      <label className="flex w-56 flex-col gap-1 text-sm font-medium text-slate-strong">
         Student
-        <select
+        <ComboBox
+          options={students.map((s) => ({
+            value: s.id,
+            label: `${s.first_name} ${s.last_name}`,
+          }))}
           value={selectedStudentId}
+          onChange={selectStudent}
           disabled={!selectedClassId}
-          onChange={(e) => selectStudent(e.target.value)}
-          className="w-56 rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong disabled:opacity-60"
-        >
-          <option value="">— Select a student —</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.first_name} {s.last_name}
-            </option>
-          ))}
-        </select>
+          placeholder="Select a student…"
+          ariaLabel="Student"
+        />
       </label>
     </div>
   );

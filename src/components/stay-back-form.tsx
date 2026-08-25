@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { raiseStayBack } from "@/app/(parent)/stay-back/actions";
 import { TRANSPORT_PARENT_ARRANGED, TRANSPORT_SELF_RETURN } from "@/lib/stay-back-transport";
 import { Button } from "@/components/button";
+import { ComboBox } from "@/components/combobox";
 import { useToast } from "@/components/toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -29,6 +30,8 @@ export function StayBackForm({
 }) {
   const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState(students[0]?.id ?? "");
+  const [teacherId, setTeacherId] = useState("");
   const [modeOfTransport, setModeOfTransport] = useState(
     defaultTransport === TRANSPORT_SELF_RETURN ? TRANSPORT_SELF_RETURN : TRANSPORT_PARENT_ARRANGED
   );
@@ -53,24 +56,35 @@ export function StayBackForm({
     >
       <label className="flex flex-col gap-1.5 text-base">
         <span className="font-medium text-maroon">Child</span>
-        <select name="studentId" required className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base">
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.first_name} {s.last_name}
-            </option>
-          ))}
-        </select>
+        <ComboBox
+          name="studentId"
+          required
+          options={students.map((s) => ({
+            value: s.id,
+            label: `${s.first_name} ${s.last_name}`,
+          }))}
+          value={studentId}
+          onChange={setStudentId}
+          placeholder="Choose child…"
+          ariaLabel="Child"
+          className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base text-slate-strong"
+        />
       </label>
 
       <label className="flex flex-col gap-1.5 text-base">
         <span className="font-medium text-maroon">Teacher to notify</span>
-        <select name="teacherId" required className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base">
-          {teachers.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+        <ComboBox
+          name="teacherId"
+          required
+          options={teachers.map((t) => ({ value: t.id, label: t.name }))}
+          value={teacherId}
+          onChange={setTeacherId}
+          placeholder="Search teacher…"
+          ariaLabel="Teacher to notify"
+          recallKey="stay-back-teacher"
+          defaultToRecent
+          className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base text-slate-strong"
+        />
       </label>
 
       <label className="flex flex-col gap-1.5 text-base sm:col-span-2">

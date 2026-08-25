@@ -10,6 +10,7 @@ import {
   type StudentQr,
 } from "@/app/(staff)/console/qr-codes/actions";
 import { EASE_OUT_EXPO } from "@/lib/motion";
+import { ComboBox } from "./combobox";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -168,20 +169,23 @@ export function QrManager({
           {classes.length > 1 && (
             <label className="flex flex-col gap-1.5 text-base">
               <span className="font-medium text-maroon">Class</span>
-              <select
-                value={classId}
-                onChange={(e) => {
-                  setClassId(e.target.value);
-                  setQuery("");
-                }}
-                className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-              >
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    Grade {c.grade} - {c.section}
-                  </option>
-                ))}
-              </select>
+              <div className="w-56">
+                <ComboBox
+                  options={classes.map((c) => ({
+                    value: c.id,
+                    label: `Grade ${c.grade} - ${c.section}`,
+                  }))}
+                  value={classId}
+                  onChange={(next) => {
+                    setClassId(next);
+                    setQuery("");
+                  }}
+                  required
+                  ariaLabel="Class"
+                  placeholder="Search class…"
+                  recallKey="qr-class"
+                />
+              </div>
             </label>
           )}
           <label className="flex flex-1 flex-col gap-1.5 text-base">

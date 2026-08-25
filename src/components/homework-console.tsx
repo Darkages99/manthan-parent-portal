@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { createHomework, updateHomework, deleteHomework } from "@/app/(staff)/console/homework/actions";
 import { SubjectPicker } from "./subject-picker";
+import { ComboBox } from "./combobox";
 import { Button } from "./button";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -160,13 +161,16 @@ function CurrentHomeworkCard({
   if (editing) {
     return (
       <li className="flex flex-col gap-2.5 rounded-sm border border-rust/50 bg-surface p-4 shadow-[var(--shadow-card)]">
-        <select value={classId} onChange={(e) => setClassId(e.target.value)} className={inputCls} aria-label="Class">
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {classLabel(c)}
-            </option>
-          ))}
-        </select>
+        <ComboBox
+          options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+          value={classId}
+          onChange={setClassId}
+          required
+          ariaLabel="Class"
+          placeholder="Search class…"
+          recallKey="homework-class"
+          className={inputCls}
+        />
         <SubjectPicker subjects={subjects} value={subjectId} onChange={setSubjectId} className={inputCls} />
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} aria-label="Title" />
         <input
@@ -270,13 +274,16 @@ function AddHomeworkForm({ classes, subjects }: { classes: ClassSection[]; subje
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Class</span>
-          <select value={classId} onChange={(e) => setClassId(e.target.value)} className={inputCls}>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {classLabel(c)}
-              </option>
-            ))}
-          </select>
+          <ComboBox
+            options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+            value={classId}
+            onChange={setClassId}
+            required
+            ariaLabel="Class"
+            placeholder="Search class…"
+            recallKey="homework-class"
+            className={inputCls}
+          />
         </label>
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Subject</span>

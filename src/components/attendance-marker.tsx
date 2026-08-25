@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getAttendanceForDate, saveAttendance } from "@/app/(staff)/console/attendance/actions";
 import { useToast } from "./toast-provider";
+import { ComboBox } from "./combobox";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -147,17 +148,20 @@ export function AttendanceMarker({
         {classes.length > 1 && (
           <label className="flex flex-col gap-1.5 text-base">
             <span className="font-medium text-maroon">Class</span>
-            <select
-              value={classId}
-              onChange={(e) => onClassOrDateChange({ classId: e.target.value })}
-              className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-            >
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  Grade {c.grade} - {c.section}
-                </option>
-              ))}
-            </select>
+            <div className="w-56">
+              <ComboBox
+                options={classes.map((c) => ({
+                  value: c.id,
+                  label: `Grade ${c.grade} - ${c.section}`,
+                }))}
+                value={classId}
+                onChange={(next) => onClassOrDateChange({ classId: next })}
+                required
+                placeholder="Search class…"
+                ariaLabel="Class"
+                recallKey="attendance-marker-class"
+              />
+            </div>
           </label>
         )}
         <label className="flex flex-col gap-1.5 text-base">

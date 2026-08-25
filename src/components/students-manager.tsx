@@ -6,6 +6,7 @@ import { createStudent, updateStudent, deleteStudent } from "@/app/(staff)/conso
 import { Dialog } from "./dialog";
 import { Button } from "./button";
 import { Toolbar, SearchInput } from "./filter-bar";
+import { ComboBox } from "./combobox";
 import { PlusIcon } from "./icons";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -203,13 +204,16 @@ function StudentForm({
         </label>
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Class</span>
-          <select value={classSectionId} onChange={(e) => setClassSectionId(e.target.value)} className={inputCls}>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {classLabel(c)}
-              </option>
-            ))}
-          </select>
+          <ComboBox
+            options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+            value={classSectionId}
+            onChange={setClassSectionId}
+            required
+            ariaLabel="Class"
+            placeholder="Search class…"
+            recallKey="students-class"
+            className={inputCls}
+          />
         </label>
         <label className="flex flex-col gap-1.5 text-base sm:col-span-2">
           <span className="font-medium text-maroon">Photo URL (optional)</span>

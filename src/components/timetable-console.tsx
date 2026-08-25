@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { TimetableGrid, type GridCell } from "./timetable-grid";
+import { ComboBox } from "./combobox";
 import { upsertEntry } from "@/app/(staff)/console/timetable/actions";
 import {
   DAYS,
@@ -76,18 +77,20 @@ export function TimetableConsole({
           <label className="text-sm font-medium text-slate-strong" htmlFor="tt-class">
             Editing timetable for
           </label>
-          <select
-            id="tt-class"
-            value={selectedClassId}
-            onChange={(e) => setSelectedClassId(e.target.value)}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong"
-          >
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                Grade {c.grade}-{c.section}
-              </option>
-            ))}
-          </select>
+          <div className="w-56">
+            <ComboBox
+              options={classes.map((c) => ({
+                value: c.id,
+                label: `Grade ${c.grade}-${c.section}`,
+              }))}
+              value={selectedClassId}
+              onChange={setSelectedClassId}
+              required
+              ariaLabel="Editing timetable for"
+              placeholder="Search class…"
+              recallKey="timetable-class"
+            />
+          </div>
         </div>
 
         <BuilderGrid
@@ -142,17 +145,20 @@ export function TimetableConsole({
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <select
-            value={selectedClassId}
-            onChange={(e) => setSelectedClassId(e.target.value)}
-            className="w-full max-w-xs rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong"
-          >
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                Grade {c.grade}-{c.section}
-              </option>
-            ))}
-          </select>
+          <div className="w-full max-w-xs">
+            <ComboBox
+              options={classes.map((c) => ({
+                value: c.id,
+                label: `Grade ${c.grade}-${c.section}`,
+              }))}
+              value={selectedClassId}
+              onChange={setSelectedClassId}
+              required
+              ariaLabel="Class"
+              placeholder="Search class…"
+              recallKey="timetable-class"
+            />
+          </div>
           <TimetableGrid periods={periods} cells={classCells} />
         </div>
       )}

@@ -9,6 +9,7 @@ import {
 import { CloseIcon, PlusIcon } from "./icons";
 import { useToast } from "./toast-provider";
 import { SubjectPicker } from "./subject-picker";
+import { ComboBox } from "./combobox";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -74,19 +75,17 @@ function ClassTeacherSection({ cls, staff }: { cls: ClassSection; staff: StaffLi
     <section className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
       <h2 className="font-heading text-xl text-maroon">Class teacher</h2>
       <div className="mt-3 flex items-center gap-3">
-        <select
-          value={value}
-          disabled={pending}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full max-w-xs rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong disabled:opacity-60"
-        >
-          <option value="">— Unassigned —</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <div className="w-full max-w-xs">
+          <ComboBox
+            options={staff.map((s) => ({ value: s.id, label: s.name }))}
+            value={value}
+            disabled={pending}
+            onChange={onChange}
+            emptyLabel="— Unassigned —"
+            placeholder="Search staff…"
+            ariaLabel="Class teacher"
+          />
+        </div>
         {pending && <span className="text-sm text-slate">Saving…</span>}
         {error && <span className="text-sm text-rose-600">{error}</span>}
       </div>
@@ -154,17 +153,16 @@ function SubjectTeacherSection({
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium text-maroon">Teacher</span>
-          <select
-            value={teacherId}
-            onChange={(e) => setTeacherId(e.target.value)}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base"
-          >
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <div className="w-56">
+            <ComboBox
+              options={staff.map((s) => ({ value: s.id, label: s.name }))}
+              value={teacherId}
+              onChange={setTeacherId}
+              placeholder="Search teacher…"
+              ariaLabel="Teacher"
+              recallKey="class-subject-teacher"
+            />
+          </div>
         </label>
         <button
           onClick={add}

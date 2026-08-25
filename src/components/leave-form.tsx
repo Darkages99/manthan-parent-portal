@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { requestLeave } from "@/app/(parent)/leave/actions";
 import { Button } from "@/components/button";
+import { ComboBox } from "@/components/combobox";
 import { useToast } from "@/components/toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -20,6 +21,7 @@ export function LeaveForm({ students }: { students: Tables<"students">[] }) {
   const [open, setOpen] = useState(false);
   const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const toast = useToast();
 
   async function handleAction(formData: FormData) {
@@ -53,13 +55,19 @@ export function LeaveForm({ students }: { students: Tables<"students">[] }) {
     >
       <label className="flex flex-col gap-1.5 text-base sm:col-span-2">
         <span className="font-medium text-maroon">Child</span>
-        <select name="studentId" required className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base">
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.first_name} {s.last_name}
-            </option>
-          ))}
-        </select>
+        <ComboBox
+          name="studentId"
+          required
+          options={students.map((s) => ({
+            value: s.id,
+            label: `${s.first_name} ${s.last_name}`,
+          }))}
+          value={studentId}
+          onChange={setStudentId}
+          placeholder="Choose child…"
+          ariaLabel="Child"
+          className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base text-slate-strong"
+        />
       </label>
 
       <label className="flex flex-col gap-1.5 text-base">
