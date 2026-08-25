@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { createHomework, updateHomework, deleteHomework } from "@/app/(staff)/console/homework/actions";
 import { SubjectPicker } from "./subject-picker";
+import { Button } from "./button";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -183,21 +184,12 @@ function CurrentHomeworkCard({
           aria-label="Due date"
         />
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={save}
-            disabled={pending}
-            className="rounded-sm bg-maroon px-3 py-1.5 text-sm font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
-          >
+          <Button type="button" size="sm" onClick={save} loading={pending}>
             Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            className="rounded-sm border border-hairline px-3 py-1.5 text-sm font-medium text-slate-strong hover:bg-mist"
-          >
+          </Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(false)}>
             Cancel
-          </button>
+          </Button>
         </div>
         {error && <p className="text-sm text-rose-600">{error}</p>}
       </li>
@@ -313,14 +305,15 @@ function AddHomeworkForm({ classes, subjects }: { classes: ClassSection[]; subje
           />
         </label>
       </div>
-      <button
+      <Button
         type="button"
         onClick={add}
-        disabled={pending || !classId || !title.trim() || !dueDate}
-        className="mt-4 rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+        loading={pending}
+        disabled={!classId || !title.trim() || !dueDate}
+        className="mt-4 px-5 py-2.5"
       >
-        {pending ? "Adding…" : "Add homework"}
-      </button>
+        Add homework
+      </Button>
       {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
     </div>
   );

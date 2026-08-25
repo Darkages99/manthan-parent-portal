@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMeeting } from "@/app/(staff)/console/ptm/actions";
 import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
+import { Button } from "./button";
 import { PlusIcon } from "./icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -172,14 +173,15 @@ export function CreatePtmForm({
           </select>
         </label>
       </div>
-      <button
+      <Button
         onClick={submit}
-        disabled={isPending || !classId || !date || teacherIds.length === 0 || !adminId}
-        className="mt-4 inline-flex items-center justify-center gap-2 rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+        loading={isPending}
+        disabled={!classId || !date || teacherIds.length === 0 || !adminId}
+        icon={<PlusIcon className="h-5 w-5" />}
+        className="mt-4 px-5 py-2.5"
       >
-        <PlusIcon className="h-5 w-5" />
-        {isPending ? "Creating…" : "Create PTM"}
-      </button>
+        Create PTM
+      </Button>
       {error && <p className="mt-3 text-base text-rose-700">{error}</p>}
     </div>
   );

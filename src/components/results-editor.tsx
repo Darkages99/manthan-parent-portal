@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { upsertResult, deleteResult } from "@/app/(staff)/console/results/actions";
 import { GRADE_OPTIONS, TERM_OPTIONS, withCurrentValue } from "@/lib/grades";
+import { Button } from "./button";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -141,23 +142,13 @@ function ResultRow({
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           {dirty && (
-            <button
-              type="button"
-              onClick={save}
-              disabled={pending}
-              className="rounded-sm bg-rust px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
-            >
+            <Button type="button" size="sm" onClick={save} loading={pending}>
               Save
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            onClick={remove}
-            disabled={pending}
-            className="rounded-sm border border-hairline px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-60"
-          >
+          <Button type="button" size="sm" variant="danger" onClick={remove} disabled={pending}>
             Delete
-          </button>
+          </Button>
         </div>
         {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
       </td>
@@ -230,14 +221,15 @@ function AddResultRow({ studentId, subjects }: { studentId: string; subjects: st
         <GradeSelect value={grade} onChange={setGrade} className="w-20" />
       </td>
       <td className="px-3 py-2">
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={add}
-          disabled={pending || !term || !subject || !marks}
-          className="rounded-sm bg-maroon px-3 py-1.5 text-sm font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+          loading={pending}
+          disabled={!term || !subject || !marks}
         >
           Add
-        </button>
+        </Button>
         {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
       </td>
     </tr>
