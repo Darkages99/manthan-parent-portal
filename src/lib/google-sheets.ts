@@ -15,6 +15,14 @@ import type { Enums } from "@/lib/supabase/database.types";
 // mutate them). Additions/amendments apply automatically; a row that
 // disappears from the sheet is queued in `sheet_sync_pending_deletions`
 // rather than deleted, so a super_admin has to confirm data loss explicitly.
+//
+// A tab that has never had any data rows (freshly provisioned sheet, or one
+// that was cleared entirely) is treated as "not yet seeded" rather than
+// "everything in it was deleted" — the sync exports the current Postgres
+// rows into that tab first, then reads them back through the normal path
+// below. This only fires while a tab is completely empty; once it has at
+// least one data row, removing a row is again treated as an intentional
+// deletion request.
 // ---------------------------------------------------------------------------
 
 const SCOPES = [
@@ -151,10 +159,12 @@ export async function syncFromSheet(): Promise<void> {
     // Order matters: later tabs resolve human-readable cross-refs against
     // rows written by earlier ones (Students needs ClassSections, Guardians
     // needs Students, Timetable needs ClassSections/Subjects/Teachers).
+    await exportTeachersIfEmpty(sheets, spreadsheetId, supabase);
     await syncTeachers(sheets, spreadsheetId, supabase, seenIds.staff);
     const { data: staffRows } = await supabase.from("staff").select("id, name, role");
     const staffByName = new Map((staffRows ?? []).map((s) => [normalize(s.name), s]));
 
+    await exportClassSectionsIfEmpty(sheets, spreadsheetId, supabase);
     await syncClassSections(sheets, spreadsheetId, supabase, seenIds.class_sections, staffByName);
     const { data: classSectionRows } = await supabase
       .from("class_sections")
@@ -163,10 +173,12 @@ export async function syncFromSheet(): Promise<void> {
       (classSectionRows ?? []).map((c) => [normalize(classSectionLabel(c)), c])
     );
 
+    await exportSubjectsIfEmpty(sheets, spreadsheetId, supabase);
     await syncSubjects(sheets, spreadsheetId, supabase, seenIds.subjects);
     const { data: subjectRows } = await supabase.from("subjects").select("id, name");
     const subjectByName = new Map((subjectRows ?? []).map((s) => [normalize(s.name), s]));
 
+    await exportStudentsIfEmpty(sheets, spreadsheetId, supabase);
     await syncStudents(sheets, spreadsheetId, supabase, seenIds.students, classSectionByLabel);
     const { data: studentRows } = await supabase.from("students").select("id, roll_no");
     const studentIdsByRollNo = new Map<string, string[]>();
@@ -175,11 +187,13 @@ export async function syncFromSheet(): Promise<void> {
       studentIdsByRollNo.set(key, [...(studentIdsByRollNo.get(key) ?? []), s.id]);
     }
 
+    await exportGuardiansIfEmpty(sheets, spreadsheetId, supabase);
     await syncGuardians(sheets, spreadsheetId, supabase, seenIds.guardians, studentIdsByRollNo);
 
     const { data: periodRows } = await supabase
       .from("timetable_periods")
       .select("id, label, position");
+    await exportTimetableIfEmpty(sheets, spreadsheetId, supabase);
     await syncTimetable(
       sheets,
       spreadsheetId,
@@ -217,6 +231,195 @@ export async function syncFromSheet(): Promise<void> {
       console.error("[google-sheets] failed to record failed sync run:", innerErr);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Seed-export helpers. Each checks whether its tab has zero data rows and,
+// if so, appends the current Postgres rows for that entity before the
+// matching sync* processor reads the tab — see the file-header comment.
+// ---------------------------------------------------------------------------
+
+async function exportTeachersIfEmpty(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  supabase: AdminClient
+) {
+  const rows = await readTab(sheets, spreadsheetId, "Teachers");
+  if (rows.length > 0) return;
+  const { data } = await supabase.from("staff").select("id, name, role, phone").order("name");
+  if (!data?.length) return;
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "Teachers!A2",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: data.map((s) => [s.id, s.name, s.role, s.phone, ""]) },
+  });
+}
+
+async function exportClassSectionsIfEmpty(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  supabase: AdminClient
+) {
+  const rows = await readTab(sheets, spreadsheetId, "ClassSections");
+  if (rows.length > 0) return;
+  const { data: sections } = await supabase
+    .from("class_sections")
+    .select("id, academic_year, grade, section, class_teacher_id")
+    .order("grade");
+  if (!sections?.length) return;
+  const { data: staffRows } = await supabase.from("staff").select("id, name");
+  const staffById = new Map((staffRows ?? []).map((s) => [s.id, s.name]));
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "ClassSections!A2",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: sections.map((c) => [
+        c.id,
+        c.academic_year,
+        c.grade,
+        c.section,
+        c.class_teacher_id ? staffById.get(c.class_teacher_id) ?? "" : "",
+        "",
+      ]),
+    },
+  });
+}
+
+async function exportSubjectsIfEmpty(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  supabase: AdminClient
+) {
+  const rows = await readTab(sheets, spreadsheetId, "Subjects");
+  if (rows.length > 0) return;
+  const { data } = await supabase.from("subjects").select("id, name").order("name");
+  if (!data?.length) return;
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "Subjects!A2",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: data.map((s) => [s.id, s.name, ""]) },
+  });
+}
+
+async function exportStudentsIfEmpty(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  supabase: AdminClient
+) {
+  const rows = await readTab(sheets, spreadsheetId, "Students");
+  if (rows.length > 0) return;
+  const { data: students } = await supabase
+    .from("students")
+    .select("id, first_name, last_name, roll_no, class_section_id, photo_url")
+    .order("roll_no");
+  if (!students?.length) return;
+  const { data: sections } = await supabase
+    .from("class_sections")
+    .select("id, grade, section, academic_year");
+  const labelById = new Map((sections ?? []).map((c) => [c.id, classSectionLabel(c)]));
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "Students!A2",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: students.map((s) => [
+        s.id,
+        s.first_name,
+        s.last_name,
+        s.roll_no,
+        labelById.get(s.class_section_id) ?? "",
+        s.photo_url ?? "",
+        "",
+      ]),
+    },
+  });
+}
+
+async function exportGuardiansIfEmpty(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  supabase: AdminClient
+) {
+  const rows = await readTab(sheets, spreadsheetId, "Guardians");
+  if (rows.length > 0) return;
+  const { data: guardians } = await supabase
+    .from("guardians")
+    .select("id, name, relation, phone, email")
+    .order("name");
+  if (!guardians?.length) return;
+  const { data: links } = await supabase.from("guardian_student").select("guardian_id, student_id");
+  const { data: students } = await supabase.from("students").select("id, roll_no");
+  const rollNoById = new Map((students ?? []).map((s) => [s.id, s.roll_no]));
+  const rollNosByGuardian = new Map<string, string[]>();
+  for (const link of links ?? []) {
+    const rollNo = rollNoById.get(link.student_id);
+    if (!rollNo) continue;
+    rollNosByGuardian.set(link.guardian_id, [...(rollNosByGuardian.get(link.guardian_id) ?? []), rollNo]);
+  }
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "Guardians!A2",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: guardians.map((g) => [
+        g.id,
+        g.name,
+        g.relation,
+        g.phone,
+        g.email ?? "",
+        (rollNosByGuardian.get(g.id) ?? []).join(", "),
+        "",
+      ]),
+    },
+  });
+}
+
+async function exportTimetableIfEmpty(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  supabase: AdminClient
+) {
+  const rows = await readTab(sheets, spreadsheetId, "Timetable");
+  if (rows.length > 0) return;
+  const { data: entries } = await supabase
+    .from("timetable_entries")
+    .select("id, class_section_id, subject_id, day_of_week, period_id, teacher_id");
+  if (!entries?.length) return;
+  const [{ data: sections }, { data: subjects }, { data: staffRows }, { data: periods }] = await Promise.all([
+    supabase.from("class_sections").select("id, grade, section, academic_year"),
+    supabase.from("subjects").select("id, name"),
+    supabase.from("staff").select("id, name"),
+    supabase.from("timetable_periods").select("id, label, position"),
+  ]);
+  const sectionLabelById = new Map((sections ?? []).map((c) => [c.id, classSectionLabel(c)]));
+  const subjectNameById = new Map((subjects ?? []).map((s) => [s.id, s.name]));
+  const staffNameById = new Map((staffRows ?? []).map((s) => [s.id, s.name]));
+  const periodLabelById = new Map((periods ?? []).map((p) => [p.id, p.label]));
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: "Timetable!A2",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: entries.map((e) => [
+        e.id,
+        sectionLabelById.get(e.class_section_id) ?? "",
+        e.subject_id ? subjectNameById.get(e.subject_id) ?? "" : "",
+        String(e.day_of_week),
+        periodLabelById.get(e.period_id) ?? "",
+        e.teacher_id ? staffNameById.get(e.teacher_id) ?? "" : "",
+        "",
+      ]),
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

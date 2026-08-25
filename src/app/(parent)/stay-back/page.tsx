@@ -28,9 +28,16 @@ export default async function StayBackPage({
     .order("created_at", { ascending: false });
   if (from) consentsQuery = consentsQuery.gte("stay_date", from);
 
-  const [{ data: consents }, { data: teachers }] = await Promise.all([
+  const [{ data: consents }, { data: teachers }, { data: lastConsent }] = await Promise.all([
     consentsQuery,
     supabase.from("staff").select("*").in("role", ["class_teacher", "principal"]),
+    supabase
+      .from("stay_back_consents")
+      .select("mode_of_transport")
+      .eq("raised_by_guardian_id", viewer.guardian.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const exportQuery = range ? new URLSearchParams({ range }).toString() : "";
@@ -69,7 +76,11 @@ export default async function StayBackPage({
         </p>
       </div>
 
-      <StayBackForm students={viewer.students} teachers={teachers ?? []} />
+      <StayBackForm
+        students={viewer.students}
+        teachers={teachers ?? []}
+        defaultTransport={lastConsent?.mode_of_transport}
+      />
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Your requests</h2>

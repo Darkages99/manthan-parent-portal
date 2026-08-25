@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { createStaffAccount, updateStaffRole, setStaffActive } from "@/app/(staff)/console/staff/actions";
 import { ROLE_LABELS, roleLabel } from "@/lib/role-labels";
+import { Dialog } from "./dialog";
 import { PlusIcon } from "./icons";
 import { useToast } from "./toast-provider";
 import type { Enums, Tables } from "@/lib/supabase/database.types";
@@ -19,6 +20,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Enums<"role"> | "all">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = list.filter((s) => {
     if (roleFilter !== "all" && s.role !== roleFilter) return false;
@@ -31,8 +33,6 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <CreateStaffForm onCreated={(row) => setList((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)))} />
-
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-1 min-w-[200px] flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Search</span>
@@ -70,7 +70,21 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
             <option value="inactive">Deactivated</option>
           </select>
         </label>
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-sm border border-hairline bg-surface px-4 py-2.5 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Add staff
+        </button>
       </div>
+
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} title="Add staff">
+        <CreateStaffForm
+          onCreated={(row) => setList((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)))}
+        />
+      </Dialog>
 
       <div className="overflow-hidden rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
         <table className="w-full text-left">
@@ -222,9 +236,8 @@ function CreateStaffForm({ onCreated }: { onCreated: (row: StaffRow) => void }) 
   }
 
   return (
-    <div className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
-      <h2 className="mb-4 font-heading text-xl text-maroon">Add staff</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Name</span>
           <input

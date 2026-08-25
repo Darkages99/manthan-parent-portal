@@ -72,6 +72,8 @@ function buildNavItems(
               classSectionId: c.id,
             })),
           },
+          { href: "/console/students", label: "Students", icon: ClassIcon },
+          { href: "/console/parents", label: "Parents", icon: UsersIcon },
           { href: "/console/staff", label: "Staff", icon: UsersIcon },
           { href: "/console/results", label: "Results", icon: AwardIcon },
           { href: "/console/competitions", label: "Competitions", icon: AwardIcon },

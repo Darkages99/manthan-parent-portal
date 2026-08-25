@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CreatePtmForm } from "@/components/create-ptm-form";
+import { CreatePtmTrigger } from "@/components/create-ptm-trigger";
 import { EmptyState } from "@/components/empty-state";
 import { UsersIcon } from "@/components/icons";
 import { getViewer } from "@/lib/session";
@@ -74,19 +74,20 @@ export default async function StaffPtm() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Meetings</p>
-        <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">PTMs</h1>
-        <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          {canCreate
-            ? "Create a parent–teacher meeting for a class, assign its teachers and an approving front office staff member, then open time slots for parents to book."
-            : "Meetings you're involved in, and their booking slots."}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Meetings</p>
+          <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">PTMs</h1>
+          <p className="mt-2 max-w-prose text-lg text-slate-strong">
+            {canCreate
+              ? "Create a parent–teacher meeting for a class, assign its teachers and an approving front office staff member, then open time slots for parents to book."
+              : "Meetings you're involved in, and their booking slots."}
+          </p>
+        </div>
+        {canCreate && (
+          <CreatePtmTrigger classes={allClasses ?? []} teachers={teachers ?? []} admins={admins ?? []} />
+        )}
       </div>
-
-      {canCreate && (
-        <CreatePtmForm classes={allClasses ?? []} teachers={teachers ?? []} admins={admins ?? []} />
-      )}
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Your PTMs</h2>
@@ -94,7 +95,7 @@ export default async function StaffPtm() {
           <EmptyState
             icon={UsersIcon}
             title="No PTMs yet"
-            detail={canCreate ? "Create one above to start opening booking slots for a class." : "None assigned to you yet."}
+            detail={canCreate ? "Use Create PTM above to start opening booking slots for a class." : "None assigned to you yet."}
           />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

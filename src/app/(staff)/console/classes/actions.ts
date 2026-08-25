@@ -5,6 +5,43 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePrincipal } from "@/lib/roles";
 import { getViewer } from "@/lib/session";
 
+/** Edits a class section's grade and section label. */
+export async function updateClassSection(id: string, input: { grade: string; section: string }) {
+  await requirePrincipal();
+  if (!id) throw new Error("Class is required");
+  if (!input.grade.trim() || !input.section.trim()) throw new Error("Grade and section are required");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("class_sections")
+    .update({ grade: input.grade.trim(), section: input.section.trim() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/console/classes");
+  revalidatePath(`/console/classes/${id}`);
+}
+
+/** Deletes a class section. Blocked while any student is still assigned to
+ * it (the FK is NO ACTION) — the caller should reassign or remove those
+ * students first. */
+export async function deleteClassSection(id: string) {
+  await requirePrincipal();
+  if (!id) throw new Error("Class is required");
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("students")
+    .select("id", { count: "exact", head: true })
+    .eq("class_section_id", id);
+  if (count && count > 0) {
+    throw new Error(`Can't delete — ${count} student${count === 1 ? "" : "s"} still assigned to this class.`);
+  }
+
+  const { error } = await supabase.from("class_sections").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/console/classes");
+}
+
 /** Assigns (or clears, when staffId is null) the class teacher for a section. */
 export async function assignClassTeacher(classSectionId: string, staffId: string | null) {
   await requirePrincipal();

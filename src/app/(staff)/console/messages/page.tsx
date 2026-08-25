@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ComposeForm } from "@/components/compose-form";
+import { ComposeMessageTrigger } from "@/components/compose-message-trigger";
 import { SentMessagesList } from "@/components/sent-messages-list";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
@@ -77,30 +77,31 @@ export default async function MessagesPage() {
             everything you&apos;ve sent.
           </p>
         </div>
-        {isAdmin && (
-          <div className="flex shrink-0 gap-2">
-            <Link
-              href="/console/messages/groups"
-              className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
-            >
-              Manage custom groups
-            </Link>
-            <Link
-              href="/console/messages/permissions"
-              className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
-            >
-              Send permissions
-            </Link>
-          </div>
-        )}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {isAdmin && (
+            <>
+              <Link
+                href="/console/messages/groups"
+                className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+              >
+                Manage custom groups
+              </Link>
+              <Link
+                href="/console/messages/permissions"
+                className="rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+              >
+                Send permissions
+              </Link>
+            </>
+          )}
+          <ComposeMessageTrigger
+            classSections={classSections ?? []}
+            students={studentOptions}
+            groups={groups ?? []}
+            isTeacher={isTeacher}
+          />
+        </div>
       </div>
-
-      <ComposeForm
-        classSections={classSections ?? []}
-        students={studentOptions}
-        groups={groups ?? []}
-        isTeacher={isTeacher}
-      />
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Sent messages</h2>

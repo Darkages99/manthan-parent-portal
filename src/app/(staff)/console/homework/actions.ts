@@ -121,27 +121,39 @@ export async function deleteHomework(id: string) {
   revalidatePath("/console/homework");
 }
 
-/** Marks a student submitted (deletes their row) or not submitted (creates
- * one) for a homework assignment. No row = submitted, by design — see
- * migration 0034_homework_submissions.sql. */
-export async function toggleSubmission(homeworkId: string, studentId: string, submitted: boolean) {
+/** Fetches whether an assignment defaults to "everyone done" (checked) or
+ * "everyone not done" (unchecked), scoped like the other actions above. */
+async function getChecked(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  classIds: string[] | null,
+  homeworkId: string
+): Promise<boolean> {
+  const { data: existing } = await supabase
+    .from("homework_assignments")
+    .select("class_section_id, checked")
+    .eq("id", homeworkId)
+    .single();
+  if (!existing) throw new Error("Homework assignment not found");
+  if (classIds && !classIds.includes(existing.class_section_id)) {
+    throw new Error("You can only manage homework for your own class");
+  }
+  return existing.checked;
+}
+
+/** Marks a student done or not done for a homework assignment. A
+ * homework_submissions row is only an override relative to the
+ * assignment's `checked` default (see migration 0036), so whether it
+ * should exist depends on both the target state and the current default —
+ * it's present exactly when `done` disagrees with the default. */
+export async function toggleSubmission(homeworkId: string, studentId: string, done: boolean) {
   const { classIds } = await scopedStaff();
   if (!homeworkId || !studentId) throw new Error("Homework and student are required");
 
   const supabase = await createClient();
+  const checked = await getChecked(supabase, classIds, homeworkId);
+  const shouldHaveRow = done !== checked;
 
-  if (classIds) {
-    const { data: existing } = await supabase
-      .from("homework_assignments")
-      .select("class_section_id")
-      .eq("id", homeworkId)
-      .single();
-    if (!existing || !classIds.includes(existing.class_section_id)) {
-      throw new Error("You can only manage homework for your own class");
-    }
-  }
-
-  if (submitted) {
+  if (!shouldHaveRow) {
     const { error } = await supabase
       .from("homework_submissions")
       .delete()
@@ -154,6 +166,41 @@ export async function toggleSubmission(homeworkId: string, studentId: string, su
       .upsert({ homework_id: homeworkId, student_id: studentId }, { onConflict: "homework_id,student_id" });
     if (error) throw new Error(error.message);
   }
+
+  revalidatePath(`/console/homework/${homeworkId}`);
+  revalidatePath("/console/homework");
+}
+
+/** Flips an assignment's default between "not done for everyone" (the
+ * initial state) and "done for everyone unless marked otherwise" (after the
+ * teacher clicks Checked). Existing per-student overrides are cleared on
+ * flip — otherwise they'd silently invert meaning under the new default. */
+export async function toggleAllChecked(homeworkId: string, checked: boolean) {
+  const { classIds } = await scopedStaff();
+  if (!homeworkId) throw new Error("Homework is required");
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("homework_assignments")
+    .select("class_section_id")
+    .eq("id", homeworkId)
+    .single();
+  if (!existing) throw new Error("Homework assignment not found");
+  if (classIds && !classIds.includes(existing.class_section_id)) {
+    throw new Error("You can only manage homework for your own class");
+  }
+
+  const { error: clearError } = await supabase
+    .from("homework_submissions")
+    .delete()
+    .eq("homework_id", homeworkId);
+  if (clearError) throw new Error(clearError.message);
+
+  const { error } = await supabase
+    .from("homework_assignments")
+    .update({ checked })
+    .eq("id", homeworkId);
+  if (error) throw new Error(error.message);
 
   revalidatePath(`/console/homework/${homeworkId}`);
   revalidatePath("/console/homework");

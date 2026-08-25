@@ -60,6 +60,7 @@ export function HomeworkConsole({
                 subjects={subjects}
                 classLabelText={classLabel(classById.get(h.class_section_id))}
                 subjectName={h.subject_id ? subjectById.get(h.subject_id) : undefined}
+                notSubmittedCount={notSubmittedCounts[h.id] ?? 0}
               />
             ))}
           </ul>
@@ -105,12 +106,14 @@ function CurrentHomeworkCard({
   subjects,
   classLabelText,
   subjectName,
+  notSubmittedCount,
 }: {
   homework: Homework;
   classes: ClassSection[];
   subjects: Subject[];
   classLabelText: string;
   subjectName?: string;
+  notSubmittedCount: number;
 }) {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -202,14 +205,19 @@ function CurrentHomeworkCard({
   }
 
   return (
-    <li className="flex flex-col gap-1.5 rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]">
-      <p className="font-semibold text-maroon">{homework.title}</p>
-      <p className="text-sm text-slate-strong">
-        {classLabelText}
-        {subjectName && ` · ${subjectName}`}
-      </p>
-      {homework.description && <p className="text-sm text-slate">{homework.description}</p>}
-      <p className="text-sm text-slate">Due {homework.due_date}</p>
+    <li className="flex flex-col gap-1.5 rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)] transition hover:border-rust/60">
+      <Link href={`/console/homework/${homework.id}`} className="flex flex-col gap-1.5">
+        <p className="font-semibold text-maroon">{homework.title}</p>
+        <p className="text-sm text-slate-strong">
+          {classLabelText}
+          {subjectName && ` · ${subjectName}`}
+        </p>
+        {homework.description && <p className="text-sm text-slate">{homework.description}</p>}
+        <p className="text-sm text-slate">Due {homework.due_date}</p>
+        <p className="pt-1 text-sm font-semibold text-rust">
+          {notSubmittedCount > 0 ? `${notSubmittedCount} not done →` : "All done →"}
+        </p>
+      </Link>
       <div className="mt-auto flex items-center gap-3 pt-2">
         <button
           type="button"

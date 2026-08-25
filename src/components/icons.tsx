@@ -256,6 +256,16 @@ export function CloseIcon(p: IconProps) {
   );
 }
 
+export function MoreIcon(p: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={p.className ?? base} aria-hidden>
+      <circle cx="12" cy="5" r="1.75" />
+      <circle cx="12" cy="12" r="1.75" />
+      <circle cx="12" cy="19" r="1.75" />
+    </svg>
+  );
+}
+
 export function SidebarIcon(p: IconProps) {
   return (
     <Svg {...p}>

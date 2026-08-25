@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { TimetableConsole } from "@/components/timetable-console";
 import { PeriodEditor } from "@/components/period-editor";
+import { TimetableCsvImport } from "@/components/timetable-csv-import";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { sortPeriods } from "@/lib/timetable";
@@ -44,7 +45,12 @@ export default async function ConsoleTimetable() {
         </p>
       </div>
 
-      {canEdit && <PeriodEditor periods={periods ?? []} />}
+      {canEdit && (
+        <>
+          <PeriodEditor periods={periods ?? []} />
+          <TimetableCsvImport />
+        </>
+      )}
 
       <TimetableConsole
         canEdit={canEdit}

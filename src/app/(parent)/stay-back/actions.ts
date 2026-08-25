@@ -7,6 +7,7 @@ import { getViewer } from "@/lib/session";
 import { sendPush } from "@/lib/notifications/push";
 import { createApprovalChain } from "@/lib/approvals";
 import { buildStayBackChainSteps } from "@/lib/stay-back-chain";
+import { TRANSPORT_PARENT_ARRANGED, TRANSPORT_SELF_RETURN } from "@/lib/stay-back-transport";
 
 export async function raiseStayBack(formData: FormData) {
   const viewer = await getViewer();
@@ -18,13 +19,13 @@ export async function raiseStayBack(formData: FormData) {
   const date = String(formData.get("date"));
   const fromTime = String(formData.get("fromTime"));
   const toTime = String(formData.get("toTime"));
-  const foodTransportAgreed = formData.get("foodTransportAgreed") === "on";
+  const modeOfTransport = String(formData.get("modeOfTransport"));
 
   if (!studentId || !teacherId || !reason || !date || !fromTime || !toTime) {
     throw new Error("All fields are required");
   }
-  if (!foodTransportAgreed) {
-    throw new Error("Please confirm you'll arrange food and transportation for your child");
+  if (modeOfTransport !== TRANSPORT_PARENT_ARRANGED && modeOfTransport !== TRANSPORT_SELF_RETURN) {
+    throw new Error("Please choose how your child will get home");
   }
 
   const supabase = await createClient();
@@ -45,7 +46,7 @@ export async function raiseStayBack(formData: FormData) {
       stay_date: date,
       from_time: fromTime,
       to_time: toTime,
-      mode_of_transport: "Parent-arranged",
+      mode_of_transport: modeOfTransport,
     })
     .select("id")
     .single();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { StatusPill } from "@/components/status-pill";
 import { ApprovalChain } from "@/components/approval-chain";
@@ -20,6 +20,7 @@ export function StayBackApprovalList({
   students,
   teachers,
   guardianPhones,
+  guardianNames,
   staffNames,
   viewer,
   stepsByConsent,
@@ -28,22 +29,60 @@ export function StayBackApprovalList({
   students: Tables<"students">[];
   teachers: Tables<"staff">[];
   guardianPhones: Record<string, string>;
+  /** guardian id → display name, for the "raised by" search below. */
+  guardianNames: Record<string, string>;
   /** staff id → display name, for showing who acted on / owns each step. */
   staffNames: Record<string, string>;
   viewer: Tables<"staff">;
   stepsByConsent: Record<string, Tables<"approval_steps">[]>;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
   const toast = useToast();
 
+  const studentById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
+
+  const sorted = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? consents.filter((c) => {
+          const student = studentById.get(c.student_id);
+          const haystack = [
+            student?.first_name,
+            student?.last_name,
+            guardianNames[c.raised_by_guardian_id],
+          ]
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(q);
+        })
+      : consents;
+
+    // Pending requests need attention first; within each group, newest first.
+    return [...filtered].sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      return b.created_at.localeCompare(a.created_at);
+    });
+  }, [consents, query, studentById, guardianNames]);
+
   return (
-    <motion.ul
-      variants={staggerContainer()}
-      initial="hidden"
-      animate="show"
-      className="flex flex-col gap-4"
-    >
-      {consents.map((c) => {
+    <div className="flex flex-col gap-4">
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search by student or parent name…"
+        className="w-full max-w-sm rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
+        aria-label="Search stay-back requests"
+      />
+
+      <motion.ul
+        variants={staggerContainer()}
+        initial="hidden"
+        animate="show"
+        className="flex flex-col gap-4"
+      >
+        {sorted.map((c) => {
         const student = students.find((s) => s.id === c.student_id);
         const teacher = teachers.find((t) => t.id === c.teacher_id);
         const parentPhone = guardianPhones[c.raised_by_guardian_id];
@@ -166,7 +205,12 @@ export function StayBackApprovalList({
           </motion.li>
         );
       })}
-      {consents.length === 0 && <p className="text-base text-slate">No stay-back requests yet.</p>}
-    </motion.ul>
+        {sorted.length === 0 && (
+          <p className="text-base text-slate">
+            {consents.length === 0 ? "No stay-back requests yet." : "No requests match this search."}
+          </p>
+        )}
+      </motion.ul>
+    </div>
   );
 }

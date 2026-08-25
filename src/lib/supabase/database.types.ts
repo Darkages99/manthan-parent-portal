@@ -534,6 +534,7 @@ export type Database = {
       }
       homework_assignments: {
         Row: {
+          checked: boolean
           class_section_id: string
           created_at: string
           description: string | null
@@ -544,6 +545,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          checked?: boolean
           class_section_id: string
           created_at?: string
           description?: string | null
@@ -554,6 +556,7 @@ export type Database = {
           title: string
         }
         Update: {
+          checked?: boolean
           class_section_id?: string
           created_at?: string
           description?: string | null
@@ -587,26 +590,59 @@ export type Database = {
           },
         ]
       }
+      homework_notifications: {
+        Row: {
+          homework_id: string
+          id: string
+          notified_at: string
+          student_id: string
+        }
+        Insert: {
+          homework_id: string
+          id?: string
+          notified_at?: string
+          student_id: string
+        }
+        Update: {
+          homework_id?: string
+          id?: string
+          notified_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_notifications_homework_id_fkey"
+            columns: ["homework_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_notifications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homework_submissions: {
         Row: {
           created_at: string
           homework_id: string
           id: string
-          notified_at: string | null
           student_id: string
         }
         Insert: {
           created_at?: string
           homework_id: string
           id?: string
-          notified_at?: string | null
           student_id: string
         }
         Update: {
           created_at?: string
           homework_id?: string
           id?: string
-          notified_at?: string | null
           student_id?: string
         }
         Relationships: [
@@ -1724,7 +1760,11 @@ export type Database = {
     Functions: {
       attendance_summary: {
         Args: { p_student_ids: string[] }
-        Returns: { student_id: string; total: number; present_pct: number }[]
+        Returns: {
+          present_pct: number
+          student_id: string
+          total: number
+        }[]
       }
       current_guardian_id: { Args: never; Returns: string }
       current_staff_id: { Args: never; Returns: string }

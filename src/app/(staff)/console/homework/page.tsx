@@ -39,13 +39,32 @@ export default async function ConsoleHomework() {
       : Promise.resolve({ data: [] as Tables<"homework_assignments">[] }),
   ]);
 
-  const pastHomeworkIds = (homework ?? []).filter((h) => h.due_date < today).map((h) => h.id);
-  const { data: submissionRows } = pastHomeworkIds.length
-    ? await supabase.from("homework_submissions").select("homework_id").in("homework_id", pastHomeworkIds)
-    : { data: [] as { homework_id: string }[] };
+  // notSubmittedCounts respects each assignment's `checked` default (see
+  // migration 0036): a homework_submissions row is an override, not an
+  // absolute "not done" marker, so the count differs depending on `checked`.
+  const allHomeworkIds = (homework ?? []).map((h) => h.id);
+  const [{ data: overrideRows }, { data: roster }] = await Promise.all([
+    allHomeworkIds.length
+      ? supabase.from("homework_submissions").select("homework_id").in("homework_id", allHomeworkIds)
+      : Promise.resolve({ data: [] as { homework_id: string }[] }),
+    classIds.length
+      ? supabase.from("students").select("id, class_section_id").in("class_section_id", classIds)
+      : Promise.resolve({ data: [] as { id: string; class_section_id: string }[] }),
+  ]);
+  const overrideCounts: Record<string, number> = {};
+  for (const r of overrideRows ?? []) {
+    overrideCounts[r.homework_id] = (overrideCounts[r.homework_id] ?? 0) + 1;
+  }
+  const rosterSizeByClass: Record<string, number> = {};
+  for (const s of roster ?? []) {
+    rosterSizeByClass[s.class_section_id] = (rosterSizeByClass[s.class_section_id] ?? 0) + 1;
+  }
   const notSubmittedCounts: Record<string, number> = {};
-  for (const r of submissionRows ?? []) {
-    notSubmittedCounts[r.homework_id] = (notSubmittedCounts[r.homework_id] ?? 0) + 1;
+  for (const h of homework ?? []) {
+    const overridden = overrideCounts[h.id] ?? 0;
+    notSubmittedCounts[h.id] = h.checked
+      ? overridden
+      : (rosterSizeByClass[h.class_section_id] ?? 0) - overridden;
   }
 
   return (

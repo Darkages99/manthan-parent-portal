@@ -23,3 +23,70 @@ export function toCsv(rows: Record<string, unknown>[]): string {
   }
   return lines.join("\r\n");
 }
+
+/**
+ * Parses a CSV string into rows of string cells, handling quoted fields
+ * (with escaped `""` and embedded commas/newlines) and both `\r\n` and `\n`
+ * line endings. The first row is assumed to be a header row.
+ */
+export function parseCsv(text: string): { header: string[]; rows: string[][] } {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+
+  const pushField = () => {
+    row.push(field);
+    field = "";
+  };
+  const pushRow = () => {
+    pushField();
+    if (row.some((c) => c !== "")) rows.push(row);
+    row = [];
+  };
+
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i++;
+        continue;
+      }
+      field += ch;
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+      i++;
+      continue;
+    }
+    if (ch === ",") {
+      pushField();
+      i++;
+      continue;
+    }
+    if (ch === "\r") {
+      i++;
+      continue;
+    }
+    if (ch === "\n") {
+      pushRow();
+      i++;
+      continue;
+    }
+    field += ch;
+    i++;
+  }
+  if (field !== "" || row.length > 0) pushRow();
+
+  const [header, ...dataRows] = rows;
+  return { header: (header ?? []).map((h) => h.trim()), rows: dataRows };
+}

@@ -76,6 +76,8 @@ function LandingForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   // Phone + OTP
   const [phone, setPhone] = useState("");
@@ -104,6 +106,25 @@ function LandingForm() {
     }
     router.push("/post-login");
     router.refresh();
+  }
+
+  async function handleForgotPassword() {
+    setPasswordError(null);
+    if (!email.includes("@")) {
+      setPasswordError("Enter your email above first, then tap “Forgot password”");
+      return;
+    }
+    setForgotLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      setPasswordError(error.message);
+      return;
+    }
+    setForgotSent(true);
   }
 
   async function handleSendCode(e: React.FormEvent) {
@@ -251,9 +272,22 @@ function LandingForm() {
                   {passwordError}
                 </p>
               )}
+              {forgotSent && (
+                <p className="rounded-lg border border-cream/20 bg-[rgba(0,0,0,0.22)] px-3 py-2 text-sm text-cream" role="status">
+                  If that email has an account, a reset link is on its way.
+                </p>
+              )}
 
               <button type="submit" disabled={passwordLoading} className={primaryButtonClass}>
                 {passwordLoading ? "Signing in…" : "Sign in"}
+              </button>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={forgotLoading}
+                className="text-center text-sm text-cream/70 underline-offset-2 transition hover:text-cream hover:underline disabled:opacity-60"
+              >
+                {forgotLoading ? "Sending…" : "Forgot password?"}
               </button>
             </form>
           )}
@@ -342,8 +376,11 @@ function LandingForm() {
         </div>
 
         <p className="mt-7 max-w-xs text-center text-sm leading-relaxed text-cream/70">
-          Accounts are set up by the school. Contact the front office if you don&apos;t have a
-          login yet.
+          Accounts are set up by the school.{" "}
+          <a href="/activate" className="underline-offset-2 hover:underline">
+            First time? Activate your account
+          </a>{" "}
+          or contact the front office if you don&apos;t have a login yet.
         </p>
       </div>
     </div>

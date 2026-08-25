@@ -21,6 +21,7 @@ export default async function HomeworkSubmissionsPage({
     .eq("id", id)
     .maybeSingle();
   if (!homework) notFound();
+  const checked = homework.checked;
 
   if (viewer.staff.role === "class_teacher") {
     const { data: cls } = await supabase
@@ -39,7 +40,7 @@ export default async function HomeworkSubmissionsPage({
       .order("roll_no"),
     supabase.from("homework_submissions").select("student_id").eq("homework_id", id),
   ]);
-  const notSubmittedIds = new Set((submissions ?? []).map((s) => s.student_id));
+  const overrideIds = (submissions ?? []).map((s) => s.student_id);
 
   const cls = homework.class_sections as { grade: string; section: string } | null;
   const subject = homework.subjects as { name: string } | null;
@@ -56,15 +57,16 @@ export default async function HomeworkSubmissionsPage({
         </p>
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">{homework.title}</h1>
         <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          Due {homework.due_date} — ticked means submitted. Unticked students&apos; guardians are
-          notified.
+          Due {homework.due_date} — ticked means done. Guardians of students still not done are
+          notified once the due date passes.
         </p>
       </div>
 
       <HomeworkSubmissionList
         homeworkId={homework.id}
         students={students ?? []}
-        notSubmittedIds={[...notSubmittedIds]}
+        overrideIds={overrideIds}
+        checked={checked}
       />
     </div>
   );

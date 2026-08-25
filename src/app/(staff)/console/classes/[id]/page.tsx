@@ -30,9 +30,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
         <Link href="/console/classes" className="text-sm font-medium text-rust hover:underline">
           ← All classes
         </Link>
-        <p className="mt-2 font-heading text-sm uppercase tracking-[0.18em] text-rust">
-          {cls.academic_year}
-        </p>
+        <p className="mt-2 font-heading text-sm uppercase tracking-[0.18em] text-rust">Administration</p>
         <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">
           Grade {cls.grade} - {cls.section}
         </h1>

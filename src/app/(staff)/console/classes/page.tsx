@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
+import { ClassCardMenu } from "@/components/class-card-menu";
 import { ClassIcon } from "@/components/icons";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
@@ -50,17 +51,14 @@ export default async function ConsoleClasses() {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(classes ?? []).map((c) => (
-            <li key={c.id}>
+            <li key={c.id} className="relative">
               <Link
                 href={`/console/classes/${c.id}`}
-                className="flex h-full flex-col gap-2 rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)] transition hover:border-rust/60"
+                className="flex h-full flex-col gap-2 rounded-sm border border-hairline bg-surface p-5 pr-11 shadow-[var(--shadow-card)] transition hover:border-rust/60"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-heading text-lg text-maroon">
-                    Grade {c.grade} - {c.section}
-                  </p>
-                  <span className="text-sm text-slate">{c.academic_year}</span>
-                </div>
+                <p className="font-heading text-lg text-maroon">
+                  Grade {c.grade} - {c.section}
+                </p>
                 <p className="text-base text-slate-strong">
                   {c.class_teacher_id ? staffName.get(c.class_teacher_id) ?? "Class teacher" : "No class teacher assigned"}
                 </p>
@@ -68,6 +66,9 @@ export default async function ConsoleClasses() {
                   {studentCountByClass.get(c.id) ?? 0} students · {teacherCountByClass.get(c.id) ?? 0} subject teachers
                 </p>
               </Link>
+              <div className="absolute right-2 top-2">
+                <ClassCardMenu classId={c.id} grade={c.grade} section={c.section} />
+              </div>
             </li>
           ))}
         </ul>

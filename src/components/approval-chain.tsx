@@ -52,7 +52,7 @@ export function ApprovalChain({
             <div key={step.id} className="flex items-start">
               {i > 0 && (
                 <div
-                  className={`mt-[19px] h-0.5 w-7 shrink-0 transition-colors duration-500 sm:w-10 ${
+                  className={`mt-[27px] h-0.5 w-7 shrink-0 transition-colors duration-500 sm:w-10 ${
                     blocked
                       ? "bg-slate-200 dark:bg-slate-700"
                       : prevApproved
@@ -62,7 +62,7 @@ export function ApprovalChain({
                 />
               )}
               <div className="flex w-16 shrink-0 flex-col items-center gap-1.5 sm:w-20" title={title}>
-                <div className="relative flex h-10 w-10 items-center justify-center">
+                <div className="relative mt-2 flex h-10 w-10 items-center justify-center">
                   {isYourTurn && (
                     <span className="absolute inset-0 animate-ping rounded-full bg-rose-400/50" />
                   )}
@@ -88,11 +88,8 @@ export function ApprovalChain({
                     )}
                   </div>
                 </div>
-                <span className="text-center text-[11px] font-medium leading-tight text-slate-strong">
-                  {roleLabel(step.approver_role as Enums<"role">)}
-                </span>
-                <span className="max-w-full truncate text-center text-[10px] leading-tight text-slate">
-                  {isYourTurn ? "Your turn" : name ?? " "}
+                <span className="max-w-full truncate text-center text-[11px] font-medium leading-tight text-slate-strong">
+                  {name ?? roleLabel(step.approver_role as Enums<"role">)}
                 </span>
               </div>
             </div>
