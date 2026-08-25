@@ -129,7 +129,7 @@ export function ComposeForm({
       setSelectedGroups([]);
       setAttachment(null);
       router.refresh();
-      toast.success("Message sent");
+      toast.celebrate("Message sent to parents");
       setTimeout(() => setSent(false), 4000);
     } catch (err) {
       setError((err as Error).message);

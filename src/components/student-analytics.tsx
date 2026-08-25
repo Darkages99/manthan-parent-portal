@@ -1,3 +1,4 @@
+import { TrendLine } from "./charts";
 import type { StudentAnalytics } from "@/lib/results-analytics";
 
 /** One student's performance snapshot: latest-term average, trend vs. the
@@ -77,23 +78,15 @@ export function StudentAnalyticsPanel({ analytics }: { analytics: StudentAnalyti
 
       {analytics.termAverages.length > 1 && (
         <div className="rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]">
-          <h3 className="font-heading text-sm uppercase tracking-wide text-slate">Term-over-term average</h3>
-          <ul className="mt-3 flex flex-col gap-2">
-            {[...analytics.termAverages].reverse().map((t) => (
-              <li key={t.term} className="flex items-center gap-3 text-sm">
-                <span className="w-24 shrink-0 truncate text-slate-strong">{t.term}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-mist">
-                  <div
-                    className={`h-full rounded-full ${t.percentage < 40 ? "bg-rose-500" : "bg-rust"}`}
-                    style={{ width: `${Math.min(100, Math.max(0, t.percentage))}%` }}
-                  />
-                </div>
-                <span className="w-14 shrink-0 text-right tabular-nums text-slate-strong">
-                  {t.percentage.toFixed(1)}%
-                </span>
-              </li>
-            ))}
-          </ul>
+          <h3 className="mb-1 font-heading text-sm uppercase tracking-wide text-slate">
+            Term-over-term average
+          </h3>
+          <TrendLine
+            valueSuffix="%"
+            points={[...analytics.termAverages]
+              .reverse()
+              .map((t) => ({ label: t.term, value: Math.round(t.percentage) }))}
+          />
         </div>
       )}
     </div>

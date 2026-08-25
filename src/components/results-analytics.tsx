@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { BarList } from "./charts";
 import type { ClassAnalytics } from "@/lib/results-analytics";
 
 /** Class-wide performance dashboard for the principal: pass rate, spread, and
@@ -90,27 +91,19 @@ export function ResultsAnalytics({
 
       {analytics.subjectAverages.length > 1 && (
         <div className="rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]">
-          <h3 className="font-heading text-sm uppercase tracking-wide text-slate">
+          <h3 className="mb-3 font-heading text-sm uppercase tracking-wide text-slate">
             Subject-wise average
           </h3>
-          <ul className="mt-3 flex flex-col gap-2">
-            {analytics.subjectAverages.map((s) => (
-              <li key={s.subject} className="flex items-center gap-3 text-sm">
-                <span className="w-36 shrink-0 truncate text-slate-strong">{s.subject}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-mist">
-                  <div
-                    className={`h-full rounded-full ${
-                      s.percentage < FAIL_BAR_PCT ? "bg-rose-500" : "bg-rust"
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(0, s.percentage))}%` }}
-                  />
-                </div>
-                <span className="w-14 shrink-0 text-right tabular-nums text-slate-strong">
-                  {s.percentage.toFixed(1)}%
-                </span>
-              </li>
-            ))}
-          </ul>
+          <BarList
+            percent
+            labelWidth="9rem"
+            items={analytics.subjectAverages.map((s) => ({
+              label: s.subject,
+              value: s.percentage,
+              display: `${s.percentage.toFixed(1)}%`,
+              color: s.percentage < FAIL_BAR_PCT ? "#f43f5e" : "var(--color-rust)",
+            }))}
+          />
         </div>
       )}
 

@@ -313,3 +313,12 @@ export function FilterIcon(p: IconProps) {
     </Svg>
   );
 }
+
+export function SearchIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-3.5-3.5" />
+    </Svg>
+  );
+}

@@ -4,6 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { StatusPill } from "@/components/status-pill";
 import { ApprovalChain } from "@/components/approval-chain";
+import { Button } from "@/components/button";
+import { Toolbar, SearchInput, SegmentedControl } from "@/components/filter-bar";
 import { decideStayBack, remindStayBackApprovers } from "@/app/(staff)/console/stay-back/actions";
 import { useToast } from "@/components/toast-provider";
 import { resolveApproverMatch } from "@/lib/approval-match";
@@ -12,6 +14,8 @@ import { formatTime } from "@/lib/format";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { BellIcon } from "@/components/icons";
 import type { Tables } from "@/lib/supabase/database.types";
+
+type StatusFilter = "all" | "pending" | "approved" | "declined";
 
 type Consent = Tables<"stay_back_consents">;
 
@@ -38,25 +42,32 @@ export function StayBackApprovalList({
 }) {
   const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
   const toast = useToast();
 
   const studentById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
 
+  const counts = useMemo(() => {
+    const c = { all: consents.length, pending: 0, approved: 0, declined: 0 };
+    for (const x of consents) c[x.status as "pending" | "approved" | "declined"] += 1;
+    return c;
+  }, [consents]);
+
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = q
-      ? consents.filter((c) => {
-          const student = studentById.get(c.student_id);
-          const haystack = [
-            student?.first_name,
-            student?.last_name,
-            guardianNames[c.raised_by_guardian_id],
-          ]
-            .join(" ")
-            .toLowerCase();
-          return haystack.includes(q);
-        })
-      : consents;
+    const filtered = consents.filter((c) => {
+      if (status !== "all" && c.status !== status) return false;
+      if (!q) return true;
+      const student = studentById.get(c.student_id);
+      const haystack = [
+        student?.first_name,
+        student?.last_name,
+        guardianNames[c.raised_by_guardian_id],
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
 
     // Pending requests need attention first; within each group, newest first.
     return [...filtered].sort((a, b) => {
@@ -64,17 +75,29 @@ export function StayBackApprovalList({
       if (a.status !== "pending" && b.status === "pending") return 1;
       return b.created_at.localeCompare(a.created_at);
     });
-  }, [consents, query, studentById, guardianNames]);
+  }, [consents, query, status, studentById, guardianNames]);
 
   return (
     <div className="flex flex-col gap-4">
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search by student or parent name…"
-        className="w-full max-w-sm rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-        aria-label="Search stay-back requests"
-      />
+      <Toolbar>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search student or parent…"
+          ariaLabel="Search stay-back requests"
+        />
+        <SegmentedControl<StatusFilter>
+          ariaLabel="Filter by status"
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: "all", label: "All", count: counts.all },
+            { value: "pending", label: "Pending", count: counts.pending },
+            { value: "approved", label: "Approved", count: counts.approved },
+            { value: "declined", label: "Declined", count: counts.declined },
+          ]}
+        />
+      </Toolbar>
 
       <motion.ul
         variants={staggerContainer()}
@@ -128,9 +151,12 @@ export function StayBackApprovalList({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <ApprovalChain steps={steps} staffNames={staffNames} highlightStepId={myStep?.id} />
                 {c.status === "pending" && steps.some((s) => s.decision === null) && (
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    disabled={isPending}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0"
+                    loading={isPending}
+                    icon={<BellIcon className="h-4 w-4" />}
                     onClick={() =>
                       startTransition(async () => {
                         try {
@@ -141,37 +167,33 @@ export function StayBackApprovalList({
                         }
                       })
                     }
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-hairline bg-surface px-3 py-1.5 text-sm font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
                   >
-                    <BellIcon className="h-4 w-4" />
                     Remind pending
-                  </motion.button>
+                  </Button>
                 )}
               </div>
             </div>
 
             {canDecide ? (
               <div className="flex flex-wrap gap-2 px-5 pb-5 pt-4">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  disabled={isPending}
+                <Button
+                  loading={isPending}
                   onClick={() =>
                     startTransition(async () => {
                       try {
                         await decideStayBack(c.id, "approved");
-                        toast.success("Approved");
+                        toast.celebrate(`Approved · ${student?.first_name ?? "request"}`);
                       } catch (err) {
                         toast.error((err as Error).message || "Couldn't approve");
                       }
                     })
                   }
-                  className="rounded-sm bg-maroon px-4 py-2 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
                 >
                   Approve
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  disabled={isPending}
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={isPending}
                   onClick={() =>
                     startTransition(async () => {
                       try {
@@ -182,10 +204,9 @@ export function StayBackApprovalList({
                       }
                     })
                   }
-                  className="rounded-sm border border-hairline bg-mist px-4 py-2 text-base font-semibold text-maroon hover:bg-parchment disabled:opacity-60"
                 >
                   Decline
-                </motion.button>
+                </Button>
               </div>
             ) : (
               c.status !== "pending" &&
@@ -207,7 +228,7 @@ export function StayBackApprovalList({
       })}
         {sorted.length === 0 && (
           <p className="text-base text-slate">
-            {consents.length === 0 ? "No stay-back requests yet." : "No requests match this search."}
+            {consents.length === 0 ? "No stay-back requests yet." : "No requests match these filters."}
           </p>
         )}
       </motion.ul>

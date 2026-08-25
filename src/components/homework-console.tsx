@@ -265,7 +265,7 @@ function AddHomeworkForm({ classes, subjects }: { classes: ClassSection[]; subje
         setTitle("");
         setDescription("");
         setDueDate("");
-        toast.success("Homework added");
+        toast.celebrate("Homework posted");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't add");
       }

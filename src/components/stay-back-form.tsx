@@ -4,18 +4,16 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { raiseStayBack } from "@/app/(parent)/stay-back/actions";
 import { TRANSPORT_PARENT_ARRANGED, TRANSPORT_SELF_RETURN } from "@/lib/stay-back-transport";
+import { Button } from "@/components/button";
+import { useToast } from "@/components/toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream transition hover:bg-maroon-strong disabled:opacity-60"
-    >
-      {pending ? "Sending…" : "Agree & continue"}
-    </button>
+    <Button type="submit" size="md" loading={pending} className="px-5 py-2.5">
+      Agree & continue
+    </Button>
   );
 }
 
@@ -34,11 +32,13 @@ export function StayBackForm({
   const [modeOfTransport, setModeOfTransport] = useState(
     defaultTransport === TRANSPORT_SELF_RETURN ? TRANSPORT_SELF_RETURN : TRANSPORT_PARENT_ARRANGED
   );
+  const toast = useToast();
 
   async function handleAction(formData: FormData) {
     setError(null);
     try {
       await raiseStayBack(formData);
+      toast.celebrate("Request sent — teacher & principal notified");
       setJustSent(true);
       setTimeout(() => setJustSent(false), 4000);
     } catch (e) {

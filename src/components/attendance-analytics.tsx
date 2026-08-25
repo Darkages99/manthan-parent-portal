@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AttendanceMarker } from "./attendance-marker";
 import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from "./icons";
+import { DonutChart, Legend, type Segment } from "./charts";
 import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
@@ -98,6 +99,12 @@ export function AttendanceAnalytics({
   for (const status of todayByStudent.values()) todayCounts[status] += 1;
   const markedToday = todayByStudent.size;
   const notMarked = scopedStudents.length - markedToday;
+  const presentPct = markedToday > 0 ? Math.round((todayCounts.present / markedToday) * 100) : 0;
+  const todaySegments: Segment[] = (["present", "absent", "late", "half_day"] as Status[]).map((k) => ({
+    label: STATUS_META[k].label,
+    value: todayCounts[k],
+    color: STATUS_META[k].color,
+  }));
 
   // --- Absent today, split informed / uninformed ---
   const absentToday = scopedStudents
@@ -162,20 +169,22 @@ export function AttendanceAnalytics({
             <ChevronRightIcon className="h-4 w-4" />
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {(["present", "absent", "late", "half_day"] as Status[]).map((k) => (
-            <div key={k}>
-              <p className="font-heading text-3xl text-maroon">{todayCounts[k]}</p>
-              <p className="mt-0.5 flex items-center gap-1.5 text-sm uppercase tracking-wide text-slate">
-                <span
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ backgroundColor: STATUS_META[k].color }}
-                />
-                {STATUS_META[k].label}
-              </p>
+        {markedToday === 0 ? (
+          <p className="py-6 text-center text-base text-slate">
+            Attendance hasn&apos;t been marked yet today.
+          </p>
+        ) : (
+          <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+            <DonutChart
+              segments={todaySegments}
+              centerValue={`${presentPct}%`}
+              centerLabel="present"
+            />
+            <div className="w-full max-w-xs">
+              <Legend segments={todaySegments} total={markedToday} />
             </div>
-          ))}
-        </div>
+          </div>
+        )}
         <p className="mt-4 text-sm font-medium text-rust">See every class →</p>
       </Link>
 

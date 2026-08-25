@@ -3,18 +3,16 @@
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { requestLeave } from "@/app/(parent)/leave/actions";
+import { Button } from "@/components/button";
+import { useToast } from "@/components/toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream transition hover:bg-maroon-strong disabled:opacity-60"
-    >
-      {pending ? "Submitting…" : "Submit request"}
-    </button>
+    <Button type="submit" loading={pending} className="px-5 py-2.5">
+      Submit request
+    </Button>
   );
 }
 
@@ -22,11 +20,13 @@ export function LeaveForm({ students }: { students: Tables<"students">[] }) {
   const [open, setOpen] = useState(false);
   const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   async function handleAction(formData: FormData) {
     setError(null);
     try {
       await requestLeave(formData);
+      toast.celebrate("Leave request submitted");
       setJustSent(true);
       setOpen(false);
       setTimeout(() => setJustSent(false), 4000);
@@ -38,12 +38,9 @@ export function LeaveForm({ students }: { students: Tables<"students">[] }) {
   if (!open) {
     return (
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => setOpen(true)}
-          className="shrink-0 rounded-sm bg-maroon px-4 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong"
-        >
+        <Button onClick={() => setOpen(true)} className="shrink-0 px-4 py-2.5">
           Request leave
-        </button>
+        </Button>
         {justSent && <span className="text-base text-emerald-700">Leave request submitted.</span>}
       </div>
     );
@@ -87,13 +84,9 @@ export function LeaveForm({ students }: { students: Tables<"students">[] }) {
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <SubmitButton />
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="rounded-sm border border-hairline bg-mist px-4 py-2.5 text-base font-semibold text-maroon hover:bg-parchment"
-        >
+        <Button type="button" variant="secondary" onClick={() => setOpen(false)} className="px-4 py-2.5">
           Cancel
-        </button>
+        </Button>
         {error && <span className="text-base text-rose-700">{error}</span>}
       </div>
     </form>
