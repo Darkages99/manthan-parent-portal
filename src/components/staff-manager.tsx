@@ -4,9 +4,14 @@ import { useState, useTransition } from "react";
 import { createStaffAccount, updateStaffRole, setStaffActive } from "@/app/(staff)/console/staff/actions";
 import { ROLE_LABELS, roleLabel } from "@/lib/role-labels";
 import { Dialog } from "./dialog";
+import { Button } from "./button";
+import { Toolbar, SearchInput, SegmentedControl } from "./filter-bar";
 import { PlusIcon } from "./icons";
 import { useToast } from "./toast-provider";
 import type { Enums, Tables } from "@/lib/supabase/database.types";
+
+const SELECT_PILL =
+  "rounded-full border border-hairline bg-surface px-4 py-2.5 text-sm text-slate-strong shadow-[var(--shadow-card)] transition-colors focus:border-rust/60";
 
 type StaffRow = Tables<"staff">;
 // "admin" is a retired role (PTM approval now uses front_office) — excluded
@@ -33,52 +38,45 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-1 min-w-[200px] flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Search</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Name, username, phone, or email"
-            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Role</span>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as Enums<"role"> | "all")}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-          >
-            <option value="all">All roles</option>
-            {ROLE_OPTIONS.map((r) => (
-              <option key={r} value={r}>
-                {roleLabel(r)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Status</span>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-            className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
-          >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Deactivated</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-sm border border-hairline bg-surface px-4 py-2.5 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+      <Toolbar>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Name, username, phone, email…"
+          ariaLabel="Search staff"
+        />
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as Enums<"role"> | "all")}
+          aria-label="Filter by role"
+          className={SELECT_PILL}
         >
-          <PlusIcon className="h-4 w-4" />
+          <option value="all">All roles</option>
+          {ROLE_OPTIONS.map((r) => (
+            <option key={r} value={r}>
+              {roleLabel(r)}
+            </option>
+          ))}
+        </select>
+        <SegmentedControl<"all" | "active" | "inactive">
+          ariaLabel="Filter by status"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Deactivated" },
+          ]}
+        />
+        <Button
+          className="ml-auto shrink-0"
+          size="sm"
+          onClick={() => setAddOpen(true)}
+          icon={<PlusIcon className="h-4 w-4" />}
+        >
           Add staff
-        </button>
-      </div>
+        </Button>
+      </Toolbar>
 
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} title="Add staff">
         <CreateStaffForm
@@ -228,7 +226,7 @@ function CreateStaffForm({ onCreated }: { onCreated: (row: StaffRow) => void }) 
         setPassword("");
         setPhone("");
         setEmail("");
-        toast.success("Staff account created");
+        toast.celebrate("Staff account created");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't create account");
       }
@@ -301,14 +299,15 @@ function CreateStaffForm({ onCreated }: { onCreated: (row: StaffRow) => void }) 
           </select>
         </label>
       </div>
-      <button
+      <Button
         onClick={submit}
-        disabled={isPending || !name || !username || !password}
-        className="mt-4 inline-flex items-center justify-center gap-2 rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+        loading={isPending}
+        disabled={!name || !username || !password}
+        icon={<PlusIcon className="h-5 w-5" />}
+        className="mt-4 px-5 py-2.5"
       >
-        <PlusIcon className="h-5 w-5" />
-        {isPending ? "Creating…" : "Create account"}
-      </button>
+        Create account
+      </Button>
       {error && <p className="mt-3 text-base text-rose-700">{error}</p>}
       {created && (
         <p className="mt-3 rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-200">

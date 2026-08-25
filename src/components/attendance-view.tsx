@@ -2,6 +2,7 @@
 
 import { AttendanceCalendar } from "./attendance-calendar";
 import { AlertTriangleIcon } from "./icons";
+import { DonutChart, type Segment } from "./charts";
 import { ATTENDANCE_THRESHOLD, presentPercent } from "@/lib/attendance";
 import { useSelectedChild } from "@/lib/selected-child-context";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
@@ -16,50 +17,6 @@ const STATUS_META: Record<Status, { label: string; solid: string }> = {
   half_day: { label: "Half day", solid: "#94a3b8" },
   absent: { label: "Absent", solid: "#f43f5e" },
 };
-
-/** SVG donut summarising the term's attendance mix. */
-function AttendanceDonut({ counts, total, pct }: { counts: Record<Status, number>; total: number; pct: number }) {
-  const R = 42;
-  const C = 2 * Math.PI * R;
-  const order: Status[] = ["present", "late", "half_day", "absent"];
-
-  let acc = 0;
-  const segments = order.map((s) => {
-    const frac = total ? counts[s] / total : 0;
-    const seg = { s, frac, offset: acc };
-    acc += frac;
-    return seg;
-  });
-
-  return (
-    <div className="relative h-40 w-40 shrink-0">
-      <svg viewBox="0 0 100 100" className="h-full w-full">
-        <circle cx="50" cy="50" r={R} fill="none" stroke="var(--color-hairline)" strokeWidth="12" />
-        {total > 0 &&
-          segments.map(
-            (seg) =>
-              seg.frac > 0 && (
-                <circle
-                  key={seg.s}
-                  cx="50"
-                  cy="50"
-                  r={R}
-                  fill="none"
-                  stroke={STATUS_META[seg.s].solid}
-                  strokeWidth="12"
-                  strokeDasharray={`${seg.frac * C} ${C - seg.frac * C}`}
-                  transform={`rotate(${seg.offset * 360 - 90} 50 50)`}
-                />
-              )
-          )}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-heading text-3xl text-maroon">{pct}%</span>
-        <span className="text-xs uppercase tracking-wide text-slate">present</span>
-      </div>
-    </div>
-  );
-}
 
 export function AttendanceView({
   students,
@@ -81,6 +38,12 @@ export function AttendanceView({
   const statusByDate: Record<string, Status> = {};
   for (const r of records) statusByDate[r.date] = r.status;
 
+  const donutSegments: Segment[] = (["present", "late", "half_day", "absent"] as Status[]).map((k) => ({
+    label: STATUS_META[k].label,
+    value: counts[k],
+    color: STATUS_META[k].solid,
+  }));
+
   return (
     <div className="flex flex-col gap-6">
       {/* Summary card: donut + breakdown, with a low-attendance alert. */}
@@ -97,7 +60,13 @@ export function AttendanceView({
         )}
 
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
-          <AttendanceDonut counts={counts} total={total} pct={presentPct} />
+          <DonutChart
+            segments={donutSegments}
+            size={160}
+            thickness={16}
+            centerValue={`${presentPct}%`}
+            centerLabel="present"
+          />
 
           <div className="flex-1">
             <p className="mb-3 text-sm uppercase tracking-wide text-slate">Attendance this term</p>

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createGuardian, updateGuardian, deleteGuardian } from "@/app/(staff)/console/parents/actions";
 import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
 import { Dialog } from "./dialog";
+import { Button } from "./button";
+import { Toolbar, SearchInput } from "./filter-bar";
 import { PlusIcon } from "./icons";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -40,23 +42,22 @@ export function GuardiansManager({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
+      <Toolbar>
+        <SearchInput
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name, mobile, email or child…"
-          className={`${inputCls} w-full max-w-sm`}
-          aria-label="Search parents"
+          onChange={setQuery}
+          placeholder="Name, mobile, email, child…"
+          ariaLabel="Search parents"
         />
-        <button
-          type="button"
+        <Button
+          className="ml-auto shrink-0"
+          size="sm"
           onClick={() => setAddOpen(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
+          icon={<PlusIcon className="h-4 w-4" />}
         >
-          <PlusIcon className="h-4 w-4" />
           Add parent
-        </button>
-      </div>
+        </Button>
+      </Toolbar>
 
       <div className="overflow-x-auto rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
         <table className="w-full min-w-[720px] text-left text-sm">
@@ -237,23 +238,18 @@ function GuardianForm({
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
       <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
+        <Button
           onClick={submit}
-          disabled={pending || !name.trim() || !phone.trim() || !email.trim()}
-          className="rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream hover:bg-maroon-strong disabled:opacity-60"
+          loading={pending}
+          disabled={!name.trim() || !phone.trim() || !email.trim()}
+          className="px-5 py-2.5"
         >
-          {pending ? "Saving…" : "Save"}
-        </button>
+          Save
+        </Button>
         {guardian && (
-          <button
-            type="button"
-            onClick={remove}
-            disabled={pending}
-            className="text-sm font-medium text-rose-600 hover:underline disabled:opacity-60"
-          >
+          <Button type="button" variant="danger" size="sm" onClick={remove} disabled={pending}>
             Delete parent
-          </button>
+          </Button>
         )}
       </div>
     </div>

@@ -3,17 +3,15 @@
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { reportIssue } from "@/app/(parent)/report-issue/actions";
+import { Button } from "@/components/button";
+import { useToast } from "@/components/toast-provider";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-sm bg-maroon px-5 py-2.5 text-base font-semibold text-cream transition hover:bg-maroon-strong disabled:opacity-60"
-    >
-      {pending ? "Submitting…" : "Submit report"}
-    </button>
+    <Button type="submit" loading={pending} className="px-5 py-2.5">
+      Submit report
+    </Button>
   );
 }
 
@@ -21,11 +19,13 @@ export function ReportIssueForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   async function handleAction(formData: FormData) {
     setError(null);
     try {
       await reportIssue(formData);
+      toast.celebrate("Report submitted");
       setJustSent(true);
       setTimeout(() => setJustSent(false), 4000);
       formRef.current?.reset();
