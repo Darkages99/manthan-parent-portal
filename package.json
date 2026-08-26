@@ -11,7 +11,8 @@
     "vapid:keys": "node scripts/generate-vapid.mjs",
     "demo:seed": "node --env-file=.env.local scripts/demo-seed/seed.mjs",
     "demo:teardown": "node --env-file=.env.local scripts/demo-seed/teardown.mjs",
-    "demo:add-test-account": "node --env-file=.env.local scripts/demo-seed/add-test-account.mjs"
+    "demo:add-test-account": "node --env-file=.env.local scripts/demo-seed/add-test-account.mjs",
+    "demo:refresh-today": "node --env-file=.env.local scripts/demo-seed/refresh-today.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
