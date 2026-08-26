@@ -2,6 +2,11 @@ import type { NextRequest } from "next/server";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { toCsv } from "@/lib/csv";
+import { leaveDisplayStatus } from "@/lib/leave-status";
+
+function istToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
 
 // GET /api/export/leave?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Exports the caller's visible leave requests as CSV. `from`/`to` filter on any overlap between
@@ -52,12 +57,13 @@ export async function GET(request: NextRequest) {
     (students ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`])
   );
 
+  const today = istToday();
   const rows = (leaves ?? []).map((l) => ({
     "Student name": studentNames[l.student_id] ?? l.student_id,
     "From date": l.from_date,
     "To date": l.to_date,
     Reason: l.reason,
-    Status: l.status,
+    Status: leaveDisplayStatus(l, today),
     "Decided at": l.decided_at ?? "",
     "Created at": l.created_at,
   }));

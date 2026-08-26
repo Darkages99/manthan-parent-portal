@@ -52,9 +52,13 @@ export default async function LeaveApprovals() {
 
   const all = leaves ?? [];
   // Awaiting decisions are ordered by leave date — the soonest (tomorrow's) first.
+  // A pending request whose window has already passed is expired, not actionable.
   const pending = all
-    .filter((l) => l.status === "pending")
+    .filter((l) => l.status === "pending" && l.to_date >= today)
     .sort((a, b) => a.from_date.localeCompare(b.from_date));
+  const expired = all
+    .filter((l) => l.status === "pending" && l.to_date < today)
+    .sort((a, b) => b.to_date.localeCompare(a.to_date));
   const decided = all.filter((l) => l.status !== "pending");
   const onLeaveToday = all.filter(
     (l) => l.status === "approved" && l.from_date <= today && l.to_date >= today
@@ -112,7 +116,33 @@ export default async function LeaveApprovals() {
         )}
       </section>
 
-      {/* 3. Decided log. */}
+      {/* 3. Expired — pending requests whose leave window has passed unanswered. */}
+      {expired.length > 0 && (
+        <section>
+          <h2 className="mb-3 font-heading text-xl text-maroon">Expired · {expired.length}</h2>
+          <ExpandableList
+            initialCount={2}
+            className="divide-y divide-hairline rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]"
+          >
+            {expired.map((l) => (
+              <li key={l.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold text-maroon">
+                    {studentNames[l.student_id] ?? "Student"} — {l.reason}
+                  </p>
+                  <p className="mt-0.5 text-sm text-slate">
+                    {formatDate(l.from_date)} → {formatDate(l.to_date)} · Requested by{" "}
+                    {guardianNames[l.requested_by] ?? "guardian"}
+                  </p>
+                </div>
+                <StatusPill status="expired" />
+              </li>
+            ))}
+          </ExpandableList>
+        </section>
+      )}
+
+      {/* 4. Decided log. */}
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Past requests</h2>
         {decided.length === 0 ? (

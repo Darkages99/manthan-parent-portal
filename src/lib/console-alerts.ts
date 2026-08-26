@@ -146,10 +146,12 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
         .eq("status", "approved")
         .lte("from_date", today)
         .gte("to_date", today),
+      // Excludes expired requests — pending ones whose leave window has already passed unanswered.
       supabase
         .from("leave_requests")
         .select("id, student_id")
-        .eq("status", "pending"),
+        .eq("status", "pending")
+        .gte("to_date", today),
       supabase
         .from("stay_back_consents")
         .select("id, student_id")

@@ -4,6 +4,11 @@ import { LeaveForm } from "@/components/leave-form";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
+import { leaveDisplayStatus } from "@/lib/leave-status";
+
+function istToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
 
 export default async function LeavePage({
   searchParams,
@@ -26,6 +31,7 @@ export default async function LeavePage({
   if (from) leavesQuery = leavesQuery.gte("to_date", from);
   if (to) leavesQuery = leavesQuery.lte("from_date", to);
   const { data: leaves } = await leavesQuery;
+  const today = istToday();
 
   const exportQuery = new URLSearchParams({
     ...(from ? { from } : {}),
@@ -96,7 +102,7 @@ export default async function LeavePage({
                     {formatDate(l.from_date)} → {formatDate(l.to_date)}
                   </p>
                 </div>
-                <StatusPill status={l.status} />
+                <StatusPill status={leaveDisplayStatus(l, today)} />
               </div>
             </li>
           );
