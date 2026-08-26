@@ -1,11 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { resolveStaffAlert } from "@/app/(staff)/console/staff/actions";
 import { useToast } from "./toast-provider";
-import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, CloseIcon, UsersIcon } from "./icons";
+import {
+  AlertTriangleIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  ConsentIcon,
+  UsersIcon,
+} from "./icons";
 import type { ConsoleAlertData } from "@/lib/console-alerts";
 
 type StaffAlert = { id: string; message: string };
@@ -25,8 +34,9 @@ export function ConsoleAlerts({
   data: ConsoleAlertData;
   staffAlerts?: StaffAlert[];
 }) {
-  const { absentToday } = data;
-  const total = (absentToday.length > 0 ? 1 : 0) + staffAlerts.length;
+  const { absentToday, stayingBackToday } = data;
+  const total =
+    (absentToday.length > 0 ? 1 : 0) + (stayingBackToday.length > 0 ? 1 : 0) + staffAlerts.length;
 
   return (
     <div className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
@@ -52,6 +62,30 @@ export function ConsoleAlerts({
 
           {/* Everyone absent today — one expandable alert. */}
           {absentToday.length > 0 && <AbsentTodayAlert students={absentToday} />}
+
+          {/* Everyone staying back today — links straight to the stay-back section. */}
+          {stayingBackToday.length > 0 && (
+            <motion.li variants={fadeUp}>
+              <Link
+                href="/console/stay-back"
+                className="group flex items-center gap-3 rounded-sm border border-hairline bg-mist/40 p-3 transition hover:border-rust/50 hover:bg-mist"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200">
+                  <ConsentIcon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-maroon">
+                    {stayingBackToday.length} {stayingBackToday.length === 1 ? "student" : "students"} staying
+                    back today
+                  </p>
+                  <p className="text-sm text-slate-strong">
+                    {truncateList(stayingBackToday.map((s) => s.name))}
+                  </p>
+                </div>
+                <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
+              </Link>
+            </motion.li>
+          )}
         </motion.ul>
       )}
     </div>

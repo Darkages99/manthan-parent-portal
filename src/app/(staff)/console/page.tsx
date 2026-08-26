@@ -7,7 +7,6 @@ import { getConsoleAlerts } from "@/lib/console-alerts";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
-import { formatTime } from "@/lib/format";
 import { MailIcon, AlertTriangleIcon, AwardIcon } from "@/components/icons";
 
 export default async function StaffDashboard() {
@@ -84,7 +83,7 @@ export default async function StaffDashboard() {
           <DashboardCalendar events={dtrEvents ?? []} fullHref="/console/calendar" />
         </div>
 
-        {/* Right column: the alert hub + quick-access counts. */}
+        {/* Right column: the alert hub + quick-access counts + today's lists. */}
         <div className="flex flex-col gap-4">
           <ConsoleAlerts data={alerts} staffAlerts={staffAlerts.data ?? []} />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -94,8 +93,10 @@ export default async function StaffDashboard() {
                 alerts.lowAttendance.length > 0 ? "border-rust/40 bg-rust-tint/30" : "border-hairline bg-surface"
               }`}
             >
-              <AlertTriangleIcon className="h-5 w-5 text-amber-600" />
-              <p className="mt-2 font-heading text-4xl text-maroon">{alerts.lowAttendance.length}</p>
+              <div className="flex items-center gap-2">
+                <AlertTriangleIcon className="h-5 w-5 shrink-0 text-amber-600" />
+                <p className="font-heading text-4xl text-maroon">{alerts.lowAttendance.length}</p>
+              </div>
               <p className="mt-1 text-base text-slate-strong">Children below 85% attendance</p>
             </Link>
             <Link
@@ -104,49 +105,38 @@ export default async function StaffDashboard() {
                 alerts.lowScores.length > 0 ? "border-rust/40 bg-rust-tint/30" : "border-hairline bg-surface"
               }`}
             >
-              <AwardIcon className="h-5 w-5 text-sky-700" />
-              <p className="mt-2 font-heading text-4xl text-maroon">{alerts.lowScores.length}</p>
+              <div className="flex items-center gap-2">
+                <AwardIcon className="h-5 w-5 shrink-0 text-sky-700" />
+                <p className="font-heading text-4xl text-maroon">{alerts.lowScores.length}</p>
+              </div>
               <p className="mt-1 text-base text-slate-strong">Children failing subjects</p>
             </Link>
           </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TodayCard title="On leave today" emptyLabel="Nobody on approved leave today.">
+              {alerts.onLeaveToday.map((s) => (
+                <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
+                  <span className="font-semibold text-maroon">{s.name}</span>
+                  {s.className && <span className="text-slate"> · {s.className}</span>}
+                  <span className="block text-sm text-slate-strong">{s.reason}</span>
+                </li>
+              ))}
+            </TodayCard>
+
+            <TodayCard title="Homework due today" emptyLabel="No outstanding homework due today.">
+              {alerts.dueHomeworkToday.map((s) => (
+                <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
+                  <span className="font-semibold text-maroon">{s.name}</span>
+                  {s.className && <span className="text-slate"> · {s.className}</span>}
+                  <span className="block text-sm text-slate-strong">
+                    {s.count} item{s.count === 1 ? "" : "s"} not done
+                  </span>
+                </li>
+              ))}
+            </TodayCard>
+          </div>
         </div>
-      </div>
-
-      {/* Today at a glance — on leave, homework due, staying back. */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <TodayCard title="On leave today" emptyLabel="Nobody on approved leave today.">
-          {alerts.onLeaveToday.map((s) => (
-            <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
-              <span className="font-semibold text-maroon">{s.name}</span>
-              {s.className && <span className="text-slate"> · {s.className}</span>}
-              <span className="block text-sm text-slate-strong">{s.reason}</span>
-            </li>
-          ))}
-        </TodayCard>
-
-        <TodayCard title="Homework due today" emptyLabel="No outstanding homework due today.">
-          {alerts.dueHomeworkToday.map((s) => (
-            <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
-              <span className="font-semibold text-maroon">{s.name}</span>
-              {s.className && <span className="text-slate"> · {s.className}</span>}
-              <span className="block text-sm text-slate-strong">
-                {s.count} item{s.count === 1 ? "" : "s"} not done
-              </span>
-            </li>
-          ))}
-        </TodayCard>
-
-        <TodayCard title="Staying back today" emptyLabel="Nobody staying back today.">
-          {alerts.stayingBackToday.map((s) => (
-            <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
-              <span className="font-semibold text-maroon">{s.name}</span>
-              {s.className && <span className="text-slate"> · {s.className}</span>}
-              <span className="block text-sm text-slate-strong">
-                {formatTime(s.fromTime)}–{formatTime(s.toTime)}
-              </span>
-            </li>
-          ))}
-        </TodayCard>
       </div>
     </div>
   );
