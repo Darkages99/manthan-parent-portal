@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ResultsBrowser } from "@/components/results-browser";
 import { ResultsEditor } from "@/components/results-editor";
 import { ResultsAnalytics } from "@/components/results-analytics";
@@ -16,20 +17,33 @@ type ExamResultRow = { student_id: string; term: string; subject: string; marks:
 export default async function ConsoleResults({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string; student?: string; term?: string }>;
+  searchParams: Promise<{ class?: string; student?: string; term?: string; view?: string }>;
 }) {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
   const isPrincipal = isPrincipalRole(viewer.staff.role);
   if (!isPrincipal && viewer.staff.role !== "class_teacher") redirect("/console");
 
-  const { class: classId, student: studentId, term: termParam } = await searchParams;
+  const { class: classId, student: studentId, term: termParam, view: viewParam } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: allClassSections }, { data: subjects }] = await Promise.all([
-    supabase.from("class_sections").select("id, grade, section").order("grade").order("section"),
+  const [{ data: allClassSections }, { data: subjects }, { data: subjectAssignments }] = await Promise.all([
+    supabase.from("class_sections").select("id, grade, section, class_teacher_id").order("grade").order("section"),
     supabase.from("subjects").select("id, name").order("name"),
+    isPrincipal
+      ? Promise.resolve({ data: [] as { class_section_id: string; subject_id: string }[] })
+      : supabase.from("class_subject_teachers").select("class_section_id, subject_id").eq("teacher_id", viewer.staff.id),
   ]);
+  const subjectNameById = new Map((subjects ?? []).map((s) => [s.id, s.name]));
+
+  // "My classes" (browse + edit, unchanged scope: every class this teacher
+  // owns, subject-teaches, or appears on the timetable for) vs "My subjects" —
+  // read-only stats pooled across every class a teacher teaches a given
+  // subject in. The subjects tab only shows up when class_subject_teachers
+  // actually has rows for this teacher; the classes tab is always available.
+  const subjectClassIds = [...new Set((subjectAssignments ?? []).map((a) => a.class_section_id))];
+  const showViewToggle = !isPrincipal && subjectClassIds.length > 0;
+  const view = showViewToggle && viewParam === "subject" ? "subject" : "class";
 
   const visibleClassIds = isPrincipal
     ? null
@@ -37,9 +51,12 @@ export default async function ConsoleResults({
   const classes = isPrincipal
     ? (allClassSections ?? [])
     : (allClassSections ?? []).filter((c) => visibleClassIds!.has(c.id));
-  const validClassId = classes.some((c) => c.id === classId) ? classId : undefined;
+  // Arrives-with-nothing-selected defaults straight to the teacher's own class
+  // when they only have one, rather than making them pick it.
+  const defaultClassId = !isPrincipal && classes.length === 1 ? classes[0].id : undefined;
+  const validClassId = classes.some((c) => c.id === classId) ? classId : defaultClassId;
 
-  const { data: students } = validClassId
+  const { data: students } = validClassId && view === "class"
     ? await supabase
         .from("students")
         .select("id, first_name, last_name")
@@ -81,7 +98,7 @@ export default async function ConsoleResults({
   // staff, the teacher's own classes otherwise).
   let overviewClasses: ClassSummary[] = [];
   let overviewTerm: string | null = null;
-  if (!validClassId && classes.length > 0) {
+  if (view === "class" && !validClassId && classes.length > 0) {
     const classIds = classes.map((c) => c.id);
     const { data: allStudents } = await supabase
       .from("students")
@@ -124,6 +141,55 @@ export default async function ConsoleResults({
     }
   }
 
+  // "My subjects" — stats for just the subject(s) a teacher is assigned in
+  // class_subject_teachers, pooled across every class they teach that subject
+  // in (as opposed to "My class", which is their own roster's whole-class
+  // performance). One card per distinct subject name.
+  let subjectOverview: ClassSummary[] = [];
+  let subjectOverviewTerm: string | null = null;
+  if (view === "subject") {
+    const classesBySubject = new Map<string, Set<string>>();
+    for (const a of subjectAssignments ?? []) {
+      const name = subjectNameById.get(a.subject_id);
+      if (!name) continue;
+      (classesBySubject.get(name) ?? classesBySubject.set(name, new Set()).get(name)!).add(a.class_section_id);
+    }
+    const allSubjectClassIds = [...subjectClassIds];
+    const { data: subjStudents } = allSubjectClassIds.length
+      ? await supabase
+          .from("students")
+          .select("id, first_name, last_name, class_section_id")
+          .in("class_section_id", allSubjectClassIds)
+      : { data: [] as { id: string; first_name: string; last_name: string; class_section_id: string }[] };
+    const subjStudentIds = (subjStudents ?? []).map((s) => s.id);
+    const subjResults = await fetchInChunks<ExamResultRow>(subjStudentIds, (chunk) =>
+      supabase.from("exam_results").select("student_id, term, subject, marks, max_marks").in("student_id", chunk)
+    );
+    subjectOverviewTerm = distinctTerms(subjResults ?? [])[0] ?? null;
+
+    if (subjectOverviewTerm) {
+      subjectOverview = [...classesBySubject.entries()]
+        .map(([subjectName, classIdSet]) => {
+          const subjStudentsInScope = (subjStudents ?? []).filter((s) => classIdSet.has(s.class_section_id));
+          const subjStudentIdsInScope = new Set(subjStudentsInScope.map((s) => s.id));
+          const results = (subjResults ?? []).filter(
+            (r) => r.subject === subjectName && subjStudentIdsInScope.has(r.student_id)
+          );
+          const analytics = computeClassAnalytics(results, subjStudentsInScope, subjectOverviewTerm!);
+          return {
+            id: subjectName,
+            label: subjectName,
+            studentCount: analytics.studentCount,
+            classAveragePct: analytics.classAveragePct,
+            passRatePct: analytics.passRatePct,
+            belowFortyCount: analytics.belowFortyCount,
+            weakestSubject: analytics.weakestSubject,
+          };
+        })
+        .filter((c) => c.studentCount > 0);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -135,37 +201,72 @@ export default async function ConsoleResults({
         </p>
       </div>
 
-      <ResultsBrowser
-        classes={classes ?? []}
-        students={students ?? []}
-        selectedClassId={validClassId ?? ""}
-        selectedStudentId={validStudent ?? ""}
-      />
-
-      {validStudent && studentAnalytics ? (
-        <StudentAnalyticsPanel analytics={studentAnalytics} />
-      ) : validClassId ? (
-        classAnalytics ? (
-          <ResultsAnalytics analytics={classAnalytics} classId={validClassId} term={activeTerm} />
-        ) : (
-          <p className="rounded-sm border border-hairline bg-mist/50 px-4 py-3 text-sm text-slate">
-            No marks entered for this class yet — pick a student below to add some.
-          </p>
-        )
-      ) : (
-        <ResultsSchoolOverview
-          scopeLabel={isPrincipal ? "Whole school" : "Your classes"}
-          term={overviewTerm}
-          classes={overviewClasses}
-        />
+      {showViewToggle && (
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/console/results"
+            className={`rounded-full px-4 py-1.5 text-base font-medium transition ${
+              view === "class"
+                ? "bg-rust text-white"
+                : "border border-hairline bg-mist text-slate-strong hover:bg-parchment"
+            }`}
+          >
+            My classes
+          </Link>
+          <Link
+            href="/console/results?view=subject"
+            className={`rounded-full px-4 py-1.5 text-base font-medium transition ${
+              view === "subject"
+                ? "bg-rust text-white"
+                : "border border-hairline bg-mist text-slate-strong hover:bg-parchment"
+            }`}
+          >
+            My subjects
+          </Link>
+        </div>
       )}
 
-      {validStudent && (
-        <ResultsEditor
-          studentId={validStudent}
-          results={results ?? []}
-          subjects={(subjects ?? []).map((s) => s.name)}
+      {view === "subject" ? (
+        <ResultsSchoolOverview
+          scopeLabel="Your subjects"
+          term={subjectOverviewTerm}
+          classes={subjectOverview}
         />
+      ) : (
+        <>
+          <ResultsBrowser
+            classes={classes ?? []}
+            students={students ?? []}
+            selectedClassId={validClassId ?? ""}
+            selectedStudentId={validStudent ?? ""}
+          />
+
+          {validStudent && studentAnalytics ? (
+            <StudentAnalyticsPanel analytics={studentAnalytics} />
+          ) : validClassId ? (
+            classAnalytics ? (
+              <ResultsAnalytics analytics={classAnalytics} classId={validClassId} term={activeTerm} />
+            ) : (
+              <p className="rounded-sm border border-hairline bg-mist/50 px-4 py-3 text-sm text-slate">
+                No marks entered for this class yet — pick a student below to add some.
+              </p>
+            )
+          ) : (
+            <ResultsSchoolOverview
+              scopeLabel={isPrincipal ? "Whole school" : "Your classes"}
+              term={overviewTerm}
+              classes={overviewClasses}
+            />
+          )}
+
+          {validStudent && (
+            <ResultsEditor
+              studentId={validStudent}
+              results={results ?? []}
+              subjects={(subjects ?? []).map((s) => s.name)}
+            />
+          )}
+        </>
       )}
     </div>
   );

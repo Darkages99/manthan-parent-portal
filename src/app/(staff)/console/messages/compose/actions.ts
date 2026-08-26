@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
 import { requirePrincipal } from "@/lib/roles";
+import { parseCsv } from "@/lib/csv";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
 import { sendPush } from "@/lib/notifications/push";
 import { getSmsRelay } from "@/lib/notifications/sms";
@@ -334,4 +335,87 @@ export async function setGroupStaffAccess(
   }
 
   revalidatePath("/console/messages");
+}
+
+export type BulkMessageResult = { imported: number; errors: { row: number; message: string }[] };
+
+/**
+ * Mass-sends individually worded messages from a two-column CSV (roll_no,
+ * message) — e.g. a school office pasting personalized notes from a
+ * spreadsheet. Each row becomes its own student-scoped message through the
+ * normal pipeline (receipts + push), not a single broadcast. Principal-tier
+ * only, since roll numbers can span any class in the school.
+ */
+export async function bulkSendByRollNumber(csvText: string): Promise<BulkMessageResult> {
+  const viewer = await requirePrincipal();
+  const { header, rows } = parseCsv(csvText);
+  const rollIdx = header.findIndex((h) => h.toLowerCase().replace(/[\s_]/g, "") === "rollno");
+  const msgIdx = header.findIndex((h) => h.toLowerCase() === "message");
+  if (rollIdx === -1 || msgIdx === -1) throw new Error("CSV must have roll_no and message columns");
+
+  const supabase = await createClient();
+  const parsedRows = rows.map((r, i) => ({
+    row: i + 2, // +1 for 0-index, +1 for the header row
+    rollNo: (r[rollIdx] ?? "").trim(),
+    message: (r[msgIdx] ?? "").trim(),
+  }));
+
+  const rollNos = [...new Set(parsedRows.map((r) => r.rollNo).filter(Boolean))];
+  const { data: students } = rollNos.length
+    ? await supabase.from("students").select("id, roll_no").in("roll_no", rollNos)
+    : { data: [] as { id: string; roll_no: string }[] };
+  const studentIdsByRoll = new Map<string, string[]>();
+  for (const s of students ?? []) {
+    (studentIdsByRoll.get(s.roll_no) ?? studentIdsByRoll.set(s.roll_no, []).get(s.roll_no)!).push(s.id);
+  }
+
+  const errors: { row: number; message: string }[] = [];
+  let imported = 0;
+  const subject = "School message";
+
+  for (const r of parsedRows) {
+    if (!r.rollNo || !r.message) {
+      errors.push({ row: r.row, message: "Missing roll number or message" });
+      continue;
+    }
+    const studentIds = studentIdsByRoll.get(r.rollNo);
+    if (!studentIds || studentIds.length === 0) {
+      errors.push({ row: r.row, message: `Roll number ${r.rollNo} not found` });
+      continue;
+    }
+    if (studentIds.length > 1) {
+      errors.push({ row: r.row, message: `Roll number ${r.rollNo} matches more than one student` });
+      continue;
+    }
+
+    try {
+      const { data: message, error: msgError } = await supabase
+        .from("messages")
+        .insert({
+          subject,
+          body: r.message,
+          sender_id: viewer.staff.id,
+          scope_type: "student",
+          urgent: false,
+          sent_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      if (msgError) throw new Error(msgError.message);
+
+      const { error: targetError } = await supabase
+        .from("message_targets")
+        .insert({ message_id: message.id, student_id: studentIds[0] });
+      if (targetError) throw new Error(targetError.message);
+
+      const recipients = await resolveRecipients("student", [], studentIds, []);
+      await fanOut(message.id, subject, r.message, false, recipients);
+      imported += 1;
+    } catch (e) {
+      errors.push({ row: r.row, message: e instanceof Error ? e.message : "Failed to send" });
+    }
+  }
+
+  revalidatePath("/console/messages");
+  return { imported, errors };
 }

@@ -7,7 +7,7 @@ import { getConsoleAlerts } from "@/lib/console-alerts";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
-import { MailIcon, AlertTriangleIcon, AwardIcon } from "@/components/icons";
+import { MailIcon, AlertTriangleIcon, AwardIcon, GridIcon } from "@/components/icons";
 
 export default async function StaffDashboard() {
   const viewer = await getViewer();
@@ -16,7 +16,7 @@ export default async function StaffDashboard() {
   const supabase = await createClient();
   const isAdmin = isPrincipalRole(viewer.staff.role);
 
-  const [alerts, staffAlerts, { data: dtrEvents }] = await Promise.all([
+  const [alerts, staffAlerts, { data: dtrEvents }, { data: storageSnapshot }] = await Promise.all([
     getConsoleAlerts(viewer.staff),
     isAdmin
       ? supabase
@@ -29,7 +29,16 @@ export default async function StaffDashboard() {
       .from("dtr_events")
       .select("id, title, category, event_date, description")
       .order("event_date", { ascending: true }),
+    isAdmin
+      ? supabase
+          .from("storage_usage_snapshots")
+          .select("db_bytes, file_bytes")
+          .order("computed_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null as { db_bytes: number; file_bytes: number } | null }),
   ]);
+  const storageGb = storageSnapshot ? (storageSnapshot.db_bytes + storageSnapshot.file_bytes) / (1024 * 1024 * 1024) : null;
 
   // Pending counts come straight from the (already scoped) alert data — no need
   // for separate count queries.
@@ -150,6 +159,21 @@ export default async function StaffDashboard() {
               <p className="mt-1 text-base text-slate-strong">Children failing subjects</p>
             </Link>
           </div>
+
+          {isAdmin && (
+            <Link
+              href="/console/storage"
+              className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)] transition hover:border-rust/60"
+            >
+              <div className="flex items-center gap-2">
+                <GridIcon className="h-5 w-5 shrink-0 text-slate-strong" />
+                <p className="font-heading text-2xl text-maroon">
+                  {storageGb !== null ? `${storageGb.toFixed(2)} GB` : "Not calculated"}
+                </p>
+              </div>
+              <p className="mt-1 text-base text-slate-strong">Storage used on the server</p>
+            </Link>
+          )}
 
           {!isBusy && todayCards}
         </div>

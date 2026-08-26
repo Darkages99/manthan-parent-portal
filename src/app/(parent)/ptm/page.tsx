@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { PtmView } from "@/components/ptm-view";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/lib/supabase/database.types";
 
 export default async function PtmPage() {
   const viewer = await getViewer();
@@ -26,20 +25,6 @@ export default async function PtmPage() {
 
   const teacherNames = Object.fromEntries((teachers ?? []).map((t) => [t.id, t.name]));
 
-  const slotIds = (slots ?? []).map((s) => s.id);
-  const { data: approvalStepRows } = slotIds.length
-    ? await supabase
-        .from("approval_steps")
-        .select("*")
-        .eq("subject_type", "ptm_slot_request")
-        .in("subject_id", slotIds)
-    : { data: [] as Tables<"approval_steps">[] };
-
-  const approvalSteps: Record<string, Tables<"approval_steps">[]> = {};
-  for (const step of approvalStepRows ?? []) {
-    (approvalSteps[step.subject_id] ??= []).push(step);
-  }
-
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -50,12 +35,7 @@ export default async function PtmPage() {
         </p>
       </div>
 
-      <PtmView
-        students={viewer.students}
-        slots={slots ?? []}
-        teacherNames={teacherNames}
-        approvalSteps={approvalSteps}
-      />
+      <PtmView students={viewer.students} slots={slots ?? []} teacherNames={teacherNames} />
     </div>
   );
 }

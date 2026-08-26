@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { upsertResult, deleteResult } from "@/app/(staff)/console/results/actions";
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { upsertResult, deleteResult, removeReportCard } from "@/app/(staff)/console/results/actions";
 import { GRADE_OPTIONS, TERM_OPTIONS, withCurrentValue } from "@/lib/grades";
 import { Button } from "./button";
+import { DownloadIcon } from "./icons";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -21,6 +23,8 @@ export function ResultsEditor({
   results: Result[];
   subjects: string[];
 }) {
+  const terms = [...new Set(results.map((r) => r.term))].sort().reverse();
+
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-x-auto rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
@@ -46,7 +50,99 @@ export function ResultsEditor({
       {results.length === 0 && (
         <p className="text-sm text-slate">No marks entered yet — add the first row above.</p>
       )}
+
+      {terms.length > 0 && (
+        <div className="rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]">
+          <p className="font-heading text-base text-maroon">Report card PDFs</p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {terms.map((term) => {
+              const url = results.find((r) => r.term === term)?.report_card_pdf_url ?? null;
+              return <ReportCardRow key={term} studentId={studentId} term={term} url={url} />;
+            })}
+          </ul>
+        </div>
+      )}
     </div>
+  );
+}
+
+function ReportCardRow({ studentId, term, url }: { studentId: string; term: string; url: string | null }) {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, startUpload] = useTransition();
+  const [isRemoving, startRemove] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    startUpload(async () => {
+      try {
+        const form = new FormData();
+        form.set("studentId", studentId);
+        form.set("term", term);
+        form.set("file", file);
+        const res = await fetch("/api/report-card/upload", { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Upload failed");
+        toast.success("Report card published");
+        router.refresh();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        setError(message);
+        toast.error(message);
+      } finally {
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    });
+  }
+
+  function remove() {
+    if (!confirm(`Remove the published report card for ${term}?`)) return;
+    setError(null);
+    startRemove(async () => {
+      try {
+        await removeReportCard(studentId, term);
+        toast.success("Report card removed");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Couldn't remove";
+        setError(message);
+        toast.error(message);
+      }
+    });
+  }
+
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-sm">
+      <div>
+        <span className="font-semibold text-maroon">{term}</span>
+        <span className={`ml-2 ${url ? "text-emerald-700 dark:text-emerald-300" : "text-slate"}`}>
+          {url ? "Published" : "Not published"}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-hairline bg-surface px-3 py-1.5 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist">
+          <DownloadIcon className="h-4 w-4 rotate-180" />
+          {isUploading ? "Uploading…" : url ? "Replace" : "Upload PDF"}
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,application/pdf"
+            className="hidden"
+            disabled={isUploading}
+            onChange={onFileChange}
+          />
+        </label>
+        {url && (
+          <Button type="button" size="sm" variant="danger" onClick={remove} disabled={isRemoving}>
+            Remove
+          </Button>
+        )}
+      </div>
+      {error && <p className="w-full text-xs text-rose-600">{error}</p>}
+    </li>
   );
 }
 

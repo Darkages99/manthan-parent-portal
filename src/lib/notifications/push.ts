@@ -105,33 +105,54 @@ export async function sendPush(
 
   const { data: subs, error } = await supabase
     .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
+    .select("id, endpoint, p256dh, auth, guardian_id, staff_id")
     .or(orClauses.join(","));
   if (error) {
     console.error("[push] could not read subscriptions:", error.message);
     return;
   }
-  if (!subs || subs.length === 0) return;
 
   const notification = JSON.stringify(payload);
 
-  await Promise.all(
-    subs.map(async (s) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          notification
-        );
-      } catch (err) {
-        const statusCode = (err as { statusCode?: number }).statusCode;
-        // 404/410 = the browser has dropped this subscription; prune it so we
-        // don't keep trying. Anything else is logged and left in place.
-        if (statusCode === 404 || statusCode === 410) {
-          await supabase.from("push_subscriptions").delete().eq("id", s.id);
-        } else {
-          console.error("[push] send failed", statusCode ?? "", (err as Error).message);
+  // Tracks which targets (by "role:id" key) got at least one successful send —
+  // a target can own several devices/subscriptions, so success is per-target,
+  // not per-subscription.
+  const deliveredKeys = new Set<string>();
+
+  if (subs && subs.length > 0) {
+    await Promise.all(
+      subs.map(async (s) => {
+        try {
+          await webpush.sendNotification(
+            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+            notification
+          );
+          deliveredKeys.add(s.guardian_id ? `guardian:${s.guardian_id}` : `staff:${s.staff_id}`);
+        } catch (err) {
+          const statusCode = (err as { statusCode?: number }).statusCode;
+          // 404/410 = the browser has dropped this subscription; prune it so we
+          // don't keep trying. Anything else is logged and left in place.
+          if (statusCode === 404 || statusCode === 410) {
+            await supabase.from("push_subscriptions").delete().eq("id", s.id);
+          } else {
+            console.error("[push] send failed", statusCode ?? "", (err as Error).message);
+          }
         }
-      }
-    })
+      })
+    );
+  }
+
+  // Durable log so the school can prove a parent/staff member was notified of
+  // something on a given date/time — one row per attempted target, regardless
+  // of whether a device was actually reachable.
+  await supabase.from("notification_log").insert(
+    targets.map((t) => ({
+      recipient_type: t.role,
+      recipient_id: t.userId,
+      category,
+      title: payload.title,
+      body: payload.body,
+      delivered: deliveredKeys.has(`${t.role}:${t.userId}`),
+    }))
   );
 }

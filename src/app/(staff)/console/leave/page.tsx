@@ -71,7 +71,8 @@ export default async function LeaveApprovals() {
           <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Approvals</p>
           <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Leave requests</h1>
           <p className="mt-2 max-w-prose text-lg text-slate-strong">
-            Requests raised by parents. Approving or declining notifies the family.
+            Requests raised by parents. Approving notifies the family — use Send message if you need
+            to flag something instead.
           </p>
         </div>
         <ExportCsvButton href="/api/export/leave" />
@@ -88,6 +89,7 @@ export default async function LeaveApprovals() {
           guardianNames={guardianNames}
           emptyLabel="Nothing awaiting a decision."
           initialCount={2}
+          viewerRole={viewer.staff.role}
         />
       </section>
 

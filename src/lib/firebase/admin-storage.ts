@@ -51,3 +51,20 @@ export async function uploadFileAdmin(
     path
   )}?alt=media&token=${downloadToken}`;
 }
+
+/** Sums the byte size of every object in the Storage bucket — used for the
+ * school's "how much storage are we using" figure. Paginates through the
+ * full listing since the bucket has no cheaper aggregate size API. */
+export async function getBucketUsageBytes(): Promise<number> {
+  const bucket = getStorage(adminApp()).bucket();
+  let total = 0;
+  let pageToken: string | undefined;
+  do {
+    const [files, next] = await bucket.getFiles({ pageToken, maxResults: 1000 });
+    for (const file of files) {
+      total += Number(file.metadata.size ?? 0);
+    }
+    pageToken = (next as { pageToken?: string } | undefined)?.pageToken;
+  } while (pageToken);
+  return total;
+}

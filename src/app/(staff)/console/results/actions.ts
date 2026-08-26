@@ -125,6 +125,23 @@ export async function upsertResult(input: {
   await alertIfWeak(supabase, studentId, row.term, marks, maxMarks, row.subject);
 }
 
+/** Unpublishes a student's report card PDF for a term (clears the URL from
+ * every exam_results row for that student+term — see the upload route for
+ * why the URL is denormalized across subject rows). */
+export async function removeReportCard(studentId: string, term: string) {
+  await requirePrincipal();
+  if (!studentId || !term) throw new Error("Student and term are required");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("exam_results")
+    .update({ report_card_pdf_url: null })
+    .eq("student_id", studentId)
+    .eq("term", term);
+  if (error) throw new Error(error.message);
+  revalidatePath("/console/results");
+}
+
 export async function deleteResult(id: string) {
   await requirePrincipal();
   if (!id) throw new Error("Result is required");

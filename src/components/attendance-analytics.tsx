@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AttendanceMarker } from "./attendance-marker";
 import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from "./icons";
@@ -49,6 +49,15 @@ export function AttendanceAnalytics({
 }) {
   const [classFilter, setClassFilter] = useState<string>(initialClassId ?? "all");
   const [markOpen, setMarkOpen] = useState(Boolean(initialMarkOpen));
+  const markSectionRef = useRef<HTMLElement>(null);
+
+  // Arriving from the dashboard's "Mark attendance" link — the form is already
+  // expanded (see initialMarkOpen above), so bring it into view too instead of
+  // leaving the page scrolled to the top past the snapshot/analytics sections.
+  useEffect(() => {
+    if (initialMarkOpen) markSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Today's rows just saved by AttendanceMarker, merged in immediately rather
   // than waiting on the server round trip that repopulates `todayRecords` —
   // keeps the "Today" snapshot in sync with the save the instant it succeeds.
@@ -263,7 +272,7 @@ export function AttendanceAnalytics({
       </section>
 
       {/* Marking — available but secondary. */}
-      <section className="rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
+      <section ref={markSectionRef} className="rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
         <button
           type="button"
           onClick={() => setMarkOpen((o) => !o)}

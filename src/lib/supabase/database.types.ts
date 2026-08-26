@@ -941,6 +941,39 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          body: string
+          category: Database["public"]["Enums"]["notification_category"]
+          delivered: boolean
+          id: string
+          recipient_id: string
+          recipient_type: string
+          sent_at: string
+          title: string
+        }
+        Insert: {
+          body: string
+          category: Database["public"]["Enums"]["notification_category"]
+          delivered: boolean
+          id?: string
+          recipient_id: string
+          recipient_type: string
+          sent_at?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          category?: Database["public"]["Enums"]["notification_category"]
+          delivered?: boolean
+          id?: string
+          recipient_id?: string
+          recipient_type?: string
+          sent_at?: string
+          title?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           category: Database["public"]["Enums"]["notification_category"]
@@ -983,6 +1016,70 @@ export type Database = {
           },
         ]
       }
+      parent_consultations: {
+        Row: {
+          availability_note: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          preferred_date: string
+          requested_by: string
+          scheduled_time: string | null
+          status: Database["public"]["Enums"]["consultation_status"]
+          student_id: string
+        }
+        Insert: {
+          availability_note: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          preferred_date: string
+          requested_by: string
+          scheduled_time?: string | null
+          status?: Database["public"]["Enums"]["consultation_status"]
+          student_id: string
+        }
+        Update: {
+          availability_note?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          preferred_date?: string
+          requested_by?: string
+          scheduled_time?: string | null
+          status?: Database["public"]["Enums"]["consultation_status"]
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_consultations_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_consultations_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_consultations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_paise: number
@@ -1018,39 +1115,8 @@ export type Database = {
           },
         ]
       }
-      ptm_meeting_teachers: {
-        Row: {
-          meeting_id: string
-          teacher_id: string
-        }
-        Insert: {
-          meeting_id: string
-          teacher_id: string
-        }
-        Update: {
-          meeting_id?: string
-          teacher_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ptm_meeting_teachers_meeting_id_fkey"
-            columns: ["meeting_id"]
-            isOneToOne: false
-            referencedRelation: "ptm_meetings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ptm_meeting_teachers_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ptm_meetings: {
         Row: {
-          assigned_admin_id: string | null
           class_section_id: string
           created_at: string
           id: string
@@ -1063,7 +1129,6 @@ export type Database = {
           window_start: string | null
         }
         Insert: {
-          assigned_admin_id?: string | null
           class_section_id: string
           created_at?: string
           id?: string
@@ -1076,7 +1141,6 @@ export type Database = {
           window_start?: string | null
         }
         Update: {
-          assigned_admin_id?: string | null
           class_section_id?: string
           created_at?: string
           id?: string
@@ -1089,13 +1153,6 @@ export type Database = {
           window_start?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "ptm_meetings_assigned_admin_id_fkey"
-            columns: ["assigned_admin_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "ptm_meetings_class_section_id_fkey"
             columns: ["class_section_id"]
@@ -1120,7 +1177,6 @@ export type Database = {
           ends_at: string
           id: string
           meeting_id: string
-          pending_guardian_id: string | null
           starts_at: string
           teacher_id: string
         }
@@ -1131,7 +1187,6 @@ export type Database = {
           ends_at: string
           id?: string
           meeting_id: string
-          pending_guardian_id?: string | null
           starts_at: string
           teacher_id: string
         }
@@ -1142,7 +1197,6 @@ export type Database = {
           ends_at?: string
           id?: string
           meeting_id?: string
-          pending_guardian_id?: string | null
           starts_at?: string
           teacher_id?: string
         }
@@ -1173,13 +1227,6 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "ptm_meetings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ptm_slots_pending_guardian_id_fkey"
-            columns: ["pending_guardian_id"]
-            isOneToOne: false
-            referencedRelation: "guardians"
             referencedColumns: ["id"]
           },
           {
@@ -1602,6 +1649,38 @@ export type Database = {
           },
         ]
       }
+      storage_usage_snapshots: {
+        Row: {
+          computed_at: string
+          computed_by: string | null
+          db_bytes: number
+          file_bytes: number
+          id: string
+        }
+        Insert: {
+          computed_at?: string
+          computed_by?: string | null
+          db_bytes: number
+          file_bytes: number
+          id?: string
+        }
+        Update: {
+          computed_at?: string
+          computed_by?: string | null
+          db_bytes?: number
+          file_bytes?: number
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_usage_snapshots_computed_by_fkey"
+            columns: ["computed_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_qr_codes: {
         Row: {
           issued_at: string
@@ -1817,6 +1896,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["role"]
       }
+      database_size_bytes: { Args: never; Returns: number }
       is_principal: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       replace_guardian_children: {
@@ -1844,6 +1924,7 @@ export type Database = {
         | "principal"
       approval_subject_type: "stay_back_consent" | "ptm_slot_request"
       attendance_status: "present" | "absent" | "late" | "half_day"
+      consultation_status: "pending" | "scheduled" | "declined" | "cancelled"
       dtr_category: "exam" | "holiday" | "event" | "deadline" | "ptm" | "other"
       invoice_status: "due" | "partially_paid" | "paid" | "overdue"
       issue_audience: "principal_only" | "front_office_and_principal"
@@ -1857,6 +1938,7 @@ export type Database = {
         | "messages"
         | "reminders"
         | "defaulters"
+        | "consultations"
       ptm_status: "open" | "closed"
       role:
         | "parent"
@@ -2010,6 +2092,7 @@ export const Constants = {
       ],
       approval_subject_type: ["stay_back_consent", "ptm_slot_request"],
       attendance_status: ["present", "absent", "late", "half_day"],
+      consultation_status: ["pending", "scheduled", "declined", "cancelled"],
       dtr_category: ["exam", "holiday", "event", "deadline", "ptm", "other"],
       invoice_status: ["due", "partially_paid", "paid", "overdue"],
       issue_audience: ["principal_only", "front_office_and_principal"],
@@ -2023,6 +2106,7 @@ export const Constants = {
         "messages",
         "reminders",
         "defaulters",
+        "consultations",
       ],
       ptm_status: ["open", "closed"],
       role: [

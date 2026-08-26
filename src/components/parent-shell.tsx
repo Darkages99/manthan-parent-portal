@@ -33,6 +33,7 @@ function buildNavItems(unreadMessages: number): NavItem[] {
     { href: "/stay-back", label: "Stay-back consent", icon: ConsentIcon },
     { href: "/payments", label: "Payments", icon: PaymentIcon },
     { href: "/ptm", label: "PTM booking", icon: UsersIcon },
+    { href: "/consultations", label: "Parent Consultations", icon: UsersIcon },
     { href: "/results", label: "Results", icon: AwardIcon },
     { href: "/competitions", label: "Competitions", icon: AwardIcon },
     { href: "/defaulters", label: "Defaulters", icon: AlertTriangleIcon },

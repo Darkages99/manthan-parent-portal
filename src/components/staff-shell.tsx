@@ -18,6 +18,7 @@ import {
   CalendarIcon,
   FlagIcon,
   RefreshIcon,
+  BellIcon,
 } from "./icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -33,6 +34,7 @@ function buildNavItems(
   classes: ClassNavItem[]
 ): NavItem[] {
   const isPrincipal = PRINCIPAL_ROLES.includes(role);
+  const canDecideConsultations = isPrincipal || role === "front_office";
   return [
     { href: "/console", label: "Dashboard", icon: HomeIcon, exact: true },
     { href: "/console/messages", label: "Messages", icon: MailIcon },
@@ -55,6 +57,9 @@ function buildNavItems(
         icon: CalendarIcon,
       })),
     },
+    ...(canDecideConsultations
+      ? [{ href: "/console/consultations", label: "Parent Consultations", icon: UsersIcon }]
+      : []),
     { href: "/console/timetable", label: "Timetable", icon: GridIcon },
     { href: "/console/homework", label: "Homework", icon: ClassIcon },
     { href: "/console/calendar", label: "School calendar", icon: CalendarIcon },
@@ -87,6 +92,8 @@ function buildNavItems(
       ? [
           { href: "/console/gallery", label: "Gallery", icon: ImageIcon },
           { href: "/console/sync", label: "Sheet sync", icon: RefreshIcon },
+          { href: "/console/notification-log", label: "Notification log", icon: BellIcon },
+          { href: "/console/storage", label: "Storage usage", icon: GridIcon },
         ]
       : []),
   ];
@@ -119,7 +126,7 @@ export function StaffShell({
       banner={
         attendanceReminder ? (
           <a
-            href="/console/attendance"
+            href="/console/attendance?mark=1"
             className="mb-5 flex items-center gap-3 rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-base font-semibold text-amber-900 shadow-[var(--shadow-card)] transition hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/40"
           >
             Mark attendance for today →

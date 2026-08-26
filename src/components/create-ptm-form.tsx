@@ -3,46 +3,49 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMeeting } from "@/app/(staff)/console/ptm/actions";
-import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
 import { ComboBox } from "./combobox";
 import { Button } from "./button";
 import { PlusIcon } from "./icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
-type StaffOption = { id: string; name: string };
+
+const SLOT_OPTIONS = [7, 10, 15, 20, 30];
+/** Grades above this get the longer default slot; at/below get the shorter one. */
+const SHORT_SLOT_MAX_GRADE = 5;
+const SHORT_SLOT_MINUTES = 7;
+const LONG_SLOT_MINUTES = 10;
+
+/** Parses the leading integer off a grade label (e.g. "5", "Grade 5", "5A")
+ * so the default slot length can vary by grade; falls back to the longer
+ * default when the grade doesn't parse. */
+function defaultSlotMinutesForGrade(grade: string): number {
+  const n = parseInt(grade, 10);
+  if (Number.isNaN(n)) return LONG_SLOT_MINUTES;
+  return n <= SHORT_SLOT_MAX_GRADE ? SHORT_SLOT_MINUTES : LONG_SLOT_MINUTES;
+}
 
 /** Creates a PTM meeting for a class + date, then jumps to its slot page.
- * Only rendered for super_admin/principal — see console/ptm/page.tsx. */
-export function CreatePtmForm({
-  classes,
-  teachers,
-  admins,
-}: {
-  classes: ClassSection[];
-  teachers: StaffOption[];
-  admins: StaffOption[];
-}) {
+ * Only rendered for super_admin/principal — see console/ptm/page.tsx. Booking
+ * is plain first-come-first-served; the class's own class teacher takes the
+ * meeting, no separate assignment needed. */
+export function CreatePtmForm({ classes }: { classes: ClassSection[] }) {
   const router = useRouter();
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [date, setDate] = useState("");
   const [title, setTitle] = useState("");
   const [windowStart, setWindowStart] = useState("09:00");
   const [windowEnd, setWindowEnd] = useState("11:00");
-  const [slotMinutes, setSlotMinutes] = useState(15);
-  const [teacherIds, setTeacherIds] = useState<string[]>([]);
-  const [teacherTouched, setTeacherTouched] = useState(false);
-  const [adminId, setAdminId] = useState(admins[0]?.id ?? "");
+  const [slotMinutes, setSlotMinutes] = useState(defaultSlotMinutesForGrade(classes[0]?.grade ?? ""));
+  const [slotTouched, setSlotTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const teacherOptions: TypeaheadOption[] = teachers.map((t) => ({ id: t.id, label: t.name }));
-
   function onClassChange(next: string) {
     setClassId(next);
-    if (!teacherTouched) {
-      const classTeacherId = classes.find((c) => c.id === next)?.class_teacher_id;
-      setTeacherIds(classTeacherId ? [classTeacherId] : []);
+    if (!slotTouched) {
+      const grade = classes.find((c) => c.id === next)?.grade ?? "";
+      setSlotMinutes(defaultSlotMinutesForGrade(grade));
     }
   }
 
@@ -57,8 +60,6 @@ export function CreatePtmForm({
           windowStart,
           windowEnd,
           slotMinutes,
-          teacherIds,
-          adminId,
         });
         router.push(`/console/ptm/${id}`);
       } catch (e) {
@@ -69,14 +70,6 @@ export function CreatePtmForm({
 
   if (classes.length === 0) {
     return <p className="text-base text-slate">No classes yet.</p>;
-  }
-  if (admins.length === 0) {
-    return (
-      <p className="rounded-sm border border-amber-300 bg-amber-50 p-4 text-base text-amber-900 dark:border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-200">
-        Create a staff account with the &ldquo;Front office&rdquo; role first — PTMs need one assigned to
-        approve bookings.
-      </p>
-    );
   }
 
   return (
@@ -116,30 +109,6 @@ export function CreatePtmForm({
             className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-base sm:col-span-2">
-          <span className="font-medium text-maroon">Teachers</span>
-          <TypeaheadPicker
-            options={teacherOptions}
-            selected={teacherIds}
-            onChange={(next) => {
-              setTeacherTouched(true);
-              setTeacherIds(next);
-            }}
-            placeholder="Add a teacher…"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Front office (approves bookings)</span>
-          <ComboBox
-            options={admins.map((a) => ({ value: a.id, label: a.name }))}
-            value={adminId}
-            onChange={setAdminId}
-            required
-            placeholder="Search staff…"
-            ariaLabel="Front office"
-            recallKey="ptm-admin"
-          />
-        </label>
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Window from</span>
           <input
@@ -162,10 +131,13 @@ export function CreatePtmForm({
           <span className="font-medium text-maroon">Slot length</span>
           <select
             value={slotMinutes}
-            onChange={(e) => setSlotMinutes(Number(e.target.value))}
+            onChange={(e) => {
+              setSlotTouched(true);
+              setSlotMinutes(Number(e.target.value));
+            }}
             className="rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
           >
-            {[10, 15, 20, 30].map((m) => (
+            {SLOT_OPTIONS.map((m) => (
               <option key={m} value={m}>
                 {m} min
               </option>
@@ -176,7 +148,7 @@ export function CreatePtmForm({
       <Button
         onClick={submit}
         loading={isPending}
-        disabled={!classId || !date || teacherIds.length === 0 || !adminId}
+        disabled={!classId || !date}
         icon={<PlusIcon className="h-5 w-5" />}
         className="mt-4 px-5 py-2.5"
       >

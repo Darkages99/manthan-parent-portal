@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { EmptyState } from "./empty-state";
 import { CalendarIcon } from "./icons";
-import { ApprovalChecklist } from "./approval-checklist";
 import { bookSlot, cancelSlot } from "@/app/(parent)/ptm/actions";
 import { formatSlotTime, formatClock } from "@/lib/format";
 import { fadeUp, staggerContainer } from "@/lib/motion";
@@ -13,18 +12,15 @@ import type { Tables } from "@/lib/supabase/database.types";
 
 type Student = Tables<"students"> & { classSection: Tables<"class_sections"> | null };
 type Slot = Tables<"ptm_slots">;
-type ApprovalStep = Tables<"approval_steps">;
 
 export function PtmView({
   students,
   slots,
   teacherNames,
-  approvalSteps,
 }: {
   students: Student[];
   slots: Slot[];
   teacherNames: Record<string, string>;
-  approvalSteps: Record<string, ApprovalStep[]>;
 }) {
   const { selectedChildId } = useSelectedChild();
   const activeId = selectedChildId ?? students[0]?.id;
@@ -73,9 +69,7 @@ export function PtmView({
         </p>
         {myBooking && (
           <p className="mt-1 text-base text-emerald-700">
-            {myBooking.booked_by_guardian_id
-              ? `You're booked for ${formatSlotTime(myBooking.starts_at)}.`
-              : `Your booking for ${formatSlotTime(myBooking.starts_at)} is awaiting approval.`}
+            You&apos;re booked for {formatSlotTime(myBooking.starts_at)}.
           </p>
         )}
       </div>
@@ -97,8 +91,7 @@ export function PtmView({
         >
           {classSlots.map((s) => {
             const mine = s.booked_student_id === activeId;
-            const takenByOther = !!(s.booked_by_guardian_id || s.pending_guardian_id) && !mine;
-            const steps = approvalSteps[s.id];
+            const takenByOther = !!s.booked_by_guardian_id && !mine;
             return (
               <motion.li
                 key={s.id}
@@ -112,11 +105,6 @@ export function PtmView({
                     {formatClock(s.starts_at)} – {formatClock(s.ends_at)}
                   </p>
                   {takenByOther && <p className="text-sm text-slate">Booked</p>}
-                  {mine && steps && steps.length > 0 && (
-                    <div className="mt-2">
-                      <ApprovalChecklist steps={steps} />
-                    </div>
-                  )}
                 </div>
                 {mine ? (
                   <motion.button

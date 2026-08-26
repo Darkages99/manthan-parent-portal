@@ -5,7 +5,6 @@ import { ChevronLeftIcon } from "@/components/icons";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
-import type { Tables } from "@/lib/supabase/database.types";
 
 export default async function PtmMeetingPage({
   params,
@@ -20,21 +19,13 @@ export default async function PtmMeetingPage({
 
   const { data: meeting } = await supabase
     .from("ptm_meetings")
-    .select("*, class_sections(grade, section)")
+    .select("*, class_sections(grade, section), staff(name)")
     .eq("id", meetingId)
     .maybeSingle();
   if (!meeting) notFound();
 
-  const [{ data: slots }, { data: meetingTeachers }] = await Promise.all([
-    supabase.from("ptm_slots").select("*").eq("meeting_id", meetingId),
-    supabase.from("ptm_meeting_teachers").select("teacher_id, staff(name)").eq("meeting_id", meetingId),
-  ]);
-  const teacherNames = (meetingTeachers ?? [])
-    .map((t) => (t.staff as unknown as { name: string } | null)?.name)
-    .filter((n): n is string => !!n);
-  const { data: assignedAdmin } = meeting.assigned_admin_id
-    ? await supabase.from("staff").select("name").eq("id", meeting.assigned_admin_id).maybeSingle()
-    : { data: null };
+  const { data: slots } = await supabase.from("ptm_slots").select("*").eq("meeting_id", meetingId);
+  const teacherName = (meeting.staff as unknown as { name: string } | null)?.name ?? null;
 
   // Names for booked slots.
   const studentIds = [...new Set((slots ?? []).map((s) => s.booked_student_id).filter((id): id is string => !!id))];
@@ -53,20 +44,6 @@ export default async function PtmMeetingPage({
   );
   const guardianNames = Object.fromEntries((guardians ?? []).map((g) => [g.id, g.name]));
 
-  const slotIds = (slots ?? []).map((s) => s.id);
-  const { data: approvalStepRows } = slotIds.length
-    ? await supabase
-        .from("approval_steps")
-        .select("*")
-        .eq("subject_type", "ptm_slot_request")
-        .in("subject_id", slotIds)
-    : { data: [] as Tables<"approval_steps">[] };
-
-  const approvalSteps: Record<string, Tables<"approval_steps">[]> = {};
-  for (const step of approvalStepRows ?? []) {
-    (approvalSteps[step.subject_id] ??= []).push(step);
-  }
-
   const cls = meeting.class_sections as { grade: string; section: string } | null;
   const classLabel = cls ? `Grade ${cls.grade}-${cls.section}` : "Class";
 
@@ -83,10 +60,7 @@ export default async function PtmMeetingPage({
         <p className="mt-2 text-lg text-slate-strong">
           {meeting.title ?? "Parent–teacher meeting"} · {formatDate(meeting.meeting_date)}
         </p>
-        <p className="mt-1 text-sm text-slate">
-          Front office: {assignedAdmin?.name ?? "Unassigned"}
-          {teacherNames.length > 0 && ` · Teachers: ${teacherNames.join(", ")}`}
-        </p>
+        {teacherName && <p className="mt-1 text-sm text-slate">Class teacher: {teacherName}</p>}
       </div>
 
       <MeetingSlotManager
@@ -98,10 +72,6 @@ export default async function PtmMeetingPage({
         slots={slots ?? []}
         studentNames={studentNames}
         guardianNames={guardianNames}
-        approvalSteps={approvalSteps}
-        viewerStaffId={viewer.staff.id}
-        viewerRole={viewer.staff.role}
-        assignedAdminId={meeting.assigned_admin_id}
       />
     </div>
   );

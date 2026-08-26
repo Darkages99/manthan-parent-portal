@@ -33,6 +33,19 @@ export function formatSlotTime(iso: string): string {
   });
 }
 
+/** A timestamptz → "8 Aug 2026, 9:30 AM" in IST — full date+time for audit trails. */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+}
+
 /** Just the clock part of a timestamptz in IST → "9:30 AM". */
 export function formatClock(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", {

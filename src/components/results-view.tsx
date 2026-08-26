@@ -43,7 +43,8 @@ export function ResultsView({
   const max = rows.reduce((sum, r) => sum + Number(r.max_marks), 0);
   const pct = max ? Math.round((obtained / max) * 1000) / 10 : 0;
 
-  const hasReportCard = rows.some((r) => r.report_card_pdf_url);
+  const reportCardUrl = rows.find((r) => r.report_card_pdf_url)?.report_card_pdf_url ?? null;
+  const hasReportCard = !!reportCardUrl;
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,6 +122,7 @@ export function ResultsView({
         <Button
           variant="secondary"
           disabled={!hasReportCard}
+          onClick={() => reportCardUrl && window.open(reportCardUrl, "_blank", "noopener,noreferrer")}
           icon={<DownloadIcon className="h-4 w-4" />}
           className="px-4 py-2.5"
           title={hasReportCard ? "Download report card" : "Report card PDF not published yet"}

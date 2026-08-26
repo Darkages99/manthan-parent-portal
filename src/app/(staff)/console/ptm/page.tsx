@@ -14,44 +14,15 @@ export default async function StaffPtm() {
   const canCreate = viewer.staff.role === "super_admin" || viewer.staff.role === "principal";
 
   const supabase = await createClient();
-  const [{ data: allClasses }, { data: teachers }, { data: admins }] = await Promise.all([
-    supabase.from("class_sections").select("*").order("grade"),
-    supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name"),
-    supabase.from("staff").select("id, name").eq("role", "front_office").order("name"),
-  ]);
+  const { data: allClasses } = await supabase.from("class_sections").select("*").order("grade");
   const classes =
     viewer.staff.role === "class_teacher"
       ? (allClasses ?? []).filter((c) => c.class_teacher_id === viewer.staff.id)
       : (allClasses ?? []);
   const classIds = classes.map((c) => c.id);
 
-  let visibleMeetingIds: string[] | null = null;
-  if (viewer.staff.role === "class_teacher") {
-    const { data: links } = await supabase
-      .from("ptm_meeting_teachers")
-      .select("meeting_id")
-      .eq("teacher_id", viewer.staff.id);
-    visibleMeetingIds = [...new Set((links ?? []).map((l) => l.meeting_id))];
-  } else if (viewer.staff.role === "front_office") {
-    const { data: assigned } = await supabase
-      .from("ptm_meetings")
-      .select("id")
-      .eq("assigned_admin_id", viewer.staff.id);
-    visibleMeetingIds = (assigned ?? []).map((m) => m.id);
-  }
-
-  let meetingsQuery = supabase
-    .from("ptm_meetings")
-    .select("*")
-    .order("meeting_date", { ascending: false });
-  if (visibleMeetingIds !== null) {
-    meetingsQuery = meetingsQuery.in(
-      "id",
-      visibleMeetingIds.length ? visibleMeetingIds : ["00000000-0000-0000-0000-000000000000"]
-    );
-  }
   const [{ data: meetings }, { data: slots }] = await Promise.all([
-    meetingsQuery,
+    supabase.from("ptm_meetings").select("*").order("meeting_date", { ascending: false }),
     supabase.from("ptm_slots").select("meeting_id, booked_by_guardian_id"),
   ]);
 
@@ -80,13 +51,11 @@ export default async function StaffPtm() {
           <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">PTMs</h1>
           <p className="mt-2 max-w-prose text-lg text-slate-strong">
             {canCreate
-              ? "Create a parent–teacher meeting for a class, assign its teachers and an approving front office staff member, then open time slots for parents to book."
+              ? "Create a parent–teacher meeting for a class, then open time slots for parents to book first-come-first-served."
               : "Meetings you're involved in, and their booking slots."}
           </p>
         </div>
-        {canCreate && (
-          <CreatePtmTrigger classes={allClasses ?? []} teachers={teachers ?? []} admins={admins ?? []} />
-        )}
+        {canCreate && <CreatePtmTrigger classes={allClasses ?? []} />}
       </div>
 
       <section>

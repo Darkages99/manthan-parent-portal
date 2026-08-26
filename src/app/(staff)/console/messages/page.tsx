@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ComposeMessageTrigger } from "@/components/compose-message-trigger";
 import { SentMessagesList } from "@/components/sent-messages-list";
+import { BulkMessageCsvImport } from "@/components/bulk-message-csv-import";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
@@ -102,6 +103,8 @@ export default async function MessagesPage() {
           />
         </div>
       </div>
+
+      {isAdmin && <BulkMessageCsvImport />}
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Sent messages</h2>

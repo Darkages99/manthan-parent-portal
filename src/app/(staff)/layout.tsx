@@ -19,21 +19,14 @@ export default async function StaffLayout({ children }: { children: React.ReactN
 
   async function loadPtmMeetings(): Promise<PtmNavMeeting[]> {
     // PTM meetings shown as collapsible sub-items under the PTMs nav entry.
-    // Class teachers see meetings they're named on; front office staff see
-    // ones assigned to them; principal-tier roles see all.
-    let meetingIds: string[] | null = null;
+    // Class teachers see meetings for their own class; everyone else sees all.
+    let classSectionIds: string[] | null = null;
     if (staff.role === "class_teacher") {
-      const { data: links } = await supabase
-        .from("ptm_meeting_teachers")
-        .select("meeting_id")
-        .eq("teacher_id", staff.id);
-      meetingIds = [...new Set((links ?? []).map((l) => l.meeting_id))];
-    } else if (staff.role === "front_office") {
-      const { data: assigned } = await supabase
-        .from("ptm_meetings")
+      const { data: ownClasses } = await supabase
+        .from("class_sections")
         .select("id")
-        .eq("assigned_admin_id", staff.id);
-      meetingIds = (assigned ?? []).map((m) => m.id);
+        .eq("class_teacher_id", staff.id);
+      classSectionIds = (ownClasses ?? []).map((c) => c.id);
     }
 
     let meetingsQuery = supabase
@@ -41,10 +34,10 @@ export default async function StaffLayout({ children }: { children: React.ReactN
       .select("id, meeting_date, class_sections(grade, section)")
       .order("meeting_date", { ascending: false })
       .limit(20);
-    if (meetingIds !== null) {
+    if (classSectionIds !== null) {
       meetingsQuery = meetingsQuery.in(
-        "id",
-        meetingIds.length ? meetingIds : ["00000000-0000-0000-0000-000000000000"]
+        "class_section_id",
+        classSectionIds.length ? classSectionIds : ["00000000-0000-0000-0000-000000000000"]
       );
     }
     const { data: meetings } = await meetingsQuery;
