@@ -17,7 +17,7 @@ import {
 } from "./icons";
 import type { ConsoleAlertData } from "@/lib/console-alerts";
 
-type StaffAlert = { id: string; message: string };
+export type StaffAlert = { id: string; message: string };
 
 const MAX_NAMES_SHOWN = 3;
 
@@ -27,19 +27,30 @@ function truncateList(items: string[], max = MAX_NAMES_SHOWN): string {
   return `${items.slice(0, max).join(", ")}, etc.`;
 }
 
+/** How many alert rows the panel would render — shared with the dashboard page so it can decide layout. */
+export function countAlerts(data: ConsoleAlertData, staffAlerts: StaffAlert[] = []): number {
+  return (data.absentToday.length > 0 ? 1 : 0) + (data.stayingBackToday.length > 0 ? 1 : 0) + staffAlerts.length;
+}
+
 export function ConsoleAlerts({
   data,
   staffAlerts = [],
+  fill = false,
 }: {
   data: ConsoleAlertData;
   staffAlerts?: StaffAlert[];
+  /** Stretch to fill the height its parent gives it and scroll internally, instead of sizing to content. Used when the dashboard pins this column's height to the calendar's. */
+  fill?: boolean;
 }) {
   const { absentToday, stayingBackToday } = data;
-  const total =
-    (absentToday.length > 0 ? 1 : 0) + (stayingBackToday.length > 0 ? 1 : 0) + staffAlerts.length;
+  const total = countAlerts(data, staffAlerts);
 
   return (
-    <div className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
+    <div
+      className={`rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)] ${
+        fill ? "flex min-h-0 flex-1 flex-col" : ""
+      }`}
+    >
       <h2 className="mb-4 font-heading text-xl text-maroon">Alerts</h2>
 
       {total === 0 ? (
@@ -53,7 +64,7 @@ export function ConsoleAlerts({
           variants={staggerContainer()}
           initial="hidden"
           animate="show"
-          className="flex max-h-[28rem] flex-col gap-2 overflow-y-auto pr-1"
+          className={`flex flex-col gap-2 overflow-y-auto pr-1 ${fill ? "min-h-0 flex-1" : "max-h-[28rem]"}`}
         >
           {/* Staff deactivated while holding a class/subject assignment. */}
           {staffAlerts.map((a) => (

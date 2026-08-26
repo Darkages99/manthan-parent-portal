@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ConsoleAlerts } from "@/components/console-alerts";
+import { ConsoleAlerts, countAlerts } from "@/components/console-alerts";
 import { DashboardCalendar } from "@/components/dashboard-calendar";
 import { ExpandableList } from "@/components/expandable-list";
 import { getConsoleAlerts } from "@/lib/console-alerts";
@@ -46,6 +46,41 @@ export default async function StaffDashboard() {
     },
   ];
 
+  // Past a certain amount of "today" activity the compact right column gets
+  // cramped, so on a busy day the on-leave/homework-due lists move under the
+  // calendar (full left-column width) and the alert list is height-capped to
+  // the calendar with its own scrollbar instead of pushing the page taller.
+  const isBusy =
+    alerts.onLeaveToday.length > 0 ||
+    alerts.dueHomeworkToday.length > 0 ||
+    countAlerts(alerts, staffAlerts.data ?? []) > 2;
+
+  const todayCards = (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <TodayCard title="On leave today" emptyLabel="Nobody on approved leave today.">
+        {alerts.onLeaveToday.map((s) => (
+          <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
+            <span className="font-semibold text-maroon">{s.name}</span>
+            {s.className && <span className="text-slate"> · {s.className}</span>}
+            <span className="block text-sm text-slate-strong">{s.reason}</span>
+          </li>
+        ))}
+      </TodayCard>
+
+      <TodayCard title="Homework due today" emptyLabel="No outstanding homework due today.">
+        {alerts.dueHomeworkToday.map((s) => (
+          <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
+            <span className="font-semibold text-maroon">{s.name}</span>
+            {s.className && <span className="text-slate"> · {s.className}</span>}
+            <span className="block text-sm text-slate-strong">
+              {s.count} item{s.count === 1 ? "" : "s"} not done
+            </span>
+          </li>
+        ))}
+      </TodayCard>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -83,9 +118,12 @@ export default async function StaffDashboard() {
           <DashboardCalendar events={dtrEvents ?? []} fullHref="/console/calendar" />
         </div>
 
-        {/* Right column: the alert hub + quick-access counts + today's lists. */}
+        {/* Right column: the alert hub + quick-access counts. On a busy day
+            this column is pinned to the calendar's height (via grid's default
+            row-stretch) so Alerts scrolls internally instead of the tiles
+            below it drifting past the calendar's bottom edge. */}
         <div className="flex flex-col gap-4">
-          <ConsoleAlerts data={alerts} staffAlerts={staffAlerts.data ?? []} />
+          <ConsoleAlerts data={alerts} staffAlerts={staffAlerts.data ?? []} fill={isBusy} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Link
               href="/console/attendance"
@@ -113,31 +151,14 @@ export default async function StaffDashboard() {
             </Link>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TodayCard title="On leave today" emptyLabel="Nobody on approved leave today.">
-              {alerts.onLeaveToday.map((s) => (
-                <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
-                  <span className="font-semibold text-maroon">{s.name}</span>
-                  {s.className && <span className="text-slate"> · {s.className}</span>}
-                  <span className="block text-sm text-slate-strong">{s.reason}</span>
-                </li>
-              ))}
-            </TodayCard>
-
-            <TodayCard title="Homework due today" emptyLabel="No outstanding homework due today.">
-              {alerts.dueHomeworkToday.map((s) => (
-                <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
-                  <span className="font-semibold text-maroon">{s.name}</span>
-                  {s.className && <span className="text-slate"> · {s.className}</span>}
-                  <span className="block text-sm text-slate-strong">
-                    {s.count} item{s.count === 1 ? "" : "s"} not done
-                  </span>
-                </li>
-              ))}
-            </TodayCard>
-          </div>
+          {!isBusy && todayCards}
         </div>
       </div>
+
+      {/* Busy day: on-leave/homework-due move out of the cramped right column
+          into their own full-width row under the calendar, and get to be
+          wider — the right column above stays capped to the calendar's height. */}
+      {isBusy && todayCards}
     </div>
   );
 }
