@@ -15,8 +15,10 @@ type Event = {
 };
 
 /** Compact single-week strip for the dashboard. Days stay clickable and show
- *  the same category tags used across the portal; the full month lives in DTR. */
-export function DashboardCalendar({ events }: { events: Event[] }) {
+ *  the same category tags used across the portal; the full month lives in DTR.
+ *  `fullHref` points the "Open full calendar" link at the parent (/dtr) or the
+ *  staff (/console/calendar) route depending on where it's rendered. */
+export function DashboardCalendar({ events, fullHref = "/dtr" }: { events: Event[]; fullHref?: string }) {
   const today = useMemo(() => new Date(), []);
   // Anchor is any date within the shown week; navigation steps by ±7 days.
   const [anchor, setAnchor] = useState(today);
@@ -143,7 +145,7 @@ export function DashboardCalendar({ events }: { events: Event[] }) {
             ))}
           </ul>
         )}
-        <Link href="/dtr" className="mt-3 inline-block text-sm text-rust hover:underline">
+        <Link href={fullHref} className="mt-3 inline-block text-sm text-rust hover:underline">
           Open full calendar →
         </Link>
       </div>

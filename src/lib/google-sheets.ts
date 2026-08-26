@@ -745,40 +745,23 @@ async function syncGuardians(
         continue;
       }
 
-      const payload = { name, relation, phone, email };
-      let guardianId = id;
-      if (id) {
-        const { error } = await supabase.from("guardians").update(payload).eq("id", id);
-        if (error) {
-          updates.push(statusCell(tab, sheetRow, `Error: ${error.message}`));
-          continue;
-        }
-        await supabase.from("guardian_student").delete().eq("guardian_id", id);
-        seen.add(id);
-      } else {
-        const { data: inserted, error } = await supabase
-          .from("guardians")
-          .insert(payload)
-          .select("id")
-          .single();
-        if (error || !inserted) {
-          updates.push(statusCell(tab, sheetRow, `Error: ${error?.message ?? "insert failed"}`));
-          continue;
-        }
-        guardianId = inserted.id;
-        seen.add(inserted.id);
-        updates.push(idCell(tab, sheetRow, inserted.id));
+      // Upsert the guardian and replace its children in one transaction, so the
+      // deferred integrity triggers (guardian needs child-or-email; student
+      // needs a parent) only check the final state.
+      const { data: guardianId, error: upsertError } = await supabase.rpc("sync_upsert_guardian", {
+        p_name: name,
+        p_relation: relation,
+        p_phone: phone,
+        p_student_ids: studentIds,
+        p_id: id || undefined,
+        p_email: email ?? undefined,
+      });
+      if (upsertError || !guardianId) {
+        updates.push(statusCell(tab, sheetRow, `Error: ${upsertError?.message ?? "upsert failed"}`));
+        continue;
       }
-
-      if (studentIds.length) {
-        const { error: linkError } = await supabase
-          .from("guardian_student")
-          .insert(studentIds.map((student_id) => ({ guardian_id: guardianId, student_id })));
-        if (linkError) {
-          updates.push(statusCell(tab, sheetRow, `Error linking students: ${linkError.message}`));
-          continue;
-        }
-      }
+      seen.add(guardianId);
+      if (!id) updates.push(idCell(tab, sheetRow, guardianId));
       updates.push(statusCell(tab, sheetRow, "OK"));
     } catch (e) {
       updates.push(statusCell(tab, sheetRow, `Error: ${e instanceof Error ? e.message : String(e)}`));

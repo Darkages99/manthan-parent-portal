@@ -6,8 +6,14 @@ import { createHomework, updateHomework, deleteHomework } from "@/app/(staff)/co
 import { SubjectPicker } from "./subject-picker";
 import { ComboBox } from "./combobox";
 import { Button } from "./button";
+import { Dialog } from "./dialog";
+import { CreateFab } from "./create-fab";
+import { FilterIcon, PlusIcon } from "./icons";
+import { DATE_RANGE_OPTIONS, rangeFrom, type DateRange } from "@/lib/date-range";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
+
+type PastStatusFilter = "all" | "done" | "notdone";
 
 type ClassSection = Tables<"class_sections">;
 type Subject = { id: string; name: string };
@@ -36,9 +42,25 @@ export function HomeworkConsole({
   notSubmittedCounts: Record<string, number>;
   today: string;
 }) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Past-homework filters — defaults: all statuses, this year, all classes.
+  const [pastStatus, setPastStatus] = useState<PastStatusFilter>("all");
+  const [pastRange, setPastRange] = useState<DateRange>("year");
+  const [pastClassId, setPastClassId] = useState("all");
+
   const current = homework.filter((h) => h.due_date >= today).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const pastFrom = rangeFrom(pastRange);
   const past = homework
     .filter((h) => h.due_date < today)
+    .filter((h) => pastClassId === "all" || h.class_section_id === pastClassId)
+    .filter((h) => !pastFrom || h.due_date >= pastFrom)
+    .filter((h) => {
+      const done = (notSubmittedCounts[h.id] ?? 0) === 0;
+      if (pastStatus === "done") return done;
+      if (pastStatus === "notdone") return !done;
+      return true;
+    })
     .sort((a, b) => b.due_date.localeCompare(a.due_date));
 
   const classById = new Map(classes.map((c) => [c.id, c]));
@@ -46,7 +68,15 @@ export function HomeworkConsole({
 
   return (
     <div className="flex flex-col gap-8">
-      <AddHomeworkForm classes={classes} subjects={subjects} />
+      <div className="flex justify-end">
+        <Button size="sm" icon={<PlusIcon className="h-4 w-4" />} onClick={() => setAddOpen(true)}>
+          Add homework
+        </Button>
+      </div>
+      <CreateFab label="Add homework" onClick={() => setAddOpen(true)} />
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} title="Set homework">
+        <AddHomeworkForm classes={classes} subjects={subjects} onDone={() => setAddOpen(false)} />
+      </Dialog>
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Current homework</h2>
@@ -70,9 +100,60 @@ export function HomeworkConsole({
       </section>
 
       <section>
-        <h2 className="mb-3 font-heading text-xl text-maroon">Past homework</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-heading text-xl text-maroon">Past homework</h2>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<FilterIcon className="h-4 w-4" />}
+            onClick={() => setFiltersOpen((o) => !o)}
+          >
+            Filters
+          </Button>
+        </div>
+        {filtersOpen && (
+          <div className="mb-4 grid gap-3 rounded-sm border border-hairline bg-mist/40 p-4 sm:grid-cols-3">
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-maroon">Status</span>
+              <ComboBox
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "done", label: "Done" },
+                  { value: "notdone", label: "Not done" },
+                ]}
+                value={pastStatus}
+                onChange={(v) => setPastStatus(v as PastStatusFilter)}
+                ariaLabel="Status filter"
+                className={inputCls}
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-maroon">Time range</span>
+              <ComboBox
+                options={DATE_RANGE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                value={pastRange}
+                onChange={(v) => setPastRange(v as DateRange)}
+                ariaLabel="Time range filter"
+                className={inputCls}
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-maroon">Class</span>
+              <ComboBox
+                options={[
+                  { value: "all", label: "All classes" },
+                  ...classes.map((c) => ({ value: c.id, label: classLabel(c) })),
+                ]}
+                value={pastClassId}
+                onChange={setPastClassId}
+                ariaLabel="Class filter"
+                className={inputCls}
+              />
+            </label>
+          </div>
+        )}
         {past.length === 0 ? (
-          <p className="text-base text-slate">No past homework yet.</p>
+          <p className="text-base text-slate">No past homework matches these filters.</p>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {past.map((h) => (
@@ -236,7 +317,15 @@ function CurrentHomeworkCard({
   );
 }
 
-function AddHomeworkForm({ classes, subjects }: { classes: ClassSection[]; subjects: Subject[] }) {
+function AddHomeworkForm({
+  classes,
+  subjects,
+  onDone,
+}: {
+  classes: ClassSection[];
+  subjects: Subject[];
+  onDone: () => void;
+}) {
   const toast = useToast();
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [subjectId, setSubjectId] = useState("");
@@ -262,6 +351,7 @@ function AddHomeworkForm({ classes, subjects }: { classes: ClassSection[]; subje
         setDescription("");
         setDueDate("");
         toast.celebrate("Homework posted");
+        onDone();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't add");
       }
@@ -269,9 +359,8 @@ function AddHomeworkForm({ classes, subjects }: { classes: ClassSection[]; subje
   }
 
   return (
-    <div className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
-      <h2 className="mb-4 font-heading text-xl text-maroon">Set homework</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-base">
           <span className="font-medium text-maroon">Class</span>
           <ComboBox

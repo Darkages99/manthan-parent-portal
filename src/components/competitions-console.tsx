@@ -8,6 +8,7 @@ import {
   type CompetitionInput,
 } from "@/app/(staff)/console/competitions/actions";
 import { AwardIcon } from "./icons";
+import { CreateFab } from "./create-fab";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Competition = Tables<"competitions">;
@@ -87,6 +88,8 @@ export function CompetitionsConsole({ competitions }: { competitions: Competitio
           </div>
         )}
       </div>
+
+      <CreateFab label="Add a competition" onClick={() => setAdding(true)} />
     </div>
   );
 }

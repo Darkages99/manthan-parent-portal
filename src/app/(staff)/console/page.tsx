@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ConsoleAlerts } from "@/components/console-alerts";
+import { DashboardCalendar } from "@/components/dashboard-calendar";
+import { ExpandableList } from "@/components/expandable-list";
 import { getConsoleAlerts } from "@/lib/console-alerts";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
+import { formatTime } from "@/lib/format";
 import { MailIcon } from "@/components/icons";
 
 export default async function StaffDashboard() {
@@ -14,9 +17,7 @@ export default async function StaffDashboard() {
   const supabase = await createClient();
   const isAdmin = isPrincipalRole(viewer.staff.role);
 
-  const [stayBack, leave, alerts, staffAlerts] = await Promise.all([
-    supabase.from("stay_back_consents").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
+  const [alerts, staffAlerts, { data: dtrEvents }] = await Promise.all([
     getConsoleAlerts(viewer.staff),
     isAdmin
       ? supabase
@@ -25,17 +26,23 @@ export default async function StaffDashboard() {
           .eq("resolved", false)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as { id: string; message: string }[] }),
+    supabase
+      .from("dtr_events")
+      .select("id, title, category, event_date, description")
+      .order("event_date", { ascending: true }),
   ]);
 
+  // Pending counts come straight from the (already scoped) alert data — no need
+  // for separate count queries.
   const tiles = [
     {
       href: "/console/stay-back",
-      value: stayBack.count ?? 0,
+      value: alerts.pendingStayBack.length,
       label: "Stay-back requests awaiting a decision",
     },
     {
       href: "/console/leave",
-      value: leave.count ?? 0,
+      value: alerts.pendingLeave.length,
       label: "Leave requests awaiting a decision",
     },
   ];
@@ -79,6 +86,73 @@ export default async function StaffDashboard() {
         {/* Right column: the alert hub. */}
         <ConsoleAlerts data={alerts} staffAlerts={staffAlerts.data ?? []} />
       </div>
+
+      {/* Today at a glance — on leave, homework due, staying back. */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <TodayCard title="On leave today" emptyLabel="Nobody on approved leave today.">
+          {alerts.onLeaveToday.map((s) => (
+            <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
+              <span className="font-semibold text-maroon">{s.name}</span>
+              {s.className && <span className="text-slate"> · {s.className}</span>}
+              <span className="block text-sm text-slate-strong">{s.reason}</span>
+            </li>
+          ))}
+        </TodayCard>
+
+        <TodayCard title="Homework due today" emptyLabel="No outstanding homework due today.">
+          {alerts.dueHomeworkToday.map((s) => (
+            <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
+              <span className="font-semibold text-maroon">{s.name}</span>
+              {s.className && <span className="text-slate"> · {s.className}</span>}
+              <span className="block text-sm text-slate-strong">
+                {s.count} item{s.count === 1 ? "" : "s"} not done
+              </span>
+            </li>
+          ))}
+        </TodayCard>
+
+        <TodayCard title="Staying back today" emptyLabel="Nobody staying back today.">
+          {alerts.stayingBackToday.map((s) => (
+            <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
+              <span className="font-semibold text-maroon">{s.name}</span>
+              {s.className && <span className="text-slate"> · {s.className}</span>}
+              <span className="block text-sm text-slate-strong">
+                {formatTime(s.fromTime)}–{formatTime(s.toTime)}
+              </span>
+            </li>
+          ))}
+        </TodayCard>
+      </div>
+
+      {/* School calendar — visible to staff, not just parents. */}
+      <DashboardCalendar events={dtrEvents ?? []} fullHref="/console/calendar" />
     </div>
+  );
+}
+
+function TodayCard({
+  title,
+  emptyLabel,
+  children,
+}: {
+  title: string;
+  emptyLabel: string;
+  children: React.ReactNode[];
+}) {
+  const isEmpty = !children || children.length === 0;
+  return (
+    <section className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
+      <h2 className="mb-3 font-heading text-xl text-maroon">
+        {title}
+        {!isEmpty && <span className="ml-2 text-base font-normal text-slate">· {children.length}</span>}
+      </h2>
+      {isEmpty ? (
+        <p className="text-base text-slate">{emptyLabel}</p>
+      ) : (
+        <ExpandableList initialCount={5} className="flex flex-col gap-2">
+          {children}
+        </ExpandableList>
+      )}
+    </section>
   );
 }

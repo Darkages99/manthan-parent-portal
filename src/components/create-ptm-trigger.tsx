@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CreatePtmForm } from "./create-ptm-form";
 import { Dialog } from "./dialog";
-import { PlusIcon } from "./icons";
+import { CreateFab } from "./create-fab";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type ClassSection = Tables<"class_sections">;
@@ -23,14 +23,7 @@ export function CreatePtmTrigger({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex shrink-0 items-center gap-1.5 rounded-sm border border-hairline bg-surface px-4 py-2 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist"
-      >
-        <PlusIcon className="h-4 w-4" />
-        Create PTM
-      </button>
+      <CreateFab label="Create PTM" onClick={() => setOpen(true)} />
       <Dialog open={open} onClose={() => setOpen(false)} title="Create a PTM">
         <CreatePtmForm classes={classes} teachers={teachers} admins={admins} />
       </Dialog>

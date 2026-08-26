@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@/lib/supabase/database.types";
-import { createApprovalChain, getApprovalChain, type ApprovalStepInput } from "@/lib/approvals";
+import { createApprovalChain, type ApprovalStepInput } from "@/lib/approvals";
 
 /**
  * The stay-back approval chain: the named class teacher, then front office,
@@ -44,12 +44,20 @@ export async function ensureStayBackChains(
   consents: Pick<Tables<"stay_back_consents">, "id" | "teacher_id" | "student_id" | "status">[],
   gradeByStudentId: Record<string, string | null | undefined>,
 ): Promise<boolean> {
-  const pendingWithoutSteps: typeof consents = [];
-  for (const c of consents) {
-    if (c.status !== "pending") continue;
-    const existing = await getApprovalChain(supabase, "stay_back_consent", c.id);
-    if (existing.length === 0) pendingWithoutSteps.push(c);
-  }
+  const pending = consents.filter((c) => c.status === "pending");
+  if (pending.length === 0) return false;
+
+  // Single query for all existing steps (was an N+1 getApprovalChain per consent).
+  const { data: existingSteps } = await supabase
+    .from("approval_steps")
+    .select("subject_id")
+    .eq("subject_type", "stay_back_consent")
+    .in(
+      "subject_id",
+      pending.map((c) => c.id),
+    );
+  const withSteps = new Set((existingSteps ?? []).map((s) => s.subject_id));
+  const pendingWithoutSteps = pending.filter((c) => !withSteps.has(c.id));
   if (pendingWithoutSteps.length === 0) return false;
 
   for (const c of pendingWithoutSteps) {

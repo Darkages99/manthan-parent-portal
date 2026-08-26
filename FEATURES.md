@@ -7,7 +7,21 @@ Test in this order, top to bottom.
 
 Legend: `[ ]` untested · `[x]` tested and working · `[!]` tested, found an issue
 
-## Uncommitted — this session
+## Uncommitted — this session (UI + data pass)
+
+- [ ] Reports/issues visibility (0039): parent picks Principal-only / Front-office+principal / directed to specific teacher(s); staff see only what their role/targeting allows. Verify as principal, front office, a targeted teacher, a non-targeted teacher.
+- [ ] Data-integrity rules (0040): can't add a student with no parent; can't save a parent with neither email nor a child; can't remove a student's last parent. Sheets sync still succeeds (routes guardian upsert through `sync_upsert_guardian`).
+- [ ] Sticky "+" create FAB on students, parents, staff, PTM, messages, competitions
+- [ ] Attendance donut shows a "Not marked" slice; present % is roster-relative (30/60 = 50%, not 100%)
+- [ ] Leave requests: awaiting ordered by leave date (tomorrow first); all 3 sections show top 2 + "See N more"
+- [ ] Dashboard "today" sections (on leave / homework due / staying back), role-scoped; school calendar now on the console + `/console/calendar` route + nav item
+- [ ] Stay-back: two dropdowns by the search bar (time range default This year, status default Pending); approval-chain node diagram no longer horizontally scrolls
+- [ ] Timetable: Period structure + Import CSV are top-right buttons; period editor opens in a dialog; Import CSV is flagged off (shows "format must be finalised" notice)
+- [ ] Homework: Add via top-right button + FAB (dialog); Past homework has a Filters button (status / time range / class; defaults All / This year / All classes)
+- [ ] Results analytics: "Failures per subject" donut + "Marks distribution" donut
+- [ ] Perf: dashboard drops 2 redundant count queries; stay-back chain self-heal no longer N+1
+
+## Earlier this session
 
 - [ ] Coordinator role: admin-equivalent permissions (class-teacher assignment, message permissions, PTM/stay-back "principal" step)
 - [ ] Role label rename: "Teacher" instead of "Class teacher" in permission grid, approval checklists, stay-back page

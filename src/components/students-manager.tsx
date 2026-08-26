@@ -7,12 +7,14 @@ import { Dialog } from "./dialog";
 import { Button } from "./button";
 import { Toolbar, SearchInput } from "./filter-bar";
 import { ComboBox } from "./combobox";
-import { PlusIcon } from "./icons";
+import { TypeaheadPicker } from "./typeahead-picker";
+import { CreateFab } from "./create-fab";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Student = Tables<"students">;
 type ClassSection = { id: string; grade: string; section: string };
+type Guardian = { id: string; name: string };
 
 const inputCls = "rounded-sm border border-hairline bg-mist px-3 py-2 text-base";
 
@@ -23,10 +25,12 @@ function classLabel(c: Pick<ClassSection, "grade" | "section">): string {
 export function StudentsManager({
   students,
   classes,
+  guardians,
   guardianNamesByStudent,
 }: {
   students: Student[];
   classes: ClassSection[];
+  guardians: Guardian[];
   guardianNamesByStudent: Record<string, string[]>;
 }) {
   const [query, setQuery] = useState("");
@@ -62,15 +66,8 @@ export function StudentsManager({
           placeholder="Name, roll number, class, parent…"
           ariaLabel="Search students"
         />
-        <Button
-          className="ml-auto shrink-0"
-          size="sm"
-          onClick={() => setAddOpen(true)}
-          icon={<PlusIcon className="h-4 w-4" />}
-        >
-          Add student
-        </Button>
       </Toolbar>
+      <CreateFab label="Add student" onClick={() => setAddOpen(true)} />
 
       <div className="overflow-x-auto rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
         <table className="w-full min-w-[720px] text-left text-sm">
@@ -121,12 +118,17 @@ export function StudentsManager({
       </div>
 
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} title="Add student">
-        <StudentForm classes={classes} onDone={() => setAddOpen(false)} />
+        <StudentForm classes={classes} guardians={guardians} onDone={() => setAddOpen(false)} />
       </Dialog>
 
       <Dialog open={!!editing} onClose={() => setEditing(null)} title="Edit student">
         {editing && (
-          <StudentForm classes={classes} student={editing} onDone={() => setEditing(null)} />
+          <StudentForm
+            classes={classes}
+            guardians={guardians}
+            student={editing}
+            onDone={() => setEditing(null)}
+          />
         )}
       </Dialog>
     </div>
@@ -135,10 +137,12 @@ export function StudentsManager({
 
 function StudentForm({
   classes,
+  guardians,
   student,
   onDone,
 }: {
   classes: ClassSection[];
+  guardians: Guardian[];
   student?: Student;
   onDone: () => void;
 }) {
@@ -149,11 +153,21 @@ function StudentForm({
   const [rollNo, setRollNo] = useState(student?.roll_no ?? "");
   const [classSectionId, setClassSectionId] = useState(student?.class_section_id ?? classes[0]?.id ?? "");
   const [photoUrl, setPhotoUrl] = useState(student?.photo_url ?? "");
+  const [parentIds, setParentIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const guardianOptions = useMemo(
+    () => guardians.map((g) => ({ id: g.id, label: g.name })),
+    [guardians]
+  );
+
   function submit() {
     setError(null);
+    if (!student && parentIds.length === 0) {
+      setError("Choose at least one parent");
+      return;
+    }
     startTransition(async () => {
       try {
         const input = { firstName, lastName, rollNo, classSectionId, photoUrl };
@@ -161,7 +175,7 @@ function StudentForm({
           await updateStudent(student.id, input);
           toast.success("Saved");
         } else {
-          await createStudent(input);
+          await createStudent(input, parentIds);
           toast.success("Student added");
         }
         router.refresh();
@@ -221,13 +235,36 @@ function StudentForm({
         </label>
       </div>
 
+      {student ? (
+        <p className="text-sm text-slate">
+          Parents are managed from the Parents section.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Parent(s)</span>
+          <TypeaheadPicker
+            options={guardianOptions}
+            selected={parentIds}
+            onChange={setParentIds}
+            placeholder="Search parents…"
+          />
+          <span className="text-sm text-slate">A student must have at least one parent.</span>
+        </div>
+      )}
+
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
       <div className="flex items-center justify-between gap-2">
         <Button
           onClick={submit}
           loading={pending}
-          disabled={!firstName.trim() || !lastName.trim() || !rollNo.trim() || !classSectionId}
+          disabled={
+            !firstName.trim() ||
+            !lastName.trim() ||
+            !rollNo.trim() ||
+            !classSectionId ||
+            (!student && parentIds.length === 0)
+          }
           className="px-5 py-2.5"
         >
           Save

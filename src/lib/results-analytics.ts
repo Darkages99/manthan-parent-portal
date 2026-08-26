@@ -39,6 +39,10 @@ export type ClassAnalytics = {
   weakestSubject: SubjectAverage | null;
   strongestSubject: SubjectAverage | null;
   singleSubjectFailCount: number;
+  /** Number of failing entries (< 40%) per subject — where the school is weak. */
+  failuresBySubject: { subject: string; failCount: number }[];
+  /** Students grouped into performance bands, for a distribution donut. */
+  bandDistribution: { label: string; count: number }[];
 };
 
 /** All distinct terms present in a result set, most recent-looking first (lexical desc). */
@@ -174,19 +178,38 @@ export function computeClassAnalytics(
     ? ((studentAverages.length - belowForty.length) / studentAverages.length) * 100
     : 0;
 
-  // Per-subject aggregation.
-  const bySubject = new Map<string, { pctSum: number; count: number }>();
+  // Per-subject aggregation (average + failure count).
+  const bySubject = new Map<string, { pctSum: number; count: number; failCount: number }>();
   for (const r of termResults) {
     if (r.max_marks <= 0) continue;
     const pct = (r.marks / r.max_marks) * 100;
-    const agg = bySubject.get(r.subject) ?? { pctSum: 0, count: 0 };
+    const agg = bySubject.get(r.subject) ?? { pctSum: 0, count: 0, failCount: 0 };
     agg.pctSum += pct;
     agg.count += 1;
+    if (pct < FAIL_THRESHOLD_PCT) agg.failCount += 1;
     bySubject.set(r.subject, agg);
   }
   const subjectAverages: SubjectAverage[] = [...bySubject.entries()]
     .map(([subject, agg]) => ({ subject, percentage: agg.pctSum / agg.count, entryCount: agg.count }))
     .sort((a, b) => b.percentage - a.percentage);
+  const failuresBySubject = [...bySubject.entries()]
+    .map(([subject, agg]) => ({ subject, failCount: agg.failCount }))
+    .filter((f) => f.failCount > 0)
+    .sort((a, b) => b.failCount - a.failCount);
+
+  // Performance bands across students (for a distribution donut).
+  const bandDistribution = [
+    { label: "Excellent (90+)", count: studentAverages.filter((s) => s.percentage >= 90).length },
+    {
+      label: "Good (65–89)",
+      count: studentAverages.filter((s) => s.percentage >= 65 && s.percentage < 90).length,
+    },
+    {
+      label: "Pass (40–64)",
+      count: studentAverages.filter((s) => s.percentage >= FAIL_THRESHOLD_PCT && s.percentage < 65).length,
+    },
+    { label: "Fail (<40)", count: belowForty.length },
+  ].filter((b) => b.count > 0);
 
   return {
     termsAvailable,
@@ -202,5 +225,7 @@ export function computeClassAnalytics(
     weakestSubject: subjectAverages[subjectAverages.length - 1] ?? null,
     strongestSubject: subjectAverages[0] ?? null,
     singleSubjectFailCount,
+    failuresBySubject,
+    bandDistribution,
   };
 }

@@ -57,6 +57,7 @@ function buildNavItems(
     },
     { href: "/console/timetable", label: "Timetable", icon: GridIcon },
     { href: "/console/homework", label: "Homework", icon: ClassIcon },
+    { href: "/console/calendar", label: "School calendar", icon: CalendarIcon },
     // Principal-only administration.
     ...(isPrincipal
       ? [

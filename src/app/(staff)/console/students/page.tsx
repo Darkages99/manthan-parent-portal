@@ -40,6 +40,7 @@ export default async function ConsoleStudents() {
       <StudentsManager
         students={students ?? []}
         classes={classes ?? []}
+        guardians={guardians ?? []}
         guardianNamesByStudent={Object.fromEntries(guardianNamesByStudent)}
       />
     </div>

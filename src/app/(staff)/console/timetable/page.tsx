@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { TimetableConsole } from "@/components/timetable-console";
-import { PeriodEditor } from "@/components/period-editor";
-import { TimetableCsvImport } from "@/components/timetable-csv-import";
+import { TimetableAuthoringTools } from "@/components/timetable-authoring-tools";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { sortPeriods } from "@/lib/timetable";
@@ -35,22 +34,18 @@ export default async function ConsoleTimetable() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Scheduling</p>
-        <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Timetable</h1>
-        <p className="mt-2 max-w-prose text-lg text-slate-strong">
-          {canEdit
-            ? "Build each class's weekly timetable. Assign a subject and teacher to every period; clashes are flagged automatically."
-            : "Your personal weekly schedule, and the timetable of any class."}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-heading text-sm uppercase tracking-[0.18em] text-rust">Scheduling</p>
+          <h1 className="mt-1 font-heading text-4xl text-maroon text-balance">Timetable</h1>
+          <p className="mt-2 max-w-prose text-lg text-slate-strong">
+            {canEdit
+              ? "Build each class's weekly timetable. Assign a subject and teacher to every period; clashes are flagged automatically."
+              : "Your personal weekly schedule, and the timetable of any class."}
+          </p>
+        </div>
+        {canEdit && <TimetableAuthoringTools periods={periods ?? []} />}
       </div>
-
-      {canEdit && (
-        <>
-          <PeriodEditor periods={periods ?? []} />
-          <TimetableCsvImport />
-        </>
-      )}
 
       <TimetableConsole
         canEdit={canEdit}

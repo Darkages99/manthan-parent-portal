@@ -1,8 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { BarList } from "./charts";
+import { BarList, DonutChart, Legend, type Segment } from "./charts";
 import type { ClassAnalytics } from "@/lib/results-analytics";
+
+// Cycling palette for the per-subject failures donut.
+const FAIL_PALETTE = ["#f43f5e", "#fb7185", "#f59e0b", "#f97316", "#a855f7", "#6366f1", "#0ea5e9", "#14b8a6"];
+
+const BAND_COLORS: Record<string, string> = {
+  "Excellent (90+)": "#10b981",
+  "Good (65–89)": "#0ea5e9",
+  "Pass (40–64)": "#f59e0b",
+  "Fail (<40)": "#f43f5e",
+};
 
 /** Class-wide performance dashboard for the principal: pass rate, spread, and
  *  who/what needs attention this term. Sits above the per-student editor. */
@@ -107,6 +117,52 @@ export function ResultsAnalytics({
         </div>
       )}
 
+      {(analytics.failuresBySubject.length > 0 || analytics.bandDistribution.length > 0) && (
+        <div className="grid gap-3 md:grid-cols-2">
+          {analytics.failuresBySubject.length > 0 && (
+            <ChartCard title="Failures per subject" caption="Where the class is weakest">
+              {(() => {
+                const segments: Segment[] = analytics.failuresBySubject.map((f, i) => ({
+                  label: f.subject,
+                  value: f.failCount,
+                  color: FAIL_PALETTE[i % FAIL_PALETTE.length],
+                }));
+                const total = segments.reduce((s, seg) => s + seg.value, 0);
+                return (
+                  <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+                    <DonutChart segments={segments} centerValue={String(total)} centerLabel="fails" />
+                    <div className="w-full max-w-xs">
+                      <Legend segments={segments} total={total} />
+                    </div>
+                  </div>
+                );
+              })()}
+            </ChartCard>
+          )}
+
+          {analytics.bandDistribution.length > 0 && (
+            <ChartCard title="Marks distribution" caption="Students by performance band">
+              {(() => {
+                const segments: Segment[] = analytics.bandDistribution.map((b) => ({
+                  label: b.label,
+                  value: b.count,
+                  color: BAND_COLORS[b.label] ?? "#94a3b8",
+                }));
+                const total = segments.reduce((s, seg) => s + seg.value, 0);
+                return (
+                  <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+                    <DonutChart segments={segments} centerValue={String(total)} centerLabel="students" />
+                    <div className="w-full max-w-xs">
+                      <Legend segments={segments} total={total} />
+                    </div>
+                  </div>
+                );
+              })()}
+            </ChartCard>
+          )}
+        </div>
+      )}
+
       {analytics.atRisk.length > 0 && (
         <div className="rounded-sm border border-rose-400 bg-rose-50/70 p-4 dark:border-rose-500/50 dark:bg-rose-900/20">
           <h3 className="font-heading text-lg text-rose-700 dark:text-rose-200">
@@ -128,6 +184,24 @@ export function ResultsAnalytics({
 }
 
 const FAIL_BAR_PCT = 40;
+
+function ChartCard({
+  title,
+  caption,
+  children,
+}: {
+  title: string;
+  caption: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]">
+      <h3 className="font-heading text-sm uppercase tracking-wide text-slate">{title}</h3>
+      <p className="mb-3 text-xs text-slate">{caption}</p>
+      {children}
+    </div>
+  );
+}
 
 function StatTile({
   label,

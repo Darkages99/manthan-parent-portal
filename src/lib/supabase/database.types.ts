@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -1287,10 +1287,40 @@ export type Database = {
           },
         ]
       }
+      reported_issue_recipients: {
+        Row: {
+          issue_id: string
+          staff_id: string
+        }
+        Insert: {
+          issue_id: string
+          staff_id: string
+        }
+        Update: {
+          issue_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reported_issue_recipients_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "reported_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reported_issue_recipients_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reported_issues: {
         Row: {
+          audience: Database["public"]["Enums"]["issue_audience"]
           body: string
-          confidential: boolean
           created_at: string
           id: string
           reported_by_guardian_id: string | null
@@ -1301,8 +1331,8 @@ export type Database = {
           subject: string
         }
         Insert: {
+          audience?: Database["public"]["Enums"]["issue_audience"]
           body: string
-          confidential?: boolean
           created_at?: string
           id?: string
           reported_by_guardian_id?: string | null
@@ -1313,8 +1343,8 @@ export type Database = {
           subject: string
         }
         Update: {
+          audience?: Database["public"]["Enums"]["issue_audience"]
           body?: string
-          confidential?: boolean
           created_at?: string
           id?: string
           reported_by_guardian_id?: string | null
@@ -1766,14 +1796,44 @@ export type Database = {
           total: number
         }[]
       }
+      create_student_with_guardians: {
+        Args: {
+          p_class_section_id: string
+          p_first_name: string
+          p_guardian_ids: string[]
+          p_last_name: string
+          p_photo_url?: string
+          p_roll_no: string
+        }
+        Returns: string
+      }
       current_guardian_id: { Args: never; Returns: string }
       current_staff_id: { Args: never; Returns: string }
+      current_staff_is_issue_recipient: {
+        Args: { p_issue: string }
+        Returns: boolean
+      }
       current_staff_role: {
         Args: never
         Returns: Database["public"]["Enums"]["role"]
       }
       is_principal: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      replace_guardian_children: {
+        Args: { p_guardian: string; p_student_ids: string[] }
+        Returns: undefined
+      }
+      sync_upsert_guardian: {
+        Args: {
+          p_email?: string
+          p_id?: string
+          p_name: string
+          p_phone: string
+          p_relation: string
+          p_student_ids: string[]
+        }
+        Returns: string
+      }
     }
     Enums: {
       approval_decision: "approved" | "declined"
@@ -1786,6 +1846,7 @@ export type Database = {
       attendance_status: "present" | "absent" | "late" | "half_day"
       dtr_category: "exam" | "holiday" | "event" | "deadline" | "ptm" | "other"
       invoice_status: "due" | "partially_paid" | "paid" | "overdue"
+      issue_audience: "principal_only" | "front_office_and_principal"
       issue_status: "open" | "resolved"
       leave_status: "pending" | "approved" | "declined"
       message_scope_type: "school" | "class" | "student" | "group"
@@ -1951,6 +2012,7 @@ export const Constants = {
       attendance_status: ["present", "absent", "late", "half_day"],
       dtr_category: ["exam", "holiday", "event", "deadline", "ptm", "other"],
       invoice_status: ["due", "partially_paid", "paid", "overdue"],
+      issue_audience: ["principal_only", "front_office_and_principal"],
       issue_status: ["open", "resolved"],
       leave_status: ["pending", "approved", "declined"],
       message_scope_type: ["school", "class", "student", "group"],

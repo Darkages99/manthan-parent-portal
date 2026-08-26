@@ -7,6 +7,7 @@ import { Dialog } from "./dialog";
 import { Button } from "./button";
 import { Toolbar, SearchInput, SegmentedControl } from "./filter-bar";
 import { PlusIcon } from "./icons";
+import { CreateFab } from "./create-fab";
 import { useToast } from "./toast-provider";
 import type { Enums, Tables } from "@/lib/supabase/database.types";
 
@@ -68,15 +69,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
             { value: "inactive", label: "Deactivated" },
           ]}
         />
-        <Button
-          className="ml-auto shrink-0"
-          size="sm"
-          onClick={() => setAddOpen(true)}
-          icon={<PlusIcon className="h-4 w-4" />}
-        >
-          Add staff
-        </Button>
       </Toolbar>
+      <CreateFab label="Add staff" onClick={() => setAddOpen(true)} />
 
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} title="Add staff">
         <CreateStaffForm

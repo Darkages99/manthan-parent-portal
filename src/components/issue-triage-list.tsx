@@ -17,13 +17,20 @@ const statusLabels: Record<string, string> = {
   resolved: "Resolved",
 };
 
+const audienceLabels: Record<string, string> = {
+  principal_only: "Principal only",
+  front_office_and_principal: "Front office + principal",
+};
+
 export function IssueTriageList({
   issues,
   reporterNames,
+  recipientNames = {},
   emptyLabel = "No issues reported yet.",
 }: {
   issues: Issue[];
   reporterNames: Record<string, string>;
+  recipientNames?: Record<string, string[]>;
   emptyLabel?: string;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -41,7 +48,9 @@ export function IssueTriageList({
               <p className="mt-1 whitespace-pre-wrap text-base text-slate-strong">{i.body}</p>
               <p className="mt-2 text-sm text-slate">
                 {formatDate(i.created_at)} · Reported by {reporterNames[i.id] ?? "someone"}
-                {i.confidential && " · Confidential"}
+                {(recipientNames[i.id]?.length ?? 0) > 0
+                  ? ` · Directed to ${recipientNames[i.id].join(", ")}`
+                  : ` · ${audienceLabels[i.audience] ?? ""}`}
               </p>
             </div>
             <span

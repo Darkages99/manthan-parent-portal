@@ -5,13 +5,15 @@ import { motion } from "framer-motion";
 import { StatusPill } from "@/components/status-pill";
 import { ApprovalChain } from "@/components/approval-chain";
 import { Button } from "@/components/button";
-import { Toolbar, SearchInput, SegmentedControl } from "@/components/filter-bar";
+import { Toolbar, SearchInput } from "@/components/filter-bar";
+import { ComboBox } from "@/components/combobox";
 import { decideStayBack, remindStayBackApprovers } from "@/app/(staff)/console/stay-back/actions";
 import { useToast } from "@/components/toast-provider";
 import { resolveApproverMatch } from "@/lib/approval-match";
 import { buildWhatsAppLink } from "@/lib/notifications/whatsapp";
 import { formatTime } from "@/lib/format";
 import { fadeUp, staggerContainer } from "@/lib/motion";
+import { DATE_RANGE_OPTIONS, rangeFrom, type DateRange } from "@/lib/date-range";
 import { BellIcon } from "@/components/icons";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -42,21 +44,19 @@ export function StayBackApprovalList({
 }) {
   const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  // Defaults: pending decisions, this year.
+  const [status, setStatus] = useState<StatusFilter>("pending");
+  const [range, setRange] = useState<DateRange>("year");
   const toast = useToast();
 
   const studentById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
 
-  const counts = useMemo(() => {
-    const c = { all: consents.length, pending: 0, approved: 0, declined: 0 };
-    for (const x of consents) c[x.status as "pending" | "approved" | "declined"] += 1;
-    return c;
-  }, [consents]);
-
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const from = rangeFrom(range);
     const filtered = consents.filter((c) => {
       if (status !== "all" && c.status !== status) return false;
+      if (from && c.stay_date < from) return false;
       if (!q) return true;
       const student = studentById.get(c.student_id);
       const haystack = [
@@ -75,7 +75,7 @@ export function StayBackApprovalList({
       if (a.status !== "pending" && b.status === "pending") return 1;
       return b.created_at.localeCompare(a.created_at);
     });
-  }, [consents, query, status, studentById, guardianNames]);
+  }, [consents, query, status, range, studentById, guardianNames]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,16 +86,24 @@ export function StayBackApprovalList({
           placeholder="Search student or parent…"
           ariaLabel="Search stay-back requests"
         />
-        <SegmentedControl<StatusFilter>
-          ariaLabel="Filter by status"
-          value={status}
-          onChange={setStatus}
+        <ComboBox
+          options={DATE_RANGE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          value={range}
+          onChange={(v) => setRange(v as DateRange)}
+          ariaLabel="Time range"
+          className="w-44"
+        />
+        <ComboBox
           options={[
-            { value: "all", label: "All", count: counts.all },
-            { value: "pending", label: "Pending", count: counts.pending },
-            { value: "approved", label: "Approved", count: counts.approved },
-            { value: "declined", label: "Declined", count: counts.declined },
+            { value: "pending", label: "Pending" },
+            { value: "approved", label: "Approved" },
+            { value: "declined", label: "Declined" },
+            { value: "all", label: "All statuses" },
           ]}
+          value={status}
+          onChange={(v) => setStatus(v as StatusFilter)}
+          ariaLabel="Status"
+          className="w-44"
         />
       </Toolbar>
 

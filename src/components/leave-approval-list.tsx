@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { StatusPill } from "@/components/status-pill";
 import { decideLeave } from "@/app/(staff)/console/leave/actions";
 import { formatDate } from "@/lib/format";
@@ -14,14 +14,22 @@ export function LeaveApprovalList({
   studentNames,
   guardianNames,
   emptyLabel = "No leave requests yet.",
+  initialCount,
 }: {
   leaves: Leave[];
   studentNames: Record<string, string>;
   guardianNames: Record<string, string>;
   emptyLabel?: string;
+  /** When set, only the first N requests show until "See more" is clicked. */
+  initialCount?: number;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [expanded, setExpanded] = useState(false);
   const toast = useToast();
+
+  const capped = initialCount !== undefined && !expanded;
+  const shown = capped ? leaves.slice(0, initialCount) : leaves;
+  const hiddenCount = initialCount !== undefined ? leaves.length - initialCount : 0;
 
   function decide(id: string, decision: "approved" | "declined") {
     startTransition(async () => {
@@ -35,8 +43,9 @@ export function LeaveApprovalList({
   }
 
   return (
+    <div className="flex flex-col gap-3">
     <ul className="flex flex-col gap-4">
-      {leaves.map((l) => (
+      {shown.map((l) => (
         <li key={l.id} className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -73,5 +82,15 @@ export function LeaveApprovalList({
       ))}
       {leaves.length === 0 && <p className="text-base text-slate">{emptyLabel}</p>}
     </ul>
+    {hiddenCount > 0 && (
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="self-start text-sm font-semibold text-rust hover:underline"
+      >
+        {expanded ? "See less" : `See ${hiddenCount} more`}
+      </button>
+    )}
+    </div>
   );
 }

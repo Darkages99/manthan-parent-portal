@@ -33,14 +33,25 @@ export function PeriodEditor({ periods }: { periods: Period[] }) {
 
       {open && (
         <div className="border-t border-hairline px-5 py-4">
-          <ul className="flex flex-col gap-2">
-            {ordered.map((p) => (
-              <PeriodRow key={p.id} period={p} />
-            ))}
-          </ul>
-          <AddPeriodRow />
+          <PeriodEditorBody periods={ordered} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** The editable period rows + "add slot" control, without the collapsing card
+ * chrome — used inside the timetable's "Period structure" dialog. */
+export function PeriodEditorBody({ periods }: { periods: Period[] }) {
+  const ordered = sortPeriods(periods);
+  return (
+    <div>
+      <ul className="flex flex-col gap-2">
+        {ordered.map((p) => (
+          <PeriodRow key={p.id} period={p} />
+        ))}
+      </ul>
+      <AddPeriodRow />
     </div>
   );
 }

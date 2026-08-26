@@ -34,12 +34,40 @@ export type LowScoreStudent = {
   subjects: string[];
 };
 
+/** A student on approved leave covering today. */
+export type OnLeaveToday = {
+  id: string;
+  name: string;
+  className: string;
+  reason: string;
+};
+
+/** A student with one or more homework items due today they haven't done. */
+export type DueHomeworkStudent = {
+  id: string;
+  name: string;
+  className: string;
+  count: number;
+};
+
+/** A student staying back today (approved stay-back consent). */
+export type StayingBackToday = {
+  id: string;
+  name: string;
+  className: string;
+  fromTime: string;
+  toTime: string;
+};
+
 export type ConsoleAlertData = {
   lowAttendance: LowAttendanceStudent[];
   pendingLeave: PendingRequest[];
   pendingStayBack: PendingRequest[];
   absentToday: AbsentToday[];
   lowScores: LowScoreStudent[];
+  onLeaveToday: OnLeaveToday[];
+  dueHomeworkToday: DueHomeworkStudent[];
+  stayingBackToday: StayingBackToday[];
 };
 
 /** Marks at or below this fraction of the maximum count as failing. */
@@ -74,7 +102,16 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
   };
 
   if (classIds.length === 0) {
-    return { lowAttendance: [], pendingLeave: [], pendingStayBack: [], absentToday: [], lowScores: [] };
+    return {
+      lowAttendance: [],
+      pendingLeave: [],
+      pendingStayBack: [],
+      absentToday: [],
+      lowScores: [],
+      onLeaveToday: [],
+      dueHomeworkToday: [],
+      stayingBackToday: [],
+    };
   }
 
   // Students first — their ids scope the attendance reads below so we never
@@ -95,6 +132,8 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
     { data: pendingLeaves },
     { data: pendingStayBacks },
     examResults,
+    { data: homeworkToday },
+    { data: stayBackToday },
   ] = await Promise.all([
       studentIdList.length
         ? supabase.rpc("attendance_summary", { p_student_ids: studentIdList })
@@ -122,6 +161,16 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
         studentIdList,
         (chunk) => supabase.from("exam_results").select("student_id, subject, marks, max_marks").in("student_id", chunk)
       ),
+      supabase
+        .from("homework_assignments")
+        .select("id, class_section_id, checked")
+        .eq("due_date", today)
+        .in("class_section_id", classIds),
+      supabase
+        .from("stay_back_consents")
+        .select("id, student_id, from_time, to_time")
+        .eq("stay_date", today)
+        .eq("status", "approved"),
     ]);
   const nameOf = (id: string) => {
     const s = studentList.find((st) => st.id === id);
@@ -190,5 +239,69 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
     }))
     .sort((a, b) => b.subjects.length - a.subjects.length);
 
-  return { lowAttendance, pendingLeave, pendingStayBack, absentToday, lowScores };
+  // --- On leave today (approved leave covering today), scoped to these classes ---
+  const onLeaveToday: OnLeaveToday[] = (leaves ?? [])
+    .filter((l) => studentIds.has(l.student_id))
+    .map((l) => ({
+      id: l.student_id,
+      name: nameOf(l.student_id),
+      className: classOf(l.student_id),
+      reason: l.reason,
+    }));
+
+  // --- Staying back today (approved), scoped to these classes ---
+  const stayingBackToday: StayingBackToday[] = (stayBackToday ?? [])
+    .filter((s) => studentIds.has(s.student_id))
+    .map((s) => ({
+      id: s.student_id,
+      name: nameOf(s.student_id),
+      className: classOf(s.student_id),
+      fromTime: s.from_time,
+      toTime: s.to_time,
+    }));
+
+  // --- Students with homework due today they haven't done ---
+  // A homework_submissions row is an *override* of the assignment's `checked`
+  // default (migration 0036): done = checked ? overridden : !overridden.
+  const hwToday = homeworkToday ?? [];
+  const hwIds = hwToday.map((h) => h.id);
+  const { data: hwSubs } = hwIds.length
+    ? await supabase.from("homework_submissions").select("homework_id, student_id").in("homework_id", hwIds)
+    : { data: [] as { homework_id: string; student_id: string }[] };
+  const overrideByHw = new Map<string, Set<string>>();
+  for (const s of hwSubs ?? []) {
+    (overrideByHw.get(s.homework_id) ?? overrideByHw.set(s.homework_id, new Set()).get(s.homework_id)!).add(
+      s.student_id
+    );
+  }
+  const rosterByClass = new Map<string, string[]>();
+  for (const s of studentList) {
+    (rosterByClass.get(s.class_section_id) ?? rosterByClass.set(s.class_section_id, []).get(s.class_section_id)!).push(
+      s.id
+    );
+  }
+  const notDoneCount = new Map<string, number>();
+  for (const h of hwToday) {
+    const roster = rosterByClass.get(h.class_section_id) ?? [];
+    const overridden = overrideByHw.get(h.id) ?? new Set<string>();
+    for (const sid of roster) {
+      const isOverridden = overridden.has(sid);
+      const done = h.checked ? isOverridden : !isOverridden;
+      if (!done) notDoneCount.set(sid, (notDoneCount.get(sid) ?? 0) + 1);
+    }
+  }
+  const dueHomeworkToday: DueHomeworkStudent[] = [...notDoneCount.entries()]
+    .map(([id, count]) => ({ id, name: nameOf(id), className: classOf(id), count }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    lowAttendance,
+    pendingLeave,
+    pendingStayBack,
+    absentToday,
+    lowScores,
+    onLeaveToday,
+    dueHomeworkToday,
+    stayingBackToday,
+  };
 }

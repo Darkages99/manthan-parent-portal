@@ -7,7 +7,7 @@ import { TypeaheadPicker, type TypeaheadOption } from "./typeahead-picker";
 import { Dialog } from "./dialog";
 import { Button } from "./button";
 import { Toolbar, SearchInput } from "./filter-bar";
-import { PlusIcon } from "./icons";
+import { CreateFab } from "./create-fab";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -49,15 +49,8 @@ export function GuardiansManager({
           placeholder="Name, mobile, email, child…"
           ariaLabel="Search parents"
         />
-        <Button
-          className="ml-auto shrink-0"
-          size="sm"
-          onClick={() => setAddOpen(true)}
-          icon={<PlusIcon className="h-4 w-4" />}
-        >
-          Add parent
-        </Button>
       </Toolbar>
+      <CreateFab label="Add parent" onClick={() => setAddOpen(true)} />
 
       <div className="overflow-x-auto rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
         <table className="w-full min-w-[720px] text-left text-sm">
@@ -221,6 +214,7 @@ function GuardianForm({
             placeholder="parent@gmail.com"
             className={inputCls}
           />
+          <span className="text-sm text-slate">Required unless at least one child is linked.</span>
         </label>
       </div>
 
@@ -241,7 +235,7 @@ function GuardianForm({
         <Button
           onClick={submit}
           loading={pending}
-          disabled={!name.trim() || !phone.trim() || !email.trim()}
+          disabled={!name.trim() || !phone.trim() || (!email.trim() && childIds.length === 0)}
           className="px-5 py-2.5"
         >
           Save

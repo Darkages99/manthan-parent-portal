@@ -18,7 +18,8 @@ export async function createGuardian(input: GuardianInput, childStudentIds: stri
   await requirePrincipal();
   if (!input.name.trim()) throw new Error("Name is required");
   if (!input.phone.trim()) throw new Error("Mobile number is required");
-  if (!input.email.trim()) throw new Error("Email is required");
+  if (!input.email.trim() && childStudentIds.length === 0)
+    throw new Error("A parent needs an email or at least one linked child");
 
   const supabase = await createClient();
   const { data: guardian, error } = await supabase
@@ -27,7 +28,7 @@ export async function createGuardian(input: GuardianInput, childStudentIds: stri
       name: input.name.trim(),
       relation: input.relation.trim() || "Guardian",
       phone: input.phone.trim(),
-      email: input.email.trim().toLowerCase(),
+      email: input.email.trim().toLowerCase() || null,
     })
     .select("id")
     .single();
@@ -48,7 +49,8 @@ export async function updateGuardian(id: string, input: GuardianInput, childStud
   if (!id) throw new Error("Guardian is required");
   if (!input.name.trim()) throw new Error("Name is required");
   if (!input.phone.trim()) throw new Error("Mobile number is required");
-  if (!input.email.trim()) throw new Error("Email is required");
+  if (!input.email.trim() && childStudentIds.length === 0)
+    throw new Error("A parent needs an email or at least one linked child");
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -57,19 +59,19 @@ export async function updateGuardian(id: string, input: GuardianInput, childStud
       name: input.name.trim(),
       relation: input.relation.trim() || "Guardian",
       phone: input.phone.trim(),
-      email: input.email.trim().toLowerCase(),
+      email: input.email.trim().toLowerCase() || null,
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  const { error: clearError } = await supabase.from("guardian_student").delete().eq("guardian_id", id);
-  if (clearError) throw new Error(clearError.message);
-  if (childStudentIds.length) {
-    const { error: linkError } = await supabase
-      .from("guardian_student")
-      .insert(childStudentIds.map((student_id) => ({ guardian_id: id, student_id })));
-    if (linkError) throw new Error(linkError.message);
-  }
+  // Replace children atomically so the deferred integrity triggers only check
+  // the final state (a plain delete-then-insert would transiently orphan a
+  // student who is linked only to this guardian).
+  const { error: linkError } = await supabase.rpc("replace_guardian_children", {
+    p_guardian: id,
+    p_student_ids: childStudentIds,
+  });
+  if (linkError) throw new Error(linkError.message);
   revalidatePath("/console/parents");
 }
 

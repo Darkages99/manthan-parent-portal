@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { LeaveApprovalList } from "@/components/leave-approval-list";
+import { ExpandableList } from "@/components/expandable-list";
 import { StatusPill } from "@/components/status-pill";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { getViewer } from "@/lib/session";
@@ -50,7 +51,10 @@ export default async function LeaveApprovals() {
   const guardianNames = Object.fromEntries((guardians ?? []).map((g) => [g.id, g.name]));
 
   const all = leaves ?? [];
-  const pending = all.filter((l) => l.status === "pending");
+  // Awaiting decisions are ordered by leave date — the soonest (tomorrow's) first.
+  const pending = all
+    .filter((l) => l.status === "pending")
+    .sort((a, b) => a.from_date.localeCompare(b.from_date));
   const decided = all.filter((l) => l.status !== "pending");
   const onLeaveToday = all.filter(
     (l) => l.status === "approved" && l.from_date <= today && l.to_date >= today
@@ -79,6 +83,7 @@ export default async function LeaveApprovals() {
           studentNames={studentNames}
           guardianNames={guardianNames}
           emptyLabel="Nothing awaiting a decision."
+          initialCount={2}
         />
       </section>
 
@@ -88,7 +93,7 @@ export default async function LeaveApprovals() {
         {onLeaveToday.length === 0 ? (
           <p className="text-base text-slate">No approved leave covers today.</p>
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ExpandableList initialCount={2} className="grid gap-2 sm:grid-cols-2">
             {onLeaveToday.map((l) => (
               <li
                 key={l.id}
@@ -103,7 +108,7 @@ export default async function LeaveApprovals() {
                 </span>
               </li>
             ))}
-          </ul>
+          </ExpandableList>
         )}
       </section>
 
@@ -113,7 +118,10 @@ export default async function LeaveApprovals() {
         {decided.length === 0 ? (
           <p className="text-base text-slate">No decided requests yet.</p>
         ) : (
-          <ul className="max-h-[28rem] divide-y divide-hairline overflow-y-auto rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
+          <ExpandableList
+            initialCount={2}
+            className="divide-y divide-hairline rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]"
+          >
             {decided.map((l) => (
               <li key={l.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
                 <div className="min-w-0">
@@ -128,7 +136,7 @@ export default async function LeaveApprovals() {
                 <StatusPill status={l.status} />
               </li>
             ))}
-          </ul>
+          </ExpandableList>
         )}
       </section>
     </div>

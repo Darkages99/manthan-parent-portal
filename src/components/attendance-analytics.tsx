@@ -100,12 +100,18 @@ export function AttendanceAnalytics({
   for (const status of todayByStudent.values()) todayCounts[status] += 1;
   const markedToday = todayByStudent.size;
   const notMarked = scopedStudents.length - markedToday;
-  const presentPct = markedToday > 0 ? Math.round((todayCounts.present / markedToday) * 100) : 0;
+  // Present % is of the whole roster, not just those marked — 30 present out of
+  // 60 students is 50% present, not 100%.
+  const presentPct =
+    scopedStudents.length > 0 ? Math.round((todayCounts.present / scopedStudents.length) * 100) : 0;
   const todaySegments: Segment[] = (["present", "absent", "late", "half_day"] as Status[]).map((k) => ({
     label: STATUS_META[k].label,
     value: todayCounts[k],
     color: STATUS_META[k].color,
   }));
+  if (notMarked > 0) {
+    todaySegments.push({ label: "Not marked", value: notMarked, color: "#cbd5e1" });
+  }
 
   // --- Absent today, split informed / uninformed ---
   const absentToday = scopedStudents
@@ -185,7 +191,7 @@ export function AttendanceAnalytics({
               centerLabel="present"
             />
             <div className="w-full max-w-xs">
-              <Legend segments={todaySegments} total={markedToday} />
+              <Legend segments={todaySegments} total={scopedStudents.length} />
             </div>
           </div>
         )}

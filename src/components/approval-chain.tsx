@@ -31,8 +31,8 @@ export function ApprovalChain({
   const declinedAt = ordered.findIndex((s) => s.decision === "declined");
 
   return (
-    <div className="overflow-x-auto">
-      <div className="flex w-max items-start">
+    <div>
+      <div className="flex flex-wrap items-start gap-y-2">
         {ordered.map((step, i) => {
           const state: "approved" | "declined" | "waiting" = step.decision ?? "waiting";
           const blocked = declinedAt !== -1 && i > declinedAt;
