@@ -67,7 +67,7 @@ export default async function StaffDashboard() {
         ))}
       </TodayCard>
 
-      <TodayCard title="Homework due today" emptyLabel="No outstanding homework due today.">
+      <TodayCard title="Incomplete homework" emptyLabel="No outstanding homework due today.">
         {alerts.dueHomeworkToday.map((s) => (
           <li key={s.id} className="rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-base">
             <span className="font-semibold text-maroon">{s.name}</span>
