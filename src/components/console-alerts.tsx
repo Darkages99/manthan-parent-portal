@@ -1,29 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import { resolveStaffAlert } from "@/app/(staff)/console/staff/actions";
 import { useToast } from "./toast-provider";
-import {
-  AlertTriangleIcon,
-  AwardIcon,
-  CheckCircleIcon,
-  LeaveIcon,
-  ConsentIcon,
-  ChevronRightIcon,
-  ChevronDownIcon,
-  CloseIcon,
-  UsersIcon,
-} from "./icons";
+import { AlertTriangleIcon, CheckCircleIcon, ChevronDownIcon, CloseIcon, UsersIcon } from "./icons";
 import type { ConsoleAlertData } from "@/lib/console-alerts";
 
 type StaffAlert = { id: string; message: string };
 
-const MAX_LOW_ATTENDANCE = 4;
-const MAX_LOW_SCORES = 4;
 const MAX_NAMES_SHOWN = 3;
 
 /** "A, B, C" for short lists; "A, B, C, etc." once it gets long — keeps the row from forcing the layout wide. */
@@ -39,18 +25,8 @@ export function ConsoleAlerts({
   data: ConsoleAlertData;
   staffAlerts?: StaffAlert[];
 }) {
-  const { lowAttendance, pendingLeave, pendingStayBack, absentToday, lowScores } = data;
-  const total =
-    lowAttendance.length +
-    (pendingLeave.length > 0 ? 1 : 0) +
-    (pendingStayBack.length > 0 ? 1 : 0) +
-    (absentToday.length > 0 ? 1 : 0) +
-    lowScores.length +
-    staffAlerts.length;
-  const shownLow = lowAttendance.slice(0, MAX_LOW_ATTENDANCE);
-  const extraLow = lowAttendance.length - shownLow.length;
-  const shownScores = lowScores.slice(0, MAX_LOW_SCORES);
-  const extraScores = lowScores.length - shownScores.length;
+  const { absentToday } = data;
+  const total = (absentToday.length > 0 ? 1 : 0) + staffAlerts.length;
 
   return (
     <div className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
@@ -60,7 +36,7 @@ export function ConsoleAlerts({
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <CheckCircleIcon className="h-8 w-8 text-emerald-500" />
           <p className="text-base font-medium text-slate-strong">Nothing needs attention</p>
-          <p className="text-sm text-slate">No pending requests, absences, or low attendance.</p>
+          <p className="text-sm text-slate">No absences reported today.</p>
         </div>
       ) : (
         <motion.ul
@@ -74,124 +50,8 @@ export function ConsoleAlerts({
             <StaffAlertRow key={a.id} alert={a} />
           ))}
 
-          {/* New leave requests awaiting a decision. */}
-          {pendingLeave.length > 0 && (
-            <motion.li variants={fadeUp}>
-              <Link
-                href="/console/leave"
-                className="group flex items-center gap-3 rounded-sm border border-hairline bg-mist/40 p-3 transition hover:border-rust/50 hover:bg-mist"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200">
-                  <LeaveIcon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-semibold text-maroon">
-                    {pendingLeave.length} new {pendingLeave.length === 1 ? "leave request" : "leave requests"}
-                  </p>
-                  <p className="text-sm text-slate-strong">
-                    {truncateList(pendingLeave.map((l) => l.name))} — awaiting a decision.
-                  </p>
-                </div>
-                <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
-              </Link>
-            </motion.li>
-          )}
-
-          {/* New stay-back requests awaiting a decision. */}
-          {pendingStayBack.length > 0 && (
-            <motion.li variants={fadeUp}>
-              <Link
-                href="/console/stay-back"
-                className="group flex items-center gap-3 rounded-sm border border-hairline bg-mist/40 p-3 transition hover:border-rust/50 hover:bg-mist"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200">
-                  <ConsentIcon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-semibold text-maroon">
-                    {pendingStayBack.length} new{" "}
-                    {pendingStayBack.length === 1 ? "stay-back request" : "stay-back requests"}
-                  </p>
-                  <p className="text-sm text-slate-strong">
-                    {truncateList(pendingStayBack.map((s) => s.name))} — awaiting a decision.
-                  </p>
-                </div>
-                <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
-              </Link>
-            </motion.li>
-          )}
-
           {/* Everyone absent today — one expandable alert. */}
           {absentToday.length > 0 && <AbsentTodayAlert students={absentToday} />}
-
-          {/* Low attendance — one alert per student, capped. */}
-          {shownLow.map((s) => (
-            <motion.li key={s.id} variants={fadeUp}>
-              <Link
-                href="/console/attendance"
-                className="group flex items-center gap-3 rounded-sm border border-hairline bg-mist/40 p-3 transition hover:border-rust/50 hover:bg-mist"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
-                  <AlertTriangleIcon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-semibold text-maroon">
-                    {s.name} is below {ATTENDANCE_THRESHOLD}% attendance
-                  </p>
-                  <p className="truncate text-sm text-slate-strong">
-                    {s.className} · currently {s.pct}% present.
-                  </p>
-                </div>
-                <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
-              </Link>
-            </motion.li>
-          ))}
-
-          {extraLow > 0 && (
-            <motion.li variants={fadeUp}>
-              <Link
-                href="/console/attendance"
-                className="block rounded-sm px-3 py-2 text-sm font-medium text-rust hover:underline"
-              >
-                +{extraLow} more below {ATTENDANCE_THRESHOLD}% → Attendance
-              </Link>
-            </motion.li>
-          )}
-
-          {/* Failing marks — one alert per student scoring 40% or below. */}
-          {shownScores.map((s) => (
-            <motion.li key={`score-${s.id}`} variants={fadeUp}>
-              <Link
-                href="/console/results"
-                className="group flex items-center gap-3 rounded-sm border border-hairline bg-mist/40 p-3 transition hover:border-rust/50 hover:bg-mist"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-200">
-                  <AwardIcon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-semibold text-maroon">
-                    {s.name} is failing {s.subjects.length}{" "}
-                    {s.subjects.length === 1 ? "subject" : "subjects"}
-                  </p>
-                  <p className="truncate text-sm text-slate-strong">
-                    {s.className} · {truncateList(s.subjects, 2)}
-                  </p>
-                </div>
-                <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate transition group-hover:text-rust" />
-              </Link>
-            </motion.li>
-          ))}
-
-          {extraScores > 0 && (
-            <motion.li variants={fadeUp}>
-              <Link
-                href="/console/results"
-                className="block rounded-sm px-3 py-2 text-sm font-medium text-rust hover:underline"
-              >
-                +{extraScores} more failing a subject → Results
-              </Link>
-            </motion.li>
-          )}
         </motion.ul>
       )}
     </div>

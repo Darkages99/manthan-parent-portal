@@ -8,7 +8,7 @@ import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { formatTime } from "@/lib/format";
-import { MailIcon } from "@/components/icons";
+import { MailIcon, AlertTriangleIcon, AwardIcon } from "@/components/icons";
 
 export default async function StaffDashboard() {
   const viewer = await getViewer();
@@ -55,7 +55,7 @@ export default async function StaffDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        {/* Left column: pending-approval tiles + compose CTA. */}
+        {/* Left column: pending-approval tiles + compose CTA + this week's calendar. */}
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             {tiles.map((t) => (
@@ -81,10 +81,35 @@ export default async function StaffDashboard() {
               <p className="mt-1 text-base text-cream/80">Send a circular to a class, student or group</p>
             </div>
           </Link>
+          <DashboardCalendar events={dtrEvents ?? []} fullHref="/console/calendar" />
         </div>
 
-        {/* Right column: the alert hub. */}
-        <ConsoleAlerts data={alerts} staffAlerts={staffAlerts.data ?? []} />
+        {/* Right column: the alert hub + quick-access counts. */}
+        <div className="flex flex-col gap-4">
+          <ConsoleAlerts data={alerts} staffAlerts={staffAlerts.data ?? []} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Link
+              href="/console/attendance"
+              className={`rounded-sm border p-5 shadow-[var(--shadow-card)] transition hover:border-rust/60 ${
+                alerts.lowAttendance.length > 0 ? "border-rust/40 bg-rust-tint/30" : "border-hairline bg-surface"
+              }`}
+            >
+              <AlertTriangleIcon className="h-5 w-5 text-amber-600" />
+              <p className="mt-2 font-heading text-4xl text-maroon">{alerts.lowAttendance.length}</p>
+              <p className="mt-1 text-base text-slate-strong">Children below 85% attendance</p>
+            </Link>
+            <Link
+              href="/console/results"
+              className={`rounded-sm border p-5 shadow-[var(--shadow-card)] transition hover:border-rust/60 ${
+                alerts.lowScores.length > 0 ? "border-rust/40 bg-rust-tint/30" : "border-hairline bg-surface"
+              }`}
+            >
+              <AwardIcon className="h-5 w-5 text-sky-700" />
+              <p className="mt-2 font-heading text-4xl text-maroon">{alerts.lowScores.length}</p>
+              <p className="mt-1 text-base text-slate-strong">Children failing subjects</p>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Today at a glance — on leave, homework due, staying back. */}
@@ -123,9 +148,6 @@ export default async function StaffDashboard() {
           ))}
         </TodayCard>
       </div>
-
-      {/* School calendar — visible to staff, not just parents. */}
-      <DashboardCalendar events={dtrEvents ?? []} fullHref="/console/calendar" />
     </div>
   );
 }
