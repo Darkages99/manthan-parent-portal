@@ -590,6 +590,58 @@ export type Database = {
           },
         ]
       }
+      homework_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          homework_id: string
+          id: string
+          staff_id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          homework_id: string
+          id?: string
+          staff_id: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          homework_id?: string
+          id?: string
+          staff_id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_comments_homework_id_fkey"
+            columns: ["homework_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_comments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_comments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homework_notifications: {
         Row: {
           homework_id: string
@@ -1939,6 +1991,7 @@ export type Database = {
         | "reminders"
         | "defaulters"
         | "consultations"
+        | "homework"
       ptm_status: "open" | "closed"
       role:
         | "parent"
@@ -2107,6 +2160,7 @@ export const Constants = {
         "reminders",
         "defaulters",
         "consultations",
+        "homework",
       ],
       ptm_status: ["open", "closed"],
       role: [

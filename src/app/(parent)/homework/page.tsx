@@ -12,8 +12,10 @@ export default async function ParentHomeworkPage() {
     new Set(viewer.students.map((s) => s.class_section_id).filter((id): id is string => Boolean(id)))
   );
 
+  const studentIds = viewer.students.map((s) => s.id);
+
   const supabase = await createClient();
-  const [{ data: homework }, { data: subjects }] = await Promise.all([
+  const [{ data: homework }, { data: subjects }, { data: comments }] = await Promise.all([
     classIds.length > 0
       ? supabase
           .from("homework_assignments")
@@ -22,9 +24,15 @@ export default async function ParentHomeworkPage() {
           .order("due_date")
       : Promise.resolve({ data: [] as Tables<"homework_assignments">[] }),
     supabase.from("subjects").select("id, name"),
+    studentIds.length > 0
+      ? supabase.from("homework_comments").select("homework_id, student_id, comment").in("student_id", studentIds)
+      : Promise.resolve({ data: [] as Tables<"homework_comments">[] }),
   ]);
 
   const subjectName = Object.fromEntries((subjects ?? []).map((s) => [s.id, s.name]));
+  const commentByKey = Object.fromEntries(
+    (comments ?? []).map((c) => [`${c.homework_id}:${c.student_id}`, c.comment])
+  );
 
   const homeworkByClass: Record<string, Tables<"homework_assignments">[]> = {};
   for (const id of classIds) homeworkByClass[id] = [];
@@ -47,7 +55,12 @@ export default async function ParentHomeworkPage() {
         </p>
       </div>
 
-      <HomeworkView students={students} homeworkByClass={homeworkByClass} subjectName={subjectName} />
+      <HomeworkView
+        students={students}
+        homeworkByClass={homeworkByClass}
+        subjectName={subjectName}
+        commentByKey={commentByKey}
+      />
     </div>
   );
 }

@@ -32,15 +32,17 @@ export default async function HomeworkSubmissionsPage({
     if (cls?.class_teacher_id !== viewer.staff.id) redirect("/console/homework");
   }
 
-  const [{ data: students }, { data: submissions }] = await Promise.all([
+  const [{ data: students }, { data: submissions }, { data: comments }] = await Promise.all([
     supabase
       .from("students")
       .select("id, first_name, last_name")
       .eq("class_section_id", homework.class_section_id)
       .order("roll_no"),
     supabase.from("homework_submissions").select("student_id").eq("homework_id", id),
+    supabase.from("homework_comments").select("student_id, comment").eq("homework_id", id),
   ]);
   const overrideIds = (submissions ?? []).map((s) => s.student_id);
+  const commentByStudent = Object.fromEntries((comments ?? []).map((c) => [c.student_id, c.comment]));
 
   const cls = homework.class_sections as { grade: string; section: string } | null;
   const subject = homework.subjects as { name: string } | null;
@@ -67,6 +69,7 @@ export default async function HomeworkSubmissionsPage({
         students={students ?? []}
         overrideIds={overrideIds}
         checked={checked}
+        comments={commentByStudent}
       />
     </div>
   );

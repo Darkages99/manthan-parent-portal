@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ConsoleAlerts, countAlerts } from "@/components/console-alerts";
+import { ConsoleAlerts } from "@/components/console-alerts";
 import { DashboardCalendar } from "@/components/dashboard-calendar";
 import { ExpandableList } from "@/components/expandable-list";
 import { getConsoleAlerts } from "@/lib/console-alerts";
+import { countAlerts } from "@/lib/console-alert-count";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";

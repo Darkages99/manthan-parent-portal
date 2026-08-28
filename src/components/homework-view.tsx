@@ -20,10 +20,12 @@ export function HomeworkView({
   students,
   homeworkByClass,
   subjectName,
+  commentByKey,
 }: {
   students: Child[];
   homeworkByClass: Record<string, Homework[]>;
   subjectName: Record<string, string>;
+  commentByKey: Record<string, string>;
 }) {
   const [activeId, setActiveId] = useState(students[0]?.id ?? "");
   const active = students.find((s) => s.id === activeId) ?? students[0];
@@ -61,6 +63,7 @@ export function HomeworkView({
                 {list.map((h) => {
                   const overdue = h.due_date < today;
                   const dueToday = h.due_date === today;
+                  const comment = active ? commentByKey[`${h.id}:${active.id}`] : undefined;
                   return (
                     <li
                       key={h.id}
@@ -83,6 +86,11 @@ export function HomeworkView({
                         </span>
                       </div>
                       {h.description && <p className="text-sm text-slate-strong">{h.description}</p>}
+                      {comment && (
+                        <p className="rounded-sm border border-rust/30 bg-rust-tint/20 px-2.5 py-1.5 text-sm text-slate-strong">
+                          <span className="font-semibold text-rust">Teacher&apos;s note:</span> {comment}
+                        </p>
+                      )}
                     </li>
                   );
                 })}

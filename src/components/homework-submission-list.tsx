@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toggleSubmission, toggleAllChecked } from "@/app/(staff)/console/homework/actions";
+import { toggleSubmission, toggleAllChecked, setHomeworkComment } from "@/app/(staff)/console/homework/actions";
 import { useToast } from "./toast-provider";
 
 type Student = { id: string; first_name: string; last_name: string };
@@ -19,11 +19,13 @@ export function HomeworkSubmissionList({
   students,
   overrideIds,
   checked,
+  comments,
 }: {
   homeworkId: string;
   students: Student[];
   overrideIds: string[];
   checked: boolean;
+  comments: Record<string, string>;
 }) {
   const toast = useToast();
   const [defaultChecked, setDefaultChecked] = useState(checked);
@@ -99,20 +101,113 @@ export function HomeworkSubmissionList({
         {students.map((s) => {
           const done = isDone(s.id);
           return (
-            <li key={s.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
-              <span className="text-base text-slate-strong">
-                {s.first_name} {s.last_name}
-              </span>
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <input type="checkbox" checked={done} onChange={() => toggle(s.id)} />
-                <span className={done ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600"}>
-                  {done ? "Done" : "Not done"}
+            <li key={s.id} className="flex flex-col gap-2 px-5 py-3.5">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-base text-slate-strong">
+                  {s.first_name} {s.last_name}
                 </span>
-              </label>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input type="checkbox" checked={done} onChange={() => toggle(s.id)} />
+                  <span className={done ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600"}>
+                    {done ? "Done" : "Not done"}
+                  </span>
+                </label>
+              </div>
+              <CommentEditor homeworkId={homeworkId} studentId={s.id} initialComment={comments[s.id] ?? ""} />
             </li>
           );
         })}
       </ul>
     </div>
+  );
+}
+
+/** Inline remark editor for one student's homework — collapsed to the saved
+ * comment (or an "Add remark" button when there is none) until clicked, then
+ * a textarea + Save. Saving pushes a notification to the student's guardians
+ * (see setHomeworkComment). */
+function CommentEditor({
+  homeworkId,
+  studentId,
+  initialComment,
+}: {
+  homeworkId: string;
+  studentId: string;
+  initialComment: string;
+}) {
+  const toast = useToast();
+  const [comment, setComment] = useState(initialComment);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(initialComment);
+  const [isPending, startTransition] = useTransition();
+
+  function save() {
+    startTransition(async () => {
+      try {
+        await setHomeworkComment(homeworkId, studentId, draft);
+        setComment(draft.trim());
+        setEditing(false);
+        toast.success(draft.trim() ? "Remark sent to parent" : "Remark cleared");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't save remark");
+      }
+    });
+  }
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-1.5 pl-1">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder='e.g. "Very well done" or "Needs more effort"'
+          rows={2}
+          autoFocus
+          className="rounded-sm border border-hairline bg-mist/40 px-3 py-2 text-sm text-slate-strong outline-none focus:border-rust/60"
+        />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={save}
+            disabled={isPending}
+            className="rounded-sm bg-maroon px-3 py-1 text-xs font-semibold text-cream disabled:opacity-60"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(comment);
+              setEditing(false);
+            }}
+            disabled={isPending}
+            className="rounded-sm border border-hairline px-3 py-1 text-xs font-semibold text-slate-strong"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return comment ? (
+    <button
+      type="button"
+      onClick={() => {
+        setDraft(comment);
+        setEditing(true);
+      }}
+      className="pl-1 text-left text-sm text-slate-strong hover:underline"
+    >
+      &ldquo;{comment}&rdquo; <span className="text-slate">— edit</span>
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="pl-1 text-left text-sm text-rust hover:underline"
+    >
+      + Add remark
+    </button>
   );
 }

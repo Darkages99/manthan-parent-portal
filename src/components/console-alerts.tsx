@@ -16,6 +16,7 @@ import {
   UsersIcon,
 } from "./icons";
 import type { ConsoleAlertData } from "@/lib/console-alerts";
+import { countAlerts } from "@/lib/console-alert-count";
 
 export type StaffAlert = { id: string; message: string };
 
@@ -25,11 +26,6 @@ const MAX_NAMES_SHOWN = 3;
 function truncateList(items: string[], max = MAX_NAMES_SHOWN): string {
   if (items.length <= max) return items.join(", ");
   return `${items.slice(0, max).join(", ")}, etc.`;
-}
-
-/** How many alert rows the panel would render — shared with the dashboard page so it can decide layout. */
-export function countAlerts(data: ConsoleAlertData, staffAlerts: StaffAlert[] = []): number {
-  return (data.absentToday.length > 0 ? 1 : 0) + (data.stayingBackToday.length > 0 ? 1 : 0) + staffAlerts.length;
 }
 
 export function ConsoleAlerts({

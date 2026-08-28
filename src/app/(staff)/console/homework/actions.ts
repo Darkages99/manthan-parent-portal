@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/session";
+import { sendPush } from "@/lib/notifications/push";
 
 type HomeworkInput = {
   classSectionId: string;
@@ -204,4 +205,64 @@ export async function toggleAllChecked(homeworkId: string, checked: boolean) {
 
   revalidatePath(`/console/homework/${homeworkId}`);
   revalidatePath("/console/homework");
+}
+
+/** Sets (or clears, when blank) a teacher's remark on one student's homework
+ * for this assignment — independent of the done/not-done status, so it
+ * survives toggleSubmission/toggleAllChecked. A non-empty save pushes a
+ * notification to the student's guardians. */
+export async function setHomeworkComment(homeworkId: string, studentId: string, comment: string) {
+  const { staffId, classIds } = await scopedStaff();
+  if (!homeworkId || !studentId) throw new Error("Homework and student are required");
+
+  const supabase = await createClient();
+  const { data: homework } = await supabase
+    .from("homework_assignments")
+    .select("class_section_id, title")
+    .eq("id", homeworkId)
+    .single();
+  if (!homework) throw new Error("Homework assignment not found");
+  if (classIds && !classIds.includes(homework.class_section_id)) {
+    throw new Error("You can only comment on homework for your own class");
+  }
+
+  const trimmed = comment.trim();
+
+  if (!trimmed) {
+    const { error } = await supabase
+      .from("homework_comments")
+      .delete()
+      .eq("homework_id", homeworkId)
+      .eq("student_id", studentId);
+    if (error) throw new Error(error.message);
+    revalidatePath(`/console/homework/${homeworkId}`);
+    return;
+  }
+
+  const { error } = await supabase.from("homework_comments").upsert(
+    {
+      homework_id: homeworkId,
+      student_id: studentId,
+      staff_id: staffId,
+      comment: trimmed,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "homework_id,student_id" }
+  );
+  if (error) throw new Error(error.message);
+
+  const { data: links } = await supabase
+    .from("guardian_student")
+    .select("guardian_id")
+    .eq("student_id", studentId);
+  const guardianIds = (links ?? []).map((l) => l.guardian_id);
+  if (guardianIds.length > 0) {
+    await sendPush(
+      guardianIds.map((guardianId) => ({ userId: guardianId, role: "guardian" as const })),
+      { title: `Note on "${homework.title}"`, body: trimmed, url: "/homework" },
+      "homework"
+    );
+  }
+
+  revalidatePath(`/console/homework/${homeworkId}`);
 }
