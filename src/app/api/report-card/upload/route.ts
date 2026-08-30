@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
-import { getViewer } from "@/lib/session";
-import { isPrincipalRole } from "@/lib/roles";
+import { assertCanManageReportCard } from "@/lib/results-scope";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadFileAdmin } from "@/lib/firebase/admin-storage";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
-  const viewer = await getViewer();
-  if (!viewer || viewer.type !== "staff" || !isPrincipalRole(viewer.staff.role)) {
-    return NextResponse.json({ error: "Only the principal can publish report cards" }, { status: 401 });
-  }
-
   const form = await request.formData();
   const studentId = form.get("studentId");
   const term = form.get("term");
   const file = form.get("file");
   if (typeof studentId !== "string" || !studentId) {
     return NextResponse.json({ error: "studentId is required" }, { status: 400 });
+  }
+
+  try {
+    await assertCanManageReportCard(studentId);
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 401 });
   }
   if (typeof term !== "string" || !term) {
     return NextResponse.json({ error: "term is required" }, { status: 400 });

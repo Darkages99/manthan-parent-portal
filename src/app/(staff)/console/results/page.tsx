@@ -5,9 +5,11 @@ import { ResultsEditor } from "@/components/results-editor";
 import { ResultsAnalytics } from "@/components/results-analytics";
 import { ResultsSchoolOverview, type ClassSummary } from "@/components/results-school-overview";
 import { StudentAnalyticsPanel } from "@/components/student-analytics";
+import { MarksCsvImport } from "@/components/marks-csv-import";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
+import { getEditableSubjectsByClass } from "@/lib/results-scope";
 import { createClient } from "@/lib/supabase/server";
 import { fetchInChunks } from "@/lib/supabase/chunked-in";
 import { computeClassAnalytics, computeStudentAnalytics, distinctTerms } from "@/lib/results-analytics";
@@ -48,6 +50,11 @@ export default async function ConsoleResults({
   const visibleClassIds = isPrincipal
     ? null
     : new Set(await getTaughtClassIds(supabase, viewer.staff.id));
+  // Subject-level editing scope per class — "all" for the teacher's own
+  // homeroom, specific subject(s) elsewhere. Only needed for non-principals.
+  const subjectScopeByClass = isPrincipal
+    ? null
+    : await getEditableSubjectsByClass(supabase, viewer.staff.id);
   const classes = isPrincipal
     ? (allClassSections ?? [])
     : (allClassSections ?? []).filter((c) => visibleClassIds!.has(c.id));
@@ -55,6 +62,18 @@ export default async function ConsoleResults({
   // when they only have one, rather than making them pick it.
   const defaultClassId = !isPrincipal && classes.length === 1 ? classes[0].id : undefined;
   const validClassId = classes.some((c) => c.id === classId) ? classId : defaultClassId;
+
+  // Marks-editing scope for the selected class — "all" subjects for the
+  // teacher's own homeroom, or just their assigned subject(s) elsewhere.
+  const editableSubjects: "all" | string[] = isPrincipal
+    ? "all"
+    : validClassId
+      ? (() => {
+          const scope = subjectScopeByClass?.get(validClassId);
+          return scope === "all" ? "all" : scope ? [...scope] : [];
+        })()
+      : [];
+  const canEditSelectedClass = editableSubjects === "all" || editableSubjects.length > 0;
 
   const { data: students } = validClassId && view === "class"
     ? await supabase
@@ -259,11 +278,16 @@ export default async function ConsoleResults({
             />
           )}
 
+          {validClassId && canEditSelectedClass && (
+            <MarksCsvImport classId={validClassId} editableSubjects={editableSubjects} />
+          )}
+
           {validStudent && (
             <ResultsEditor
               studentId={validStudent}
               results={results ?? []}
               subjects={(subjects ?? []).map((s) => s.name)}
+              editableSubjects={editableSubjects}
             />
           )}
         </>

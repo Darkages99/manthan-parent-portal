@@ -2,9 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePrincipal } from "@/lib/roles";
+import { getViewer } from "@/lib/session";
+import { isPrincipalRole } from "@/lib/roles";
+import { getTaughtClassIds } from "@/lib/teacher-scope";
+import {
+  assertCanEditMark,
+  assertCanManageReportCard,
+  canEditSubject,
+  getEditableSubjectsByClass,
+} from "@/lib/results-scope";
 import { sendPush } from "@/lib/notifications/push";
 import { computeClassAnalytics, FAIL_THRESHOLD_PCT, WEAK_THRESHOLD_PCT } from "@/lib/results-analytics";
+import { parseCsv } from "@/lib/csv";
 
 /**
  * After a mark is saved, recomputes that student's class + term standing and
@@ -97,7 +106,6 @@ export async function upsertResult(input: {
   maxMarks: number;
   grade: string | null;
 }) {
-  await requirePrincipal();
   const { id, studentId, term, subject, marks, maxMarks, grade } = input;
   if (!studentId) throw new Error("Student is required");
   if (!term.trim()) throw new Error("Term is required");
@@ -105,6 +113,7 @@ export async function upsertResult(input: {
   if (!Number.isFinite(marks) || !Number.isFinite(maxMarks)) throw new Error("Marks must be numbers");
   if (maxMarks <= 0) throw new Error("Max marks must be greater than 0");
   if (marks < 0 || marks > maxMarks) throw new Error("Marks must be between 0 and the maximum");
+  await assertCanEditMark(studentId, subject.trim());
 
   const supabase = await createClient();
   const row = {
@@ -129,8 +138,8 @@ export async function upsertResult(input: {
  * every exam_results row for that student+term — see the upload route for
  * why the URL is denormalized across subject rows). */
 export async function removeReportCard(studentId: string, term: string) {
-  await requirePrincipal();
   if (!studentId || !term) throw new Error("Student and term are required");
+  await assertCanManageReportCard(studentId);
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -143,11 +152,144 @@ export async function removeReportCard(studentId: string, term: string) {
 }
 
 export async function deleteResult(id: string) {
-  await requirePrincipal();
   if (!id) throw new Error("Result is required");
 
   const supabase = await createClient();
+  const { data: result } = await supabase
+    .from("exam_results")
+    .select("student_id, subject")
+    .eq("id", id)
+    .maybeSingle();
+  if (!result) throw new Error("Mark not found");
+  await assertCanEditMark(result.student_id, result.subject);
+
   const { error } = await supabase.from("exam_results").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/console/results");
+}
+
+export type MarksImportResult = { imported: number; errors: { row: number; message: string }[] };
+
+/**
+ * Bulk-enters marks for one class + term from a CSV: roll_no, subject, marks,
+ * max_marks (optional, default 100), grade (optional). Roll numbers are
+ * resolved only within `classId` — never school-wide — since roll_no isn't
+ * unique across classes (see bulkSendByRollNumber's own note on this in
+ * console/messages/compose/actions.ts). A class_teacher is restricted to the
+ * subjects getEditableSubjectsByClass grants them for this class; principal-
+ * tier can enter any subject. Bad rows are collected as errors rather than
+ * aborting the whole import, mirroring bulkSendByRollNumber/importTimetableCsv.
+ */
+export async function importMarksCsv(
+  classId: string,
+  term: string,
+  csvText: string
+): Promise<MarksImportResult> {
+  const viewer = await getViewer();
+  if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
+  const isPrincipal = isPrincipalRole(viewer.staff.role);
+  if (!classId) throw new Error("Class is required");
+  if (!term.trim()) throw new Error("Term is required");
+
+  const supabase = await createClient();
+
+  let subjectScope: Set<string> | "all" | undefined;
+  if (!isPrincipal) {
+    if (viewer.staff.role !== "class_teacher") throw new Error("Not authorized to enter marks");
+    const taughtClassIds = await getTaughtClassIds(supabase, viewer.staff.id);
+    if (!taughtClassIds.includes(classId)) throw new Error("Not your class");
+    const scopeByClass = await getEditableSubjectsByClass(supabase, viewer.staff.id);
+    subjectScope = scopeByClass.get(classId);
+    if (!subjectScope) throw new Error("Not authorized to enter marks for this class");
+  }
+
+  const { header, rows } = parseCsv(csvText);
+  const norm = (h: string) => h.toLowerCase().replace(/[\s_]/g, "");
+  const rollIdx = header.findIndex((h) => norm(h) === "rollno");
+  const subjectIdx = header.findIndex((h) => norm(h) === "subject");
+  const marksIdx = header.findIndex((h) => norm(h) === "marks");
+  const maxMarksIdx = header.findIndex((h) => norm(h) === "maxmarks");
+  const gradeIdx = header.findIndex((h) => norm(h) === "grade");
+  if (rollIdx === -1 || subjectIdx === -1 || marksIdx === -1) {
+    throw new Error("CSV must have roll_no, subject and marks columns");
+  }
+
+  const parsedRows = rows.map((r, i) => ({
+    row: i + 2, // +1 for 0-index, +1 for the header row
+    rollNo: (r[rollIdx] ?? "").trim(),
+    subject: (r[subjectIdx] ?? "").trim(),
+    marksStr: (r[marksIdx] ?? "").trim(),
+    maxMarksStr: maxMarksIdx === -1 ? "" : (r[maxMarksIdx] ?? "").trim(),
+    grade: gradeIdx === -1 ? "" : (r[gradeIdx] ?? "").trim(),
+  }));
+
+  const { data: classStudents } = await supabase
+    .from("students")
+    .select("id, roll_no")
+    .eq("class_section_id", classId);
+  const studentIdByRoll = new Map((classStudents ?? []).map((s) => [s.roll_no, s.id]));
+  const studentIds = [...studentIdByRoll.values()];
+
+  const { data: existingResults } = studentIds.length
+    ? await supabase
+        .from("exam_results")
+        .select("id, student_id, subject")
+        .in("student_id", studentIds)
+        .eq("term", term.trim())
+    : { data: [] as { id: string; student_id: string; subject: string }[] };
+  const existingIdByKey = new Map((existingResults ?? []).map((r) => [`${r.student_id}|${r.subject}`, r.id]));
+
+  const errors: { row: number; message: string }[] = [];
+  let imported = 0;
+
+  for (const r of parsedRows) {
+    if (!r.rollNo || !r.subject || !r.marksStr) {
+      errors.push({ row: r.row, message: "Missing roll number, subject, or marks" });
+      continue;
+    }
+    const studentId = studentIdByRoll.get(r.rollNo);
+    if (!studentId) {
+      errors.push({ row: r.row, message: `Roll number ${r.rollNo} not found in this class` });
+      continue;
+    }
+    if (!isPrincipal && !canEditSubject(subjectScope, r.subject)) {
+      errors.push({ row: r.row, message: `You don't have permission to enter ${r.subject} marks` });
+      continue;
+    }
+    const marks = Number(r.marksStr);
+    const maxMarks = r.maxMarksStr ? Number(r.maxMarksStr) : 100;
+    if (!Number.isFinite(marks) || !Number.isFinite(maxMarks)) {
+      errors.push({ row: r.row, message: "Marks must be numbers" });
+      continue;
+    }
+    if (maxMarks <= 0) {
+      errors.push({ row: r.row, message: "Max marks must be greater than 0" });
+      continue;
+    }
+    if (marks < 0 || marks > maxMarks) {
+      errors.push({ row: r.row, message: "Marks must be between 0 and the maximum" });
+      continue;
+    }
+
+    const row = {
+      student_id: studentId,
+      term: term.trim(),
+      subject: r.subject,
+      marks,
+      max_marks: maxMarks,
+      grade: r.grade || null,
+    };
+    const existingId = existingIdByKey.get(`${studentId}|${r.subject}`);
+    const { error } = existingId
+      ? await supabase.from("exam_results").update(row).eq("id", existingId)
+      : await supabase.from("exam_results").insert(row);
+    if (error) {
+      errors.push({ row: r.row, message: error.message });
+      continue;
+    }
+    imported += 1;
+  }
+
+  revalidatePath("/console/results");
+  return { imported, errors };
 }

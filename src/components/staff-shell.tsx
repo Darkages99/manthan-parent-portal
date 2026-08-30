@@ -63,6 +63,16 @@ function buildNavItems(
     { href: "/console/timetable", label: "Timetable", icon: GridIcon },
     { href: "/console/homework", label: "Homework", icon: ClassIcon },
     { href: "/console/calendar", label: "School calendar", icon: CalendarIcon },
+    // Class/subject statistic breakdowns and marks entry — same page principals
+    // use, scoped down to the teacher's own classes/subjects.
+    ...(isPrincipal || role === "class_teacher"
+      ? [{ href: "/console/results", label: "Results", icon: AwardIcon }]
+      : []),
+    // Report card publishing — principal-tier, front office, and class
+    // teachers (scoped to their own classes).
+    ...(isPrincipal || role === "class_teacher" || role === "front_office"
+      ? [{ href: "/console/report-cards", label: "Report cards", icon: AwardIcon }]
+      : []),
     // Principal-only administration.
     ...(isPrincipal
       ? [
@@ -81,7 +91,6 @@ function buildNavItems(
           { href: "/console/students", label: "Students", icon: ClassIcon },
           { href: "/console/parents", label: "Parents", icon: UsersIcon },
           { href: "/console/staff", label: "Staff", icon: UsersIcon },
-          { href: "/console/results", label: "Results", icon: AwardIcon },
           { href: "/console/competitions", label: "Competitions", icon: AwardIcon },
         ]
       : []),

@@ -25,7 +25,10 @@ export default async function StaffAttendance({
   const supabase = await createClient();
   const today = istToday();
 
-  // Class teachers see their own class; principal / office roles see any class.
+  // Class teachers only mark attendance for their own homeroom(s) — daily
+  // register-taking is the homeroom teacher's job, unlike Results/marks
+  // scoping which spans every class a teacher subject-teaches. Principal /
+  // office roles see any class.
   const { data: allClasses } = await supabase.from("class_sections").select("*").order("grade");
   const classes =
     viewer.staff.role === "class_teacher"
@@ -86,6 +89,7 @@ export default async function StaffAttendance({
           today={today}
           initialClassId={requestedClassId}
           initialMarkOpen={mark === "1"}
+          canSeeEveryClass={viewer.staff.role !== "class_teacher"}
         />
       )}
     </div>

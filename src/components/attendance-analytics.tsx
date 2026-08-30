@@ -32,6 +32,7 @@ export function AttendanceAnalytics({
   today,
   initialClassId,
   initialMarkOpen,
+  canSeeEveryClass = true,
 }: {
   classes: ClassSection[];
   students: Student[];
@@ -46,10 +47,15 @@ export function AttendanceAnalytics({
    * paired with initialMarkOpen, jumps straight into the marking form. */
   initialClassId?: string;
   initialMarkOpen?: boolean;
+  /** Whether the whole-school "See every class" breakdown applies to this
+   * viewer — false for class teachers, who only ever see their own classes
+   * both here and on that page, so the link would be misleading. */
+  canSeeEveryClass?: boolean;
 }) {
   const [classFilter, setClassFilter] = useState<string>(initialClassId ?? "all");
   const [markOpen, setMarkOpen] = useState(Boolean(initialMarkOpen));
   const markSectionRef = useRef<HTMLElement>(null);
+  const autoOpenedRef = useRef(false);
 
   // Arriving from the dashboard's "Mark attendance" link — the form is already
   // expanded (see initialMarkOpen above), so bring it into view too instead of
@@ -109,6 +115,17 @@ export function AttendanceAnalytics({
   for (const status of todayByStudent.values()) todayCounts[status] += 1;
   const markedToday = todayByStudent.size;
   const notMarked = scopedStudents.length - markedToday;
+  // Drives both the section order below (marking jumps to the top while
+  // there's still someone unmarked) and the marker's default-open state.
+  const needsMarking = scopedStudents.length > 0 && notMarked > 0;
+
+  useEffect(() => {
+    if (!autoOpenedRef.current && needsMarking) {
+      autoOpenedRef.current = true;
+      setMarkOpen(true);
+    }
+  }, [needsMarking]);
+
   // Present % is of the whole roster, not just those marked — 30 present out of
   // 60 students is 50% present, not 100%.
   const presentPct =
@@ -152,63 +169,52 @@ export function AttendanceAnalytics({
   for (const c of classes) studentsByClass[c.id] = [];
   for (const s of students) studentsByClass[s.class_section_id]?.push(s);
 
-  return (
-    <div className="flex flex-col gap-6">
-      {classes.length > 1 && (
-        <label className="flex w-64 flex-col gap-1.5 text-base">
-          <span className="font-medium text-maroon">Class</span>
-          <ComboBox
-            options={[
-              { value: "all", label: "All classes" },
-              ...classes.map((c) => ({
-                value: c.id,
-                label: `Grade ${c.grade} - ${c.section}`,
-              })),
-            ]}
-            value={classFilter}
-            onChange={setClassFilter}
-            required
-            placeholder="Search class…"
-            ariaLabel="Class"
-            recallKey="attendance-analytics-class"
+  const todayCardInner = (
+    <>
+      <div className="mb-4 flex items-baseline justify-between gap-4">
+        <h2 className="font-heading text-xl text-maroon">Today</h2>
+        <span className="flex items-center gap-1 text-sm text-slate">
+          {markedToday} of {scopedStudents.length} marked
+          {notMarked > 0 && ` · ${notMarked} not yet marked`}
+          {canSeeEveryClass && <ChevronRightIcon className="h-4 w-4" />}
+        </span>
+      </div>
+      {markedToday === 0 ? (
+        <p className="py-6 text-center text-base text-slate">
+          Attendance hasn&apos;t been marked yet today.
+        </p>
+      ) : (
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+          <DonutChart
+            segments={todaySegments}
+            centerValue={`${presentPct}%`}
+            centerLabel="present"
           />
-        </label>
-      )}
-
-      {/* Today snapshot */}
-      <Link
-        href="/console/attendance/classes"
-        className="block rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)] transition hover:border-rust/60"
-      >
-        <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="font-heading text-xl text-maroon">Today</h2>
-          <span className="flex items-center gap-1 text-sm text-slate">
-            {markedToday} of {scopedStudents.length} marked
-            {notMarked > 0 && ` · ${notMarked} not yet marked`}
-            <ChevronRightIcon className="h-4 w-4" />
-          </span>
-        </div>
-        {markedToday === 0 ? (
-          <p className="py-6 text-center text-base text-slate">
-            Attendance hasn&apos;t been marked yet today.
-          </p>
-        ) : (
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
-            <DonutChart
-              segments={todaySegments}
-              centerValue={`${presentPct}%`}
-              centerLabel="present"
-            />
-            <div className="w-full max-w-xs">
-              <Legend segments={todaySegments} total={scopedStudents.length} />
-            </div>
+          <div className="w-full max-w-xs">
+            <Legend segments={todaySegments} total={scopedStudents.length} />
           </div>
-        )}
-        <p className="mt-4 text-sm font-medium text-rust">See every class →</p>
-      </Link>
+        </div>
+      )}
+      {canSeeEveryClass && <p className="mt-4 text-sm font-medium text-rust">See every class →</p>}
+    </>
+  );
 
-      {/* Absent today */}
-      <section className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
+  const todaySection = canSeeEveryClass ? (
+    <Link
+      key="today"
+      href="/console/attendance/classes"
+      className="block rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)] transition hover:border-rust/60"
+    >
+      {todayCardInner}
+    </Link>
+  ) : (
+    <div key="today" className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
+      {todayCardInner}
+    </div>
+  );
+
+  const absentSection = (
+    <section key="absent" className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
         <div className="mb-4 flex items-baseline justify-between gap-4">
           <h2 className="font-heading text-xl text-maroon">Absent today</h2>
           {uninformedCount > 0 && (
@@ -245,65 +251,102 @@ export function AttendanceAnalytics({
           </ul>
         )}
       </section>
+  );
 
-      {/* Below threshold */}
-      <section className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
-        <h2 className="mb-4 font-heading text-xl text-maroon">
-          Below {ATTENDANCE_THRESHOLD}% attendance
-        </h2>
-        {belowThreshold.length === 0 ? (
-          <p className="flex items-center gap-2 text-base text-slate-strong">
-            <CheckCircleIcon className="h-5 w-5 text-emerald-500" />
-            Every student is at or above the {ATTENDANCE_THRESHOLD}% minimum.
-          </p>
-        ) : (
-          <ul className="divide-y divide-hairline">
-            {belowThreshold.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-4 py-2.5">
-                <span className="text-base text-slate-strong">
-                  {s.name}
-                  {s.className && <span className="ml-2 text-sm text-slate">{s.className}</span>}
-                </span>
-                <span className="font-heading text-lg text-rose-600 dark:text-rose-300">{s.pct}%</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+  const belowThresholdSection = (
+    <section key="below" className="rounded-sm border border-hairline bg-surface p-6 shadow-[var(--shadow-card)]">
+      <h2 className="mb-4 font-heading text-xl text-maroon">
+        Below {ATTENDANCE_THRESHOLD}% attendance
+      </h2>
+      {belowThreshold.length === 0 ? (
+        <p className="flex items-center gap-2 text-base text-slate-strong">
+          <CheckCircleIcon className="h-5 w-5 text-emerald-500" />
+          Every student is at or above the {ATTENDANCE_THRESHOLD}% minimum.
+        </p>
+      ) : (
+        <ul className="divide-y divide-hairline">
+          {belowThreshold.map((s) => (
+            <li key={s.id} className="flex items-center justify-between gap-4 py-2.5">
+              <span className="text-base text-slate-strong">
+                {s.name}
+                {s.className && <span className="ml-2 text-sm text-slate">{s.className}</span>}
+              </span>
+              <span className="font-heading text-lg text-rose-600 dark:text-rose-300">{s.pct}%</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 
-      {/* Marking — available but secondary. */}
-      <section ref={markSectionRef} className="rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
-        <button
-          type="button"
-          onClick={() => setMarkOpen((o) => !o)}
-          aria-expanded={markOpen}
-          className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left"
-        >
-          <span>
-            <span className="font-heading text-xl text-maroon">Mark attendance</span>
-            <span className="ml-2 text-sm text-slate">Set each student&apos;s status for the day</span>
+  const markSection = (
+    <section
+      key="mark"
+      ref={markSectionRef}
+      className="rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]"
+    >
+      <button
+        type="button"
+        onClick={() => setMarkOpen((o) => !o)}
+        aria-expanded={markOpen}
+        className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left"
+      >
+        <span>
+          <span className="font-heading text-xl text-maroon">Mark attendance</span>
+          <span className="ml-2 text-sm text-slate">
+            {needsMarking ? "Attendance hasn't been fully marked today" : "Set each student's status for the day"}
           </span>
-          <ChevronDownIcon
-            className={`h-5 w-5 shrink-0 text-slate transition-transform ${markOpen ? "" : "-rotate-90"}`}
+        </span>
+        <ChevronDownIcon
+          className={`h-5 w-5 shrink-0 text-slate transition-transform ${markOpen ? "" : "-rotate-90"}`}
+        />
+      </button>
+      {markOpen && (
+        <div className="border-t border-hairline p-6">
+          {classes.length === 0 ? (
+            <p className="text-base text-slate">No class is assigned to you for marking.</p>
+          ) : (
+            <AttendanceMarker
+              classes={classes}
+              studentsByClass={studentsByClass}
+              todayRecords={effectiveTodayRecords}
+              today={today}
+              initialClassId={initialClassId}
+              onSaved={onAttendanceSaved}
+            />
+          )}
+        </div>
+      )}
+    </section>
+  );
+
+  const orderedSections = needsMarking
+    ? [markSection, todaySection, absentSection, belowThresholdSection]
+    : [todaySection, absentSection, belowThresholdSection, markSection];
+
+  return (
+    <div className="flex flex-col gap-6">
+      {classes.length > 1 && (
+        <label className="flex w-64 flex-col gap-1.5 text-base">
+          <span className="font-medium text-maroon">Class</span>
+          <ComboBox
+            options={[
+              { value: "all", label: "All classes" },
+              ...classes.map((c) => ({
+                value: c.id,
+                label: `Grade ${c.grade} - ${c.section}`,
+              })),
+            ]}
+            value={classFilter}
+            onChange={setClassFilter}
+            required
+            placeholder="Search class…"
+            ariaLabel="Class"
+            recallKey="attendance-analytics-class"
           />
-        </button>
-        {markOpen && (
-          <div className="border-t border-hairline p-6">
-            {classes.length === 0 ? (
-              <p className="text-base text-slate">No class is assigned to you for marking.</p>
-            ) : (
-              <AttendanceMarker
-                classes={classes}
-                studentsByClass={studentsByClass}
-                todayRecords={effectiveTodayRecords}
-                today={today}
-                initialClassId={initialClassId}
-                onSaved={onAttendanceSaved}
-              />
-            )}
-          </div>
-        )}
-      </section>
+        </label>
+      )}
+      {orderedSections}
     </div>
   );
 }

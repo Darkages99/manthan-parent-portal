@@ -1,11 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { upsertResult, deleteResult, removeReportCard } from "@/app/(staff)/console/results/actions";
+import { useState, useTransition } from "react";
+import { upsertResult, deleteResult } from "@/app/(staff)/console/results/actions";
 import { GRADE_OPTIONS, TERM_OPTIONS, withCurrentValue } from "@/lib/grades";
 import { Button } from "./button";
-import { DownloadIcon } from "./icons";
+import { ReportCardRow } from "./report-card-row";
 import { useToast } from "./toast-provider";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -18,12 +17,19 @@ export function ResultsEditor({
   studentId,
   results,
   subjects,
+  editableSubjects = "all",
 }: {
   studentId: string;
   results: Result[];
   subjects: string[];
+  /** "all" (principal-tier / homeroom) or the specific subject(s) this
+   * viewer may add/edit/delete for this student. Rows outside that set are
+   * shown read-only. */
+  editableSubjects?: "all" | string[];
 }) {
   const terms = [...new Set(results.map((r) => r.term))].sort().reverse();
+  const addableSubjects = editableSubjects === "all" ? subjects : subjects.filter((s) => editableSubjects.includes(s));
+  const canEdit = (subject: string) => editableSubjects === "all" || editableSubjects.includes(subject);
 
   return (
     <div className="flex flex-col gap-4">
@@ -41,9 +47,15 @@ export function ResultsEditor({
           </thead>
           <tbody className="divide-y divide-hairline">
             {results.map((r) => (
-              <ResultRow key={r.id} studentId={studentId} result={r} subjects={subjects} />
+              <ResultRow
+                key={r.id}
+                studentId={studentId}
+                result={r}
+                subjects={subjects}
+                editable={canEdit(r.subject)}
+              />
             ))}
-            <AddResultRow studentId={studentId} subjects={subjects} />
+            {addableSubjects.length > 0 && <AddResultRow studentId={studentId} subjects={addableSubjects} />}
           </tbody>
         </table>
       </div>
@@ -66,94 +78,16 @@ export function ResultsEditor({
   );
 }
 
-function ReportCardRow({ studentId, term, url }: { studentId: string; term: string; url: string | null }) {
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, startUpload] = useTransition();
-  const [isRemoving, startRemove] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const toast = useToast();
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    startUpload(async () => {
-      try {
-        const form = new FormData();
-        form.set("studentId", studentId);
-        form.set("term", term);
-        form.set("file", file);
-        const res = await fetch("/api/report-card/upload", { method: "POST", body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Upload failed");
-        toast.success("Report card published");
-        router.refresh();
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Upload failed";
-        setError(message);
-        toast.error(message);
-      } finally {
-        if (inputRef.current) inputRef.current.value = "";
-      }
-    });
-  }
-
-  function remove() {
-    if (!confirm(`Remove the published report card for ${term}?`)) return;
-    setError(null);
-    startRemove(async () => {
-      try {
-        await removeReportCard(studentId, term);
-        toast.success("Report card removed");
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Couldn't remove";
-        setError(message);
-        toast.error(message);
-      }
-    });
-  }
-
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-sm">
-      <div>
-        <span className="font-semibold text-maroon">{term}</span>
-        <span className={`ml-2 ${url ? "text-emerald-700 dark:text-emerald-300" : "text-slate"}`}>
-          {url ? "Published" : "Not published"}
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        <label className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-hairline bg-surface px-3 py-1.5 text-sm font-semibold text-maroon shadow-[var(--shadow-card)] hover:bg-mist">
-          <DownloadIcon className="h-4 w-4 rotate-180" />
-          {isUploading ? "Uploading…" : url ? "Replace" : "Upload PDF"}
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            className="hidden"
-            disabled={isUploading}
-            onChange={onFileChange}
-          />
-        </label>
-        {url && (
-          <Button type="button" size="sm" variant="danger" onClick={remove} disabled={isRemoving}>
-            Remove
-          </Button>
-        )}
-      </div>
-      {error && <p className="w-full text-xs text-rose-600">{error}</p>}
-    </li>
-  );
-}
-
 function ResultRow({
   studentId,
   result,
   subjects,
+  editable,
 }: {
   studentId: string;
   result: Result;
   subjects: string[];
+  editable: boolean;
 }) {
   const [term, setTerm] = useState(result.term);
   const [subject, setSubject] = useState(result.subject);
@@ -206,6 +140,19 @@ function ResultRow({
         toast.error(message);
       }
     });
+  }
+
+  if (!editable) {
+    return (
+      <tr>
+        <td className="px-3 py-2 text-sm text-slate-strong">{result.term}</td>
+        <td className="px-3 py-2 text-sm text-slate-strong">{result.subject}</td>
+        <td className="px-3 py-2 text-sm text-slate-strong">{result.marks}</td>
+        <td className="px-3 py-2 text-sm text-slate-strong">{result.max_marks}</td>
+        <td className="px-3 py-2 text-sm text-slate-strong">{result.grade ?? "—"}</td>
+        <td className="px-3 py-2 text-xs text-slate">Not your subject</td>
+      </tr>
+    );
   }
 
   return (

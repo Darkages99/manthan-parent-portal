@@ -18,19 +18,21 @@ function istToday(): string {
 export default async function AttendanceByClass() {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
+  // Whole-school view — a class teacher only ever has their own few classes,
+  // which the main Attendance page already covers.
+  if (viewer.staff.role === "class_teacher") redirect("/console/attendance");
 
   const supabase = await createClient();
   const today = istToday();
 
+  // class_teacher already redirected away above — every remaining role
+  // (principal-tier, front_office, accounts) sees every class.
   const { data: allClasses } = await supabase
     .from("class_sections")
     .select("*")
     .order("grade")
     .order("section");
-  const classes =
-    viewer.staff.role === "class_teacher"
-      ? (allClasses ?? []).filter((c) => c.class_teacher_id === viewer.staff.id)
-      : (allClasses ?? []);
+  const classes = allClasses ?? [];
   const classIds = classes.map((c) => c.id);
 
   const { data: students } = classIds.length
