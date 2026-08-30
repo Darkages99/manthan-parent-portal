@@ -1,4 +1,3 @@
-import { TrendLine } from "./charts";
 import type { StudentAnalytics } from "@/lib/results-analytics";
 
 /** One student's performance snapshot: latest-term average, trend vs. the
@@ -76,19 +75,6 @@ export function StudentAnalyticsPanel({ analytics }: { analytics: StudentAnalyti
         </div>
       )}
 
-      {analytics.termAverages.length > 1 && (
-        <div className="rounded-sm border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]">
-          <h3 className="mb-1 font-heading text-sm uppercase tracking-wide text-slate">
-            Term-over-term average
-          </h3>
-          <TrendLine
-            valueSuffix="%"
-            points={[...analytics.termAverages]
-              .reverse()
-              .map((t) => ({ label: t.term, value: Math.round(t.percentage) }))}
-          />
-        </div>
-      )}
     </div>
   );
 }
