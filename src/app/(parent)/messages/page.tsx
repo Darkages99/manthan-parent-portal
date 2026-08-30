@@ -60,6 +60,16 @@ export default async function MessagesPage() {
     .not("sent_at", "is", null)
     .order("sent_at", { ascending: false });
 
+  // Read before `MarkMessagesRead` (below) clears these receipts, so the list
+  // can show which messages were actually new as of this page load.
+  const { data: receipts } = await supabase
+    .from("message_receipts")
+    .select("message_id")
+    .eq("guardian_id", viewer.guardian.id)
+    .is("read_at", null);
+  const unreadIds = new Set((receipts ?? []).map((r) => r.message_id));
+  const messagesWithUnread = (messages ?? []).map((m) => ({ ...m, unread: unreadIds.has(m.id) }));
+
   return (
     <div className="flex flex-col gap-6">
       <MarkMessagesRead />
@@ -71,7 +81,7 @@ export default async function MessagesPage() {
         </p>
       </div>
 
-      <GuardianMessagesList messages={messages ?? []} />
+      <GuardianMessagesList messages={messagesWithUnread} />
     </div>
   );
 }

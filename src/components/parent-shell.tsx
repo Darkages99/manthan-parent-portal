@@ -59,15 +59,6 @@ export function ParentShell({
       subtitle="Parent Portal"
       accountName={guardianName}
       childSwitcher={<ChildSwitcher />}
-      footer={
-        <footer className="relative z-10 mt-auto border-t border-hairline bg-mist/80 px-4 py-6 text-center text-sm text-slate">
-          <div className="mx-auto flex max-w-5xl items-center justify-center gap-2">
-            <span className="h-px w-8 bg-hairline" aria-hidden />
-            Manthan Vidyashram Parent Portal
-            <span className="h-px w-8 bg-hairline" aria-hidden />
-          </div>
-        </footer>
-      }
     >
       {children}
     </AppShell>

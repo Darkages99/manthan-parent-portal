@@ -11,16 +11,23 @@ type Urgency = "all" | "urgent" | "not_urgent";
 type Message = Tables<"messages"> & {
   staff: { name: string } | null;
   message_attachments: Tables<"message_attachments">[];
+  /** Whether this guardian hadn't yet read it as of this page load. */
+  unread: boolean;
 };
 
 /** Parent inbox list with the same search + date/urgency filter UI as the
- * staff "Sent messages" log (see SentMessagesList). */
+ * staff "Sent messages" log (see SentMessagesList), grouped into "New" and
+ * "Earlier" so unread messages stand out. Mounting this page marks messages
+ * read in the background (see MarkMessagesRead), so the "New" group is
+ * captured once at mount rather than recomputed as that happens — otherwise
+ * every message would flip to "Earlier" moments after the page loads. */
 export function GuardianMessagesList({ messages }: { messages: Message[] }) {
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<DateRange>("all");
   const [urgency, setUrgency] = useState<Urgency>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const activeFilterCount = (range !== "all" ? 1 : 0) + (urgency !== "all" ? 1 : 0);
+  const [newIds] = useState(() => new Set(messages.filter((m) => m.unread).map((m) => m.id)));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -33,6 +40,9 @@ export function GuardianMessagesList({ messages }: { messages: Message[] }) {
       return true;
     });
   }, [messages, query, range, urgency]);
+
+  const newMessages = filtered.filter((m) => newIds.has(m.id));
+  const earlierMessages = filtered.filter((m) => !newIds.has(m.id));
 
   if (messages.length === 0) {
     return <p className="text-base text-slate">No messages yet.</p>;
@@ -118,45 +128,79 @@ export function GuardianMessagesList({ messages }: { messages: Message[] }) {
           {query ? `No messages match "${query}".` : "No messages match these filters."}
         </p>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {filtered.map((m) => (
-            <li key={m.id} className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-base font-semibold text-maroon">{m.subject}</p>
-                {m.urgent && (
-                  <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">
-                    Urgent
-                  </span>
-                )}
-              </div>
-              <ExpandableText text={m.body} className="mt-1 text-base text-slate-strong" />
-              <p className="mt-2 text-sm uppercase tracking-wide text-slate">
-                {m.staff?.name} ·{" "}
-                {m.sent_at &&
-                  new Date(m.sent_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-              </p>
-              {m.message_attachments.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {m.message_attachments.map((a) => (
-                    <a
-                      key={a.id}
-                      href={a.storage_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-sm border border-hairline bg-parchment px-2.5 py-1 text-sm text-maroon transition hover:border-rust/60 hover:bg-mist"
-                    >
-                      <span className="rounded-sm bg-maroon px-1.5 py-0.5 text-xs font-bold text-cream">
-                        PDF
-                      </span>
-                      {a.file_name}
-                    </a>
-                  ))}
-                </div>
+        <div className="flex flex-col gap-6">
+          {newMessages.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-rust">
+                New
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rust px-1.5 text-xs font-bold text-cream">
+                  {newMessages.length}
+                </span>
+              </h2>
+              <ul className="flex flex-col gap-3">
+                {newMessages.map((m) => (
+                  <MessageCard key={m.id} message={m} />
+                ))}
+              </ul>
+            </section>
+          )}
+          {earlierMessages.length > 0 && (
+            <section className="flex flex-col gap-3">
+              {newMessages.length > 0 && (
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate">Earlier</h2>
               )}
-            </li>
-          ))}
-        </ul>
+              <ul className="flex flex-col gap-3">
+                {earlierMessages.map((m) => (
+                  <MessageCard key={m.id} message={m} />
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
       )}
     </div>
+  );
+}
+
+function MessageCard({ message: m }: { message: Message }) {
+  return (
+    <li
+      className={`rounded-sm border p-5 shadow-[var(--shadow-card)] ${
+        m.unread ? "border-rust/40 bg-rust-tint/20" : "border-hairline bg-surface"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {m.unread && <span className="h-2 w-2 shrink-0 rounded-full bg-rust" aria-hidden />}
+          <p className="text-base font-semibold text-maroon">{m.subject}</p>
+        </div>
+        {m.urgent && (
+          <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">
+            Urgent
+          </span>
+        )}
+      </div>
+      <ExpandableText text={m.body} className="mt-1 text-base text-slate-strong" />
+      <p className="mt-2 text-sm uppercase tracking-wide text-slate">
+        {m.staff?.name} ·{" "}
+        {m.sent_at && new Date(m.sent_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+      </p>
+      {m.message_attachments.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {m.message_attachments.map((a) => (
+            <a
+              key={a.id}
+              href={a.storage_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-sm border border-hairline bg-parchment px-2.5 py-1 text-sm text-maroon transition hover:border-rust/60 hover:bg-mist"
+            >
+              <span className="rounded-sm bg-maroon px-1.5 py-0.5 text-xs font-bold text-cream">PDF</span>
+              {a.file_name}
+            </a>
+          ))}
+        </div>
+      )}
+    </li>
   );
 }
