@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ReportIssueForm } from "@/components/report-issue-form";
+import { ReportIssueFormTrigger } from "@/components/report-issue-form-trigger";
 import type { TypeaheadOption } from "@/components/typeahead-picker";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -66,7 +66,7 @@ export default async function ReportIssuePage() {
         </p>
       </div>
 
-      <ReportIssueForm teachers={teachers} />
+      <ReportIssueFormTrigger teachers={teachers} />
 
       <section>
         <h2 className="mb-3 font-heading text-xl text-maroon">Your reports</h2>

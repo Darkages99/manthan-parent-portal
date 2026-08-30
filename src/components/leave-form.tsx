@@ -17,9 +17,14 @@ function SubmitButton() {
   );
 }
 
-export function LeaveForm({ students }: { students: Tables<"students">[] }) {
-  const [open, setOpen] = useState(false);
-  const [justSent, setJustSent] = useState(false);
+export function LeaveForm({
+  students,
+  onSuccess,
+}: {
+  students: Tables<"students">[];
+  /** Called after a successful submit — the caller (e.g. a Dialog trigger) closes itself. */
+  onSuccess?: () => void;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const toast = useToast();
@@ -29,23 +34,10 @@ export function LeaveForm({ students }: { students: Tables<"students">[] }) {
     try {
       await requestLeave(formData);
       toast.celebrate("Leave request submitted");
-      setJustSent(true);
-      setOpen(false);
-      setTimeout(() => setJustSent(false), 4000);
+      onSuccess?.();
     } catch (e) {
       setError((e as Error).message);
     }
-  }
-
-  if (!open) {
-    return (
-      <div className="flex items-center gap-3">
-        <Button onClick={() => setOpen(true)} className="shrink-0 px-4 py-2.5">
-          Request leave
-        </Button>
-        {justSent && <span className="text-base text-emerald-700">Leave request submitted.</span>}
-      </div>
-    );
   }
 
   return (
@@ -92,9 +84,6 @@ export function LeaveForm({ students }: { students: Tables<"students">[] }) {
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <SubmitButton />
-        <Button type="button" variant="secondary" onClick={() => setOpen(false)} className="px-4 py-2.5">
-          Cancel
-        </Button>
         {error && <span className="text-base text-rose-700">{error}</span>}
       </div>
     </form>

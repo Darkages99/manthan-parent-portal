@@ -17,8 +17,14 @@ function SubmitButton() {
   );
 }
 
-export function ConsultationForm({ students }: { students: Tables<"students">[] }) {
-  const [open, setOpen] = useState(false);
+export function ConsultationForm({
+  students,
+  onSuccess,
+}: {
+  students: Tables<"students">[];
+  /** Called after a successful submit — the caller (e.g. a Dialog trigger) closes itself. */
+  onSuccess?: () => void;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const toast = useToast();
@@ -28,18 +34,10 @@ export function ConsultationForm({ students }: { students: Tables<"students">[] 
     try {
       await requestConsultation(formData);
       toast.celebrate("Consultation request sent");
-      setOpen(false);
+      onSuccess?.();
     } catch (e) {
       setError((e as Error).message);
     }
-  }
-
-  if (!open) {
-    return (
-      <Button onClick={() => setOpen(true)} className="w-fit px-4 py-2.5">
-        Request a consultation
-      </Button>
-    );
   }
 
   return (
@@ -85,9 +83,6 @@ export function ConsultationForm({ students }: { students: Tables<"students">[] 
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <SubmitButton />
-        <Button type="button" variant="secondary" onClick={() => setOpen(false)} className="px-4 py-2.5">
-          Cancel
-        </Button>
         {error && <span className="text-base text-rose-700">{error}</span>}
       </div>
     </form>

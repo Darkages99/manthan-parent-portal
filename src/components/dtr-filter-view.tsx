@@ -100,16 +100,16 @@ export function DtrFilterView({ events }: { events: Event[] }) {
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => step(-1)}
             aria-label={view === "month" ? "Previous month" : "Previous week"}
-            className="rounded-sm p-1.5 text-slate-strong transition hover:bg-mist hover:text-maroon"
+            className="rounded-full border border-hairline bg-surface p-1.5 text-slate-strong shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
-          <span className="min-w-[11rem] text-center font-heading text-lg text-maroon">
+          <span className="min-w-[11rem] rounded-full border border-hairline bg-surface px-4 py-1.5 text-center font-heading text-lg text-maroon shadow-[var(--shadow-card)]">
             {view === "month"
               ? monthLabel(anchor.getFullYear(), anchor.getMonth())
               : weekRangeLabel(weekDays)}
@@ -118,7 +118,7 @@ export function DtrFilterView({ events }: { events: Event[] }) {
             type="button"
             onClick={() => step(1)}
             aria-label={view === "month" ? "Next month" : "Next week"}
-            className="rounded-sm p-1.5 text-slate-strong transition hover:bg-mist hover:text-maroon"
+            className="rounded-full border border-hairline bg-surface p-1.5 text-slate-strong shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
           >
             <ChevronRightIcon className="h-5 w-5" />
           </button>

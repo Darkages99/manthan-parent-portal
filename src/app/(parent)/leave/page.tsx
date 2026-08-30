@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { StatusPill } from "@/components/status-pill";
-import { LeaveForm } from "@/components/leave-form";
+import { LeaveFormTrigger } from "@/components/leave-form-trigger";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
@@ -50,7 +50,7 @@ export default async function LeavePage({
         </p>
       </div>
 
-      <LeaveForm students={viewer.students} />
+      <LeaveFormTrigger students={viewer.students} />
 
       <form
         method="GET"

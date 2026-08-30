@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/session";
+import { GuardianMessagesList } from "@/components/guardian-messages-list";
 import { MarkMessagesRead } from "./mark-read";
 
 /** Builds a PostgREST `.or()` clause from the non-empty target sets, or null
@@ -70,42 +71,7 @@ export default async function MessagesPage() {
         </p>
       </div>
 
-      <ul className="flex flex-col gap-3">
-        {(messages ?? []).map((m) => (
-          <li key={m.id} className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
-            <div className="flex-1">
-              <p className="text-base font-semibold text-maroon">{m.subject}</p>
-              <p className="mt-1 text-base text-slate-strong">{m.body}</p>
-              <p className="mt-2 text-sm uppercase tracking-wide text-slate">
-                {m.staff?.name} ·{" "}
-                {m.sent_at &&
-                  new Date(m.sent_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-              </p>
-              {m.message_attachments.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {m.message_attachments.map((a) => (
-                    <a
-                      key={a.id}
-                      href={a.storage_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-sm border border-hairline bg-parchment px-2.5 py-1 text-sm text-maroon transition hover:border-rust/60 hover:bg-mist"
-                    >
-                      <span className="rounded-sm bg-maroon px-1.5 py-0.5 text-xs font-bold text-cream">
-                        PDF
-                      </span>
-                      {a.file_name}
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          </li>
-        ))}
-        {(!messages || messages.length === 0) && (
-          <p className="text-base text-slate">No messages yet.</p>
-        )}
-      </ul>
+      <GuardianMessagesList messages={messages ?? []} />
     </div>
   );
 }

@@ -15,6 +15,8 @@ import {
   AwardIcon,
   CheckCircleIcon,
   ChevronRightIcon,
+  LeaveIcon,
+  ConsentIcon,
 } from "./icons";
 
 type Alert = {
@@ -63,6 +65,30 @@ export function DashboardAlerts({ data }: { data: DashboardAlertData }) {
   const seen = useReportCardSeen(data.students);
 
   const alerts: Alert[] = [];
+
+  // Pending leave requests — awaiting a decision from the class teacher.
+  if (data.pendingLeaveCount > 0) {
+    alerts.push({
+      key: "leave-pending",
+      icon: LeaveIcon,
+      title: `${data.pendingLeaveCount} pending leave request${data.pendingLeaveCount === 1 ? "" : "s"}`,
+      detail: "Tap to review the status of your leave requests.",
+      href: "/leave",
+      tint: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-200",
+    });
+  }
+
+  // Pending stay-back permission — awaiting your response.
+  if (data.pendingStayBackCount > 0) {
+    alerts.push({
+      key: "stayback-pending",
+      icon: ConsentIcon,
+      title: `${data.pendingStayBackCount} pending stay-back permission${data.pendingStayBackCount === 1 ? "" : "s"}`,
+      detail: "Tap to give or decline consent for the stay-back request.",
+      href: "/stay-back",
+      tint: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200",
+    });
+  }
 
   // Fees — placeholder until the payments backend exists (see lib/alerts.ts).
   if (data.feeDue) {

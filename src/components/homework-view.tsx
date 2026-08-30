@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { ChildTabs } from "./child-tabs";
+import { useSelectedChild } from "@/lib/selected-child-context";
 import { formatDate } from "@/lib/format";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -13,9 +12,9 @@ function istToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
-/** Parent-facing homework tracker: switch between children (when there's more
- * than one) and see that child's class homework grouped by subject, soonest
- * due date first. Read-only — staff author assignments in the console. */
+/** Parent-facing homework tracker: shows the globally-selected child's (see
+ * `ChildSwitcher` in the nav) class homework grouped by subject, soonest due
+ * date first. Read-only — staff author assignments in the console. */
 export function HomeworkView({
   students,
   homeworkByClass,
@@ -27,7 +26,8 @@ export function HomeworkView({
   subjectName: Record<string, string>;
   commentByKey: Record<string, string>;
 }) {
-  const [activeId, setActiveId] = useState(students[0]?.id ?? "");
+  const { selectedChildId } = useSelectedChild();
+  const activeId = selectedChildId ?? students[0]?.id ?? "";
   const active = students.find((s) => s.id === activeId) ?? students[0];
   const items = (active?.classSectionId && homeworkByClass[active.classSectionId]) || [];
   const today = istToday();
@@ -50,8 +50,6 @@ export function HomeworkView({
 
   return (
     <div className="flex flex-col gap-6">
-      <ChildTabs students={students} activeId={activeId} onSelect={setActiveId} />
-
       {sortedGroups.length === 0 ? (
         <p className="text-base text-slate">No homework has been assigned yet.</p>
       ) : (

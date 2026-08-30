@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ConsultationForm } from "@/components/consultation-form";
+import { ConsultationFormTrigger } from "@/components/consultation-form-trigger";
 import { ConsultationList } from "@/components/consultation-list";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +29,7 @@ export default async function ConsultationsPage() {
         </p>
       </div>
 
-      <ConsultationForm students={viewer.students} />
+      <ConsultationFormTrigger students={viewer.students} />
 
       <ConsultationList consultations={consultations ?? []} studentNames={studentNames} />
     </div>

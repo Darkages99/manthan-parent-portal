@@ -10,6 +10,9 @@ export type Notification = {
   senderName: string | null;
   /** Whether this guardian has an unread receipt for the message. */
   unread: boolean;
+  /** For multi-child guardians: first names of the child(ren) this message is
+   *  actually targeted at, when that's a strict subset of all their children. */
+  onlyForChildren: string[] | null;
 };
 
 function relativeDay(iso: string | null): string {
@@ -69,6 +72,11 @@ export function NotificationsInbox({ notifications }: { notifications: Notificat
                 <p className="mt-1 text-xs uppercase tracking-wide text-slate">
                   {n.senderName ?? "School"} · {relativeDay(n.sent_at)}
                 </p>
+                {n.onlyForChildren && (
+                  <p className="mt-1 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700 dark:bg-violet-900/40 dark:text-violet-200">
+                    For {n.onlyForChildren.join(" & ")}
+                  </p>
+                )}
               </div>
             </li>
           ))}

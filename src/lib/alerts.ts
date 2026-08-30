@@ -60,4 +60,8 @@ export type DashboardAlertData = {
   /** Placeholder until the fees backend exists — see TODO above. */
   feeDue: boolean;
   students: StudentAlertState[];
+  /** Leave requests still awaiting a teacher decision (excludes expired ones). */
+  pendingLeaveCount: number;
+  /** Stay-back consents still awaiting the guardian's response. */
+  pendingStayBackCount: number;
 };

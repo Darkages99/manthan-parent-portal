@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatSlotTime } from "@/lib/format";
 import { DATE_RANGE_OPTIONS, rangeFrom, type DateRange } from "@/lib/date-range";
-import { FilterIcon, DownloadIcon, ChevronDownIcon } from "./icons";
+import { FilterIcon, ChevronDownIcon } from "./icons";
 import { ExpandableText } from "./expandable-text";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -12,40 +11,16 @@ type Urgency = "all" | "urgent" | "not_urgent";
 type Message = Tables<"messages"> & {
   staff: { name: string } | null;
   message_attachments: Tables<"message_attachments">[];
-  message_targets: Tables<"message_targets">[];
 };
 
-/** Read-only log of messages already sent, newest first, with a single search
- * bar filtering by subject or body text. */
-export function SentMessagesList({
-  messages,
-  classNames,
-  studentNames,
-  groupNames,
-}: {
-  messages: Message[];
-  classNames: Record<string, string>;
-  studentNames: Record<string, string>;
-  groupNames: Record<string, string>;
-}) {
+/** Parent inbox list with the same search + date/urgency filter UI as the
+ * staff "Sent messages" log (see SentMessagesList). */
+export function GuardianMessagesList({ messages }: { messages: Message[] }) {
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<DateRange>("all");
   const [urgency, setUrgency] = useState<Urgency>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const activeFilterCount = (range !== "all" ? 1 : 0) + (urgency !== "all" ? 1 : 0);
-
-  function recipientSummary(m: Message): string {
-    if (m.scope_type === "school") return "Whole school";
-    const names = m.message_targets
-      .map((t) => {
-        if (t.class_section_id) return classNames[t.class_section_id];
-        if (t.student_id) return studentNames[t.student_id];
-        if (t.custom_group_id) return groupNames[t.custom_group_id];
-        return null;
-      })
-      .filter((n): n is string => !!n);
-    return names.length ? names.join(", ") : "—";
-  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -59,14 +34,8 @@ export function SentMessagesList({
     });
   }, [messages, query, range, urgency]);
 
-  const exportParams = new URLSearchParams();
-  if (range !== "all") exportParams.set("range", range);
-  if (urgency === "urgent") exportParams.set("urgent", "1");
-  if (urgency === "not_urgent") exportParams.set("urgent", "0");
-  const exportHref = `/api/export/messages${exportParams.toString() ? `?${exportParams.toString()}` : ""}`;
-
   if (messages.length === 0) {
-    return <p className="text-base text-slate">No messages sent yet.</p>;
+    return <p className="text-base text-slate">No messages yet.</p>;
   }
 
   return (
@@ -75,7 +44,7 @@ export function SentMessagesList({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search sent messages by title or content…"
+          placeholder="Search messages by title or content…"
           className="min-w-[200px] flex-1 rounded-sm border border-hairline bg-mist px-3 py-2.5 text-base"
         />
         <div className="relative shrink-0">
@@ -143,13 +112,6 @@ export function SentMessagesList({
             </div>
           )}
         </div>
-        <a
-          href={exportHref}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-sm bg-maroon px-4 py-2.5 text-sm font-semibold text-cream shadow-[var(--shadow-card)] hover:bg-maroon-strong"
-        >
-          <DownloadIcon className="h-4 w-4" />
-          Export to CSV
-        </a>
       </div>
       {filtered.length === 0 ? (
         <p className="text-base text-slate">
@@ -158,10 +120,7 @@ export function SentMessagesList({
       ) : (
         <ul className="flex flex-col gap-3">
           {filtered.map((m) => (
-            <li
-              key={m.id}
-              className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]"
-            >
+            <li key={m.id} className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-base font-semibold text-maroon">{m.subject}</p>
                 {m.urgent && (
@@ -172,9 +131,9 @@ export function SentMessagesList({
               </div>
               <ExpandableText text={m.body} className="mt-1 text-base text-slate-strong" />
               <p className="mt-2 text-sm uppercase tracking-wide text-slate">
-                To {recipientSummary(m)}
-                {m.staff?.name && ` · ${m.staff.name}`}
-                {m.sent_at && ` · ${formatSlotTime(m.sent_at)}`}
+                {m.staff?.name} ·{" "}
+                {m.sent_at &&
+                  new Date(m.sent_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
               </p>
               {m.message_attachments.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { ApprovalChain } from "@/components/approval-chain";
-import { StayBackForm } from "@/components/stay-back-form";
+import { StayBackFormTrigger } from "@/components/stay-back-form-trigger";
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatTime } from "@/lib/format";
@@ -76,7 +76,7 @@ export default async function StayBackPage({
         </p>
       </div>
 
-      <StayBackForm
+      <StayBackFormTrigger
         students={viewer.students}
         teachers={teachers ?? []}
         defaultTransport={lastConsent?.mode_of_transport}
