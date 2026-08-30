@@ -10,7 +10,19 @@ import { useToast } from "./toast-provider";
 /** Single-student, single-term report-card upload/replace/remove — shared by
  * the Results editor (in-context, per student) and the Report Cards page
  * (roster view, single or alongside mass upload). */
-export function ReportCardRow({ studentId, term, url }: { studentId: string; term: string; url: string | null }) {
+export function ReportCardRow({
+  studentId,
+  term,
+  url,
+  studentName,
+  rollNo,
+}: {
+  studentId: string;
+  term: string;
+  url: string | null;
+  studentName?: string;
+  rollNo?: string;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, startUpload] = useTransition();
@@ -61,6 +73,11 @@ export function ReportCardRow({ studentId, term, url }: { studentId: string; ter
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-hairline bg-mist/40 px-4 py-2.5 text-sm">
       <div>
+        {studentName && (
+          <span className="mr-2 text-slate-strong">
+            {rollNo && <span className="text-slate">#{rollNo}</span>} {studentName}
+          </span>
+        )}
         <span className="font-semibold text-maroon">{term}</span>
         <span className={`ml-2 ${url ? "text-emerald-700 dark:text-emerald-300" : "text-slate"}`}>
           {url ? "Published" : "Not published"}

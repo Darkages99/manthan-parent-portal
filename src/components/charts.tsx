@@ -249,7 +249,8 @@ export function TrendLine({
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full"
+      className="block w-full"
+      style={{ height }}
       role="img"
       aria-label={points.map((p) => `${p.label}: ${p.value}${valueSuffix}`).join(", ")}
       preserveAspectRatio="none"

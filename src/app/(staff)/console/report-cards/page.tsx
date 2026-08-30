@@ -93,6 +93,8 @@ export default async function ReportCardsPage({
                     studentId={s.id}
                     term={validTerm}
                     url={urlByStudent.get(s.id) ?? null}
+                    studentName={`${s.first_name} ${s.last_name}`}
+                    rollNo={s.roll_no}
                   />
                 ))}
               </ul>
