@@ -55,23 +55,23 @@ export function ParentTimetable({
         </div>
 
         {view === "day" && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setDay((d) => (d === 1 ? 6 : d - 1))}
               aria-label="Previous day"
-              className="rounded-sm p-1.5 text-slate hover:bg-mist hover:text-maroon"
+              className="rounded-full border border-hairline bg-surface p-1.5 text-slate shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
             >
               <ChevronLeftIcon className="h-5 w-5" />
             </button>
-            <span className="min-w-24 text-center text-base font-semibold text-maroon">
+            <span className="min-w-24 rounded-full border border-hairline bg-surface px-3 py-1 text-center text-base font-semibold text-maroon shadow-[var(--shadow-card)]">
               {activeDay.full}
             </span>
             <button
               type="button"
               onClick={() => setDay((d) => (d === 6 ? 1 : d + 1))}
               aria-label="Next day"
-              className="rounded-sm p-1.5 text-slate hover:bg-mist hover:text-maroon"
+              className="rounded-full border border-hairline bg-surface p-1.5 text-slate shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
             >
               <ChevronRightIcon className="h-5 w-5" />
             </button>

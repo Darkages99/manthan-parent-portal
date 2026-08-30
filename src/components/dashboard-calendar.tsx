@@ -47,35 +47,25 @@ export function DashboardCalendar({ events, fullHref = "/dtr" }: { events: Event
     <div className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-heading text-xl text-maroon">This week</h2>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => step(-1)}
             aria-label="Previous week"
-            className="rounded-sm p-1.5 text-slate-strong transition hover:bg-mist hover:text-maroon"
+            className="rounded-full border border-hairline bg-surface p-1.5 text-slate-strong shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
-          <span className="min-w-[8.5rem] text-center text-sm font-medium text-slate-strong">
+          <span className="min-w-[8.5rem] rounded-full border border-hairline bg-surface px-3 py-1 text-center text-sm font-medium text-slate-strong shadow-[var(--shadow-card)]">
             {weekRangeLabel(weekDays)}
           </span>
           <button
             type="button"
             onClick={() => step(1)}
             aria-label="Next week"
-            className="rounded-sm p-1.5 text-slate-strong transition hover:bg-mist hover:text-maroon"
+            className="rounded-full border border-hairline bg-surface p-1.5 text-slate-strong shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
           >
             <ChevronRightIcon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAnchor(today);
-              setSelected(toISODate(today));
-            }}
-            className="ml-1 rounded-full px-3 py-1 text-sm font-medium text-rust transition hover:bg-mist"
-          >
-            Today
           </button>
         </div>
       </div>

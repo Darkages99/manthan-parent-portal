@@ -39,23 +39,23 @@ export function AttendanceCalendar({ statusByDate }: { statusByDate: Record<stri
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-heading text-xl text-maroon">Daily register</h2>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => step(-1)}
             aria-label="Previous month"
-            className="rounded-sm p-1.5 text-slate-strong transition hover:bg-mist hover:text-maroon"
+            className="rounded-full border border-hairline bg-surface p-1.5 text-slate-strong shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
-          <span className="min-w-[9rem] text-center font-heading text-lg text-maroon">
+          <span className="min-w-[9rem] rounded-full border border-hairline bg-surface px-4 py-1.5 text-center font-heading text-lg text-maroon shadow-[var(--shadow-card)]">
             {monthLabel(cursor.year, cursor.month)}
           </span>
           <button
             type="button"
             onClick={() => step(1)}
             aria-label="Next month"
-            className="rounded-sm p-1.5 text-slate-strong transition hover:bg-mist hover:text-maroon"
+            className="rounded-full border border-hairline bg-surface p-1.5 text-slate-strong shadow-[var(--shadow-card)] transition hover:bg-mist hover:text-maroon"
           >
             <ChevronRightIcon className="h-5 w-5" />
           </button>

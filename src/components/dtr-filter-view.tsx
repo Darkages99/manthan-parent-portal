@@ -122,17 +122,6 @@ export function DtrFilterView({ events }: { events: Event[] }) {
           >
             <ChevronRightIcon className="h-5 w-5" />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAnchor(today);
-              setSelected(toISODate(today));
-              setPanelMode("day");
-            }}
-            className="ml-1 rounded-full px-3 py-1 text-sm font-medium text-rust transition hover:bg-mist"
-          >
-            Today
-          </button>
         </div>
       </div>
 
