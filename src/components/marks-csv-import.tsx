@@ -8,9 +8,11 @@ import { DownloadIcon } from "./icons";
 
 /**
  * Bulk-enters marks for the currently selected class from a CSV. Columns:
- * roll_no, subject, marks, max_marks (optional, default 100), grade
- * (optional). Term is picked once for the whole file rather than being a
- * column, since it's the same for every row in a normal upload.
+ * roll_no, subject, marks, max_marks (optional), grade (optional) — both
+ * default from that subject+term's configured grading scheme (see
+ * /console/results/subject) when left blank, falling back to 100/no-grade if
+ * nothing's been configured. Term is picked once for the whole file rather
+ * than being a column, since it's the same for every row in a normal upload.
  */
 export function MarksCsvImport({
   classId,
@@ -61,7 +63,7 @@ export function MarksCsvImport({
         <div>
           <p className="font-heading text-base text-maroon">Bulk import marks</p>
           <p className="text-sm text-slate">
-            Columns: roll_no, subject, marks, max_marks (optional, default 100), grade (optional). You can enter{" "}
+            Columns: roll_no, subject, marks, max_marks (optional), grade (optional). You can enter{" "}
             {subjectHint} for this class.
           </p>
         </div>

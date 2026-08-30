@@ -472,6 +472,33 @@ export type Database = {
           },
         ]
       }
+      grade_boundaries: {
+        Row: {
+          grade: string
+          id: string
+          max_pct: number
+          min_pct: number
+          subject: string
+          term: string
+        }
+        Insert: {
+          grade: string
+          id?: string
+          max_pct: number
+          min_pct: number
+          subject: string
+          term: string
+        }
+        Update: {
+          grade?: string
+          id?: string
+          max_pct?: number
+          min_pct?: number
+          subject?: string
+          term?: string
+        }
+        Relationships: []
+      }
       guardian_student: {
         Row: {
           guardian_id: string
@@ -1806,6 +1833,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subject_grading_config: {
+        Row: {
+          id: string
+          max_marks: number
+          subject: string
+          term: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          max_marks?: number
+          subject: string
+          term: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          max_marks?: number
+          subject?: string
+          term?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       subjects: {
         Row: {

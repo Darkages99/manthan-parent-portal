@@ -218,6 +218,12 @@ export default async function ConsoleResults({
           Pick a class and student to view or enter term marks. Saved marks appear in the parent
           portal immediately.
         </p>
+        <Link
+          href="/console/results/subject"
+          className="mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-rust hover:underline"
+        >
+          Enter marks by subject →
+        </Link>
       </div>
 
       {showViewToggle && (

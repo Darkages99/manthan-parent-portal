@@ -52,6 +52,45 @@ export function canEditSubject(scope: SubjectScope | undefined, subject: string)
 }
 
 /**
+ * Flattens getEditableSubjectsByClass across every class a teacher touches,
+ * for scope checks that aren't tied to one class — e.g. subject-level grade
+ * boundaries, which apply across every class taking that subject. "all" if
+ * they own any homeroom (a homeroom teacher can enter any subject for their
+ * own class, so they're trusted to configure any subject's grading scheme).
+ */
+export async function getEditableSubjects(
+  supabase: SupabaseClient<Database>,
+  staffId: string
+): Promise<SubjectScope> {
+  const scopeByClass = await getEditableSubjectsByClass(supabase, staffId);
+  const union = new Set<string>();
+  for (const scope of scopeByClass.values()) {
+    if (scope === "all") return "all";
+    for (const s of scope) union.add(s);
+  }
+  return union;
+}
+
+/**
+ * Guards a grade-boundaries/max-marks config save for one subject+term.
+ * Principal-tier passes unconditionally; a class_teacher passes only if
+ * getEditableSubjects grants them this subject somewhere.
+ */
+export async function assertCanEditGradeConfig(subject: string): Promise<StaffViewer> {
+  const viewer = await getViewer();
+  if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
+  if (isPrincipalRole(viewer.staff.role)) return viewer;
+  if (viewer.staff.role !== "class_teacher") throw new Error("Not authorized to configure grading");
+
+  const supabase = await createClient();
+  const scope = await getEditableSubjects(supabase, viewer.staff.id);
+  if (!canEditSubject(scope, subject)) {
+    throw new Error(`You don't have permission to configure ${subject} grading`);
+  }
+  return viewer;
+}
+
+/**
  * Guards a mark-entry action (add/edit/delete a single exam_results row).
  * Principal-tier passes unconditionally; a class_teacher passes only if the
  * student's class + this subject fall within getEditableSubjectsByClass.

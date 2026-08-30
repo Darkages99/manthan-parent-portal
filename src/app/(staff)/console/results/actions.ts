@@ -14,6 +14,7 @@ import {
 import { sendPush } from "@/lib/notifications/push";
 import { computeClassAnalytics, FAIL_THRESHOLD_PCT, WEAK_THRESHOLD_PCT } from "@/lib/results-analytics";
 import { parseCsv } from "@/lib/csv";
+import { getSubjectGradingConfig, gradeForPercentage, type SubjectGradingConfig } from "@/lib/grade-boundaries";
 
 /**
  * After a mark is saved, recomputes that student's class + term standing and
@@ -116,13 +117,18 @@ export async function upsertResult(input: {
   await assertCanEditMark(studentId, subject.trim());
 
   const supabase = await createClient();
+  let resolvedGrade = grade?.trim() || null;
+  if (!resolvedGrade) {
+    const config = await getSubjectGradingConfig(supabase, subject.trim(), term.trim());
+    resolvedGrade = gradeForPercentage((marks / maxMarks) * 100, config.bands);
+  }
   const row = {
     student_id: studentId,
     term: term.trim(),
     subject: subject.trim(),
     marks,
     max_marks: maxMarks,
-    grade: grade?.trim() || null,
+    grade: resolvedGrade,
   };
 
   const { error } = id
@@ -172,18 +178,27 @@ export type MarksImportResult = { imported: number; errors: { row: number; messa
 
 /**
  * Bulk-enters marks for one class + term from a CSV: roll_no, subject, marks,
- * max_marks (optional, default 100), grade (optional). Roll numbers are
- * resolved only within `classId` — never school-wide — since roll_no isn't
- * unique across classes (see bulkSendByRollNumber's own note on this in
+ * max_marks (optional), grade (optional). Roll numbers are resolved only
+ * within `classId` — never school-wide — since roll_no isn't unique across
+ * classes (see bulkSendByRollNumber's own note on this in
  * console/messages/compose/actions.ts). A class_teacher is restricted to the
  * subjects getEditableSubjectsByClass grants them for this class; principal-
  * tier can enter any subject. Bad rows are collected as errors rather than
  * aborting the whole import, mirroring bulkSendByRollNumber/importTimetableCsv.
+ *
+ * When `fixedSubject` is passed (the subject-focused entry page), the CSV
+ * doesn't need a subject column at all — every row uses that subject, and
+ * the permission check runs once upfront instead of per row.
+ *
+ * max_marks/grade, when left blank, are filled from that subject+term's
+ * configured max marks and grade boundaries (getSubjectGradingConfig) —
+ * falling back to 100/no-grade when nothing's been configured.
  */
 export async function importMarksCsv(
   classId: string,
   term: string,
-  csvText: string
+  csvText: string,
+  fixedSubject?: string
 ): Promise<MarksImportResult> {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
@@ -202,6 +217,9 @@ export async function importMarksCsv(
     subjectScope = scopeByClass.get(classId);
     if (!subjectScope) throw new Error("Not authorized to enter marks for this class");
   }
+  if (fixedSubject && !isPrincipal && !canEditSubject(subjectScope, fixedSubject)) {
+    throw new Error(`You don't have permission to enter ${fixedSubject} marks`);
+  }
 
   const { header, rows } = parseCsv(csvText);
   const norm = (h: string) => h.toLowerCase().replace(/[\s_]/g, "");
@@ -210,18 +228,29 @@ export async function importMarksCsv(
   const marksIdx = header.findIndex((h) => norm(h) === "marks");
   const maxMarksIdx = header.findIndex((h) => norm(h) === "maxmarks");
   const gradeIdx = header.findIndex((h) => norm(h) === "grade");
-  if (rollIdx === -1 || subjectIdx === -1 || marksIdx === -1) {
-    throw new Error("CSV must have roll_no, subject and marks columns");
+  if (rollIdx === -1 || (!fixedSubject && subjectIdx === -1) || marksIdx === -1) {
+    throw new Error(
+      fixedSubject ? "CSV must have roll_no and marks columns" : "CSV must have roll_no, subject and marks columns"
+    );
   }
 
   const parsedRows = rows.map((r, i) => ({
     row: i + 2, // +1 for 0-index, +1 for the header row
     rollNo: (r[rollIdx] ?? "").trim(),
-    subject: (r[subjectIdx] ?? "").trim(),
+    subject: fixedSubject ?? (r[subjectIdx] ?? "").trim(),
     marksStr: (r[marksIdx] ?? "").trim(),
     maxMarksStr: maxMarksIdx === -1 ? "" : (r[maxMarksIdx] ?? "").trim(),
     grade: gradeIdx === -1 ? "" : (r[gradeIdx] ?? "").trim(),
   }));
+
+  const configBySubject = new Map<string, SubjectGradingConfig>();
+  async function configFor(subject: string): Promise<SubjectGradingConfig> {
+    const cached = configBySubject.get(subject);
+    if (cached) return cached;
+    const config = await getSubjectGradingConfig(supabase, subject, term.trim());
+    configBySubject.set(subject, config);
+    return config;
+  }
 
   const { data: classStudents } = await supabase
     .from("students")
@@ -256,8 +285,9 @@ export async function importMarksCsv(
       errors.push({ row: r.row, message: `You don't have permission to enter ${r.subject} marks` });
       continue;
     }
+    const config = await configFor(r.subject);
     const marks = Number(r.marksStr);
-    const maxMarks = r.maxMarksStr ? Number(r.maxMarksStr) : 100;
+    const maxMarks = r.maxMarksStr ? Number(r.maxMarksStr) : config.maxMarks;
     if (!Number.isFinite(marks) || !Number.isFinite(maxMarks)) {
       errors.push({ row: r.row, message: "Marks must be numbers" });
       continue;
@@ -277,7 +307,7 @@ export async function importMarksCsv(
       subject: r.subject,
       marks,
       max_marks: maxMarks,
-      grade: r.grade || null,
+      grade: r.grade || gradeForPercentage((marks / maxMarks) * 100, config.bands),
     };
     const existingId = existingIdByKey.get(`${studentId}|${r.subject}`);
     const { error } = existingId
