@@ -42,6 +42,7 @@ export default async function ConsoleStudents() {
         classes={classes ?? []}
         guardians={guardians ?? []}
         guardianNamesByStudent={Object.fromEntries(guardianNamesByStudent)}
+        canErase={viewer.staff.role === "super_admin"}
       />
     </div>
   );

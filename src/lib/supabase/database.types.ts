@@ -58,6 +58,42 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          actor_auth_id: string | null
+          actor_staff_id: string | null
+          changed_at: string
+          id: string
+          new_row: Json | null
+          old_row: Json | null
+          operation: string
+          record_id: string | null
+          table_name: string
+        }
+        Insert: {
+          actor_auth_id?: string | null
+          actor_staff_id?: string | null
+          changed_at?: string
+          id?: string
+          new_row?: Json | null
+          old_row?: Json | null
+          operation: string
+          record_id?: string | null
+          table_name: string
+        }
+        Update: {
+          actor_auth_id?: string | null
+          actor_staff_id?: string | null
+          changed_at?: string
+          id?: string
+          new_row?: Json | null
+          old_row?: Json | null
+          operation?: string
+          record_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
       attendance_records: {
         Row: {
           date: string
@@ -2008,8 +2044,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["role"]
       }
       database_size_bytes: { Args: never; Returns: number }
+      erase_student: { Args: { p_student: string }; Returns: Json }
       is_principal: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      prune_old_records: { Args: never; Returns: Json }
       replace_guardian_children: {
         Args: { p_guardian: string; p_student_ids: string[] }
         Returns: undefined

@@ -52,6 +52,22 @@ export async function uploadFileAdmin(
   )}?alt=media&token=${downloadToken}`;
 }
 
+/** Deletes an object from Storage by its bucket path. Used by the student
+ * right-to-erasure flow (DG-1) to remove report-card / receipt PDFs. Silently
+ * ignores an already-missing object so erasure is idempotent. */
+export async function deleteFileAdmin(path: string): Promise<void> {
+  const bucket = getStorage(adminApp()).bucket();
+  await bucket.file(path).delete({ ignoreNotFound: true });
+}
+
+/** Recovers the bucket object path from a token download URL of the form
+ * `https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<ENCODED_PATH>?...`.
+ * Returns null if the URL isn't in that shape. */
+export function storagePathFromDownloadUrl(url: string): string | null {
+  const match = url.match(/\/o\/([^?]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 /** Sums the byte size of every object in the Storage bucket — used for the
  * school's "how much storage are we using" figure. Paginates through the
  * full listing since the bucket has no cheaper aggregate size API. */

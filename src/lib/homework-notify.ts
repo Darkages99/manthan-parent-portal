@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPush } from "@/lib/notifications/push";
+import { logError } from "@/lib/log";
 
 /** Yesterday's date in IST as YYYY-MM-DD — homework whose due date just passed. */
 function yesterdayIst(): string {
@@ -103,7 +104,7 @@ export async function notifyUnsubmittedHomework(): Promise<{ notified: number }>
     pending.map((p) => ({ homework_id: p.homeworkId, student_id: p.studentId })),
     { onConflict: "homework_id,student_id" }
   );
-  if (error) console.error("[homework-notify] couldn't record notifications:", error.message);
+  if (error) logError("[homework-notify] couldn't record notifications", error);
 
   return { notified: pending.length };
 }

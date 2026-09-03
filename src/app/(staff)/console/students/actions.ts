@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePrincipal } from "@/lib/roles";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requirePrincipal, requireSuperAdmin } from "@/lib/roles";
+import { deleteFileAdmin, storagePathFromDownloadUrl } from "@/lib/firebase/admin-storage";
+import { logError } from "@/lib/log";
 
 type StudentInput = {
   firstName: string;
@@ -77,4 +80,54 @@ export async function deleteStudent(id: string) {
     );
   }
   revalidatePath("/console/students");
+}
+
+/**
+ * Right-to-erasure (DG-1 / DPDP). Permanently removes a student and every
+ * dependent record across all tables, plus any guardian left with no remaining
+ * children, then deletes their files from Firebase Storage and their Supabase
+ * Auth users. Super-admin only. The DB side runs in one transaction via the
+ * `erase_student` RPC (which re-checks super_admin and logs an 'ERASE' audit
+ * row); this action performs the external cleanup the database can't reach.
+ */
+export async function eraseStudent(id: string) {
+  await requireSuperAdmin();
+  if (!id) throw new Error("Student is required");
+
+  // Called through the user's session client so the RPC's current_staff_role()
+  // super_admin check resolves against the caller.
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("erase_student", { p_student: id });
+  if (error) throw new Error(error.message);
+
+  const result = (data ?? {}) as {
+    report_card_urls?: string[];
+    receipt_urls?: string[];
+    orphaned_guardian_auth_ids?: string[];
+  };
+
+  const admin = createAdminClient();
+
+  // Best-effort external cleanup — a failure here must not leave the DB erasure
+  // half-done (that already committed), so we log a safe code and continue.
+  for (const url of [...(result.report_card_urls ?? []), ...(result.receipt_urls ?? [])]) {
+    const path = storagePathFromDownloadUrl(url);
+    if (!path) continue;
+    try {
+      await deleteFileAdmin(path);
+    } catch (e) {
+      logError("[erase] storage delete failed", e);
+    }
+  }
+
+  for (const authId of result.orphaned_guardian_auth_ids ?? []) {
+    try {
+      await admin.auth.admin.deleteUser(authId);
+    } catch (e) {
+      logError("[erase] auth user delete failed", e);
+    }
+  }
+
+  revalidatePath("/console/students");
+  revalidatePath("/console/parents");
 }

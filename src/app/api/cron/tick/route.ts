@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { syncFromSheet } from "@/lib/google-sheets";
 import { notifyUnsubmittedHomework } from "@/lib/homework-notify";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
+
+/** DG-1 retention: prune the append-only logs past their retention window.
+ * Runs under the service-role client (the RPC is granted to service_role). */
+async function pruneOldRecords(): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc("prune_old_records");
+  if (error) throw new Error(error.message);
+}
 
 /**
  * Vercel Cron hits this daily (see vercel.json). Runs the Sheets
@@ -21,18 +31,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const results = await Promise.allSettled([syncFromSheet(), notifyUnsubmittedHomework()]);
-  const [sheetSync, homeworkNotify] = results;
+  const results = await Promise.allSettled([
+    syncFromSheet(),
+    notifyUnsubmittedHomework(),
+    pruneOldRecords(),
+  ]);
+  const [sheetSync, homeworkNotify, retention] = results;
 
   if (sheetSync.status === "rejected") {
-    console.error("[cron] sheet sync failed:", sheetSync.reason);
+    logError("[cron] sheet sync failed", sheetSync.reason);
   }
   if (homeworkNotify.status === "rejected") {
-    console.error("[cron] homework notify failed:", homeworkNotify.reason);
+    logError("[cron] homework notify failed", homeworkNotify.reason);
+  }
+  if (retention.status === "rejected") {
+    logError("[cron] retention prune failed", retention.reason);
   }
 
   return NextResponse.json({
     sheetSync: sheetSync.status,
     homeworkNotify: homeworkNotify.status,
+    retention: retention.status,
   });
 }

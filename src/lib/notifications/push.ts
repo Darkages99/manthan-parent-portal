@@ -1,6 +1,7 @@
 import "server-only";
 import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 import type { Enums } from "@/lib/supabase/database.types";
 
 export type NotificationCategory = Enums<"notification_category">;
@@ -66,7 +67,7 @@ async function filterByPreference(
     .eq("enabled", false)
     .or(orClauses.join(","));
   if (error) {
-    console.error("[push] could not read notification preferences:", error.message);
+    logError("[push] could not read notification preferences", error);
     return targets;
   }
   if (!disabled || disabled.length === 0) return targets;
@@ -108,7 +109,7 @@ export async function sendPush(
     .select("id, endpoint, p256dh, auth, guardian_id, staff_id")
     .or(orClauses.join(","));
   if (error) {
-    console.error("[push] could not read subscriptions:", error.message);
+    logError("[push] could not read subscriptions", error);
     return;
   }
 
@@ -135,7 +136,7 @@ export async function sendPush(
           if (statusCode === 404 || statusCode === 410) {
             await supabase.from("push_subscriptions").delete().eq("id", s.id);
           } else {
-            console.error("[push] send failed", statusCode ?? "", (err as Error).message);
+            logError("[push] send failed", err);
           }
         }
       })

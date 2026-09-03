@@ -1,6 +1,7 @@
 import "server-only";
 import { google, type sheets_v4 } from "googleapis";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 import { PENDING_DELETION_SUBJECT_LABEL, pendingDeletionLabel } from "@/lib/pending-deletion-label";
 import type { Enums } from "@/lib/supabase/database.types";
 
@@ -214,7 +215,7 @@ export async function syncFromSheet(): Promise<void> {
       .eq("id", runId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[google-sheets] sync failed:", err);
+    logError("[google-sheets] sync failed", err);
     try {
       if (runId) {
         await supabase
@@ -228,7 +229,7 @@ export async function syncFromSheet(): Promise<void> {
           .insert({ finished_at: new Date().toISOString(), status: "failed", error_summary: message });
       }
     } catch (innerErr) {
-      console.error("[google-sheets] failed to record failed sync run:", innerErr);
+      logError("[google-sheets] failed to record failed sync run", innerErr);
     }
   }
 }
@@ -1056,7 +1057,7 @@ async function writePendingDeletionsTab(
 
     await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: formatRequests } });
   } catch (e) {
-    console.error("[google-sheets] failed to refresh the Pending Deletions tab:", e);
+    logError("[google-sheets] failed to refresh the Pending Deletions tab", e);
   }
 }
 
@@ -1125,7 +1126,7 @@ export async function provisionSheet(): Promise<{ spreadsheetId: string; url: st
         requestBody: { type: "user", role: "writer", emailAddress: recipient.email! },
       });
     } catch (e) {
-      console.error(`[google-sheets] failed to share spreadsheet with ${recipient.email}:`, e);
+      logError("[google-sheets] failed to share spreadsheet with a recipient", e);
     }
   }
 

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
 import { sendPush } from "@/lib/notifications/push";
+import { logError } from "@/lib/log";
 import { createApprovalChain } from "@/lib/approvals";
 import { buildStayBackChainSteps } from "@/lib/stay-back-chain";
 import { TRANSPORT_PARENT_ARRANGED, TRANSPORT_SELF_RETURN } from "@/lib/stay-back-transport";
@@ -52,7 +53,7 @@ export async function raiseStayBack(formData: FormData) {
     .single();
 
   if (error) {
-    console.error("[stay-back] insert failed:", error.message);
+    logError("[stay-back] insert failed", error);
     throw new Error(error.message);
   }
 
@@ -90,7 +91,7 @@ export async function raiseStayBack(formData: FormData) {
       "stay_back"
     );
   } catch (err) {
-    console.error("[stay-back] notification failed:", (err as Error).message);
+    logError("[stay-back] notification failed", err);
   }
 
   revalidatePath("/stay-back");

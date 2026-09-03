@@ -9,6 +9,7 @@ import { parseCsv } from "@/lib/csv";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
 import { sendPush } from "@/lib/notifications/push";
 import { getSmsRelay } from "@/lib/notifications/sms";
+import { logError } from "@/lib/log";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Enums } from "@/lib/supabase/database.types";
 
@@ -259,7 +260,7 @@ export async function sendMessage(input: {
     );
     await fanOut(message.id, input.subject, input.body, input.urgent, recipients);
   } catch (err) {
-    console.error("[messages] delivery fan-out failed:", (err as Error).message);
+    logError("[messages] delivery fan-out failed", err);
   }
 
   revalidatePath("/console/messages");

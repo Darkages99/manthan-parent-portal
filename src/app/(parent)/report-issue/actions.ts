@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
 import { sendPush } from "@/lib/notifications/push";
+import { logError } from "@/lib/log";
 import type { Enums } from "@/lib/supabase/database.types";
 
 export type ReportIssueInput = {
@@ -76,7 +77,7 @@ export async function reportIssue(input: ReportIssueInput) {
       "messages"
     );
   } catch (err) {
-    console.error("[report-issue] notification failed:", (err as Error).message);
+    logError("[report-issue] notification failed", err);
   }
 
   revalidatePath("/report-issue");

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createStudent, updateStudent, deleteStudent } from "@/app/(staff)/console/students/actions";
+import { createStudent, updateStudent, deleteStudent, eraseStudent } from "@/app/(staff)/console/students/actions";
 import { Dialog } from "./dialog";
 import { Button } from "./button";
 import { Toolbar, SearchInput } from "./filter-bar";
@@ -27,11 +27,14 @@ export function StudentsManager({
   classes,
   guardians,
   guardianNamesByStudent,
+  canErase = false,
 }: {
   students: Student[];
   classes: ClassSection[];
   guardians: Guardian[];
   guardianNamesByStudent: Record<string, string[]>;
+  /** Super-admin only: enables the permanent right-to-erasure control (DG-1). */
+  canErase?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -127,6 +130,7 @@ export function StudentsManager({
             classes={classes}
             guardians={guardians}
             student={editing}
+            canErase={canErase}
             onDone={() => setEditing(null)}
           />
         )}
@@ -139,11 +143,13 @@ function StudentForm({
   classes,
   guardians,
   student,
+  canErase = false,
   onDone,
 }: {
   classes: ClassSection[];
   guardians: Guardian[];
   student?: Student;
+  canErase?: boolean;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -197,6 +203,32 @@ function StudentForm({
         onDone();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Couldn't delete");
+      }
+    });
+  }
+
+  function erase() {
+    if (!student) return;
+    const name = `${student.first_name} ${student.last_name}`;
+    // Two-step confirmation for an irreversible, cross-table erasure.
+    if (
+      !confirm(
+        `ERASE ALL DATA for ${name}?\n\nThis permanently deletes the student and every ` +
+          `record about them (attendance, results, homework, requests, messages, files) ` +
+          `across the whole system, plus any parent left with no other children. This ` +
+          `cannot be undone and is for data-protection (DPDP) erasure requests only.`
+      )
+    )
+      return;
+    if (confirm(`Type-check: really erase ${name}? Press OK only if you are certain.`) === false) return;
+    startTransition(async () => {
+      try {
+        await eraseStudent(student.id);
+        toast.success("Student data erased");
+        router.refresh();
+        onDone();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't erase");
       }
     });
   }
@@ -270,9 +302,16 @@ function StudentForm({
           Save
         </Button>
         {student && (
-          <Button type="button" variant="danger" size="sm" onClick={remove} disabled={pending}>
-            Delete student
-          </Button>
+          <div className="flex items-center gap-2">
+            {canErase && (
+              <Button type="button" variant="danger" size="sm" onClick={erase} disabled={pending}>
+                Erase all data
+              </Button>
+            )}
+            <Button type="button" variant="danger" size="sm" onClick={remove} disabled={pending}>
+              Delete student
+            </Button>
+          </div>
         )}
       </div>
     </div>
