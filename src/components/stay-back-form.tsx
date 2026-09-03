@@ -24,7 +24,7 @@ export function StayBackForm({
   defaultTransport,
 }: {
   students: Tables<"students">[];
-  teachers: Tables<"staff">[];
+  teachers: Pick<Tables<"staff">, "id" | "name" | "role">[];
   /** The guardian's most recent choice, so the toggle defaults to what they picked last time. */
   defaultTransport?: string | null;
 }) {

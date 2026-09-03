@@ -20,7 +20,7 @@ export default async function PtmPage() {
       .select("*, ptm_meetings!inner(status)")
       .in("class_section_id", classIds)
       .eq("ptm_meetings.status", "open"),
-    supabase.from("staff").select("id, name"),
+    supabase.from("staff_directory").select("id, name"),
   ]);
 
   const teacherNames = Object.fromEntries((teachers ?? []).map((t) => [t.id, t.name]));

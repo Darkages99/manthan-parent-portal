@@ -13,7 +13,7 @@ export function StayBackFormTrigger({
   defaultTransport,
 }: {
   students: Tables<"students">[];
-  teachers: Tables<"staff">[];
+  teachers: Pick<Tables<"staff">, "id" | "name" | "role">[];
   defaultTransport?: string | null;
 }) {
   const [open, setOpen] = useState(false);

@@ -17,6 +17,7 @@ const primaryButtonClass =
 export default function ActivatePage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +33,7 @@ export default function ActivatePage() {
     }
     setLoading(true);
     try {
-      await activateGuardianAccount(email, password);
+      await activateGuardianAccount(email, password, phone);
       const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
@@ -69,7 +70,7 @@ export default function ActivatePage() {
           Activate your account
         </h1>
         <p className="mt-2 max-w-xs text-center text-sm text-cream/70">
-          Enter the email the school has on file for you, and choose a password.
+          Enter the email and mobile number the school has on file for you, and choose a password.
         </p>
 
         <div className="mt-7 w-full rounded-2xl border border-cream/15 bg-[rgba(0,0,0,0.16)] p-6 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.8)] backdrop-blur-[2px]">
@@ -87,17 +88,29 @@ export default function ActivatePage() {
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-cream/85">Mobile number on file</span>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                autoComplete="tel"
+                className={inputClass}
+                placeholder="98765 43210"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm">
               <span className="font-medium text-cream/85">Choose a password</span>
               <span className="relative flex items-center">
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  minLength={6}
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
                   className={`w-full pr-11 ${inputClass}`}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                 />
                 <button
                   type="button"
@@ -114,7 +127,7 @@ export default function ActivatePage() {
               <input
                 type={showPassword ? "text" : "password"}
                 required
-                minLength={6}
+                minLength={8}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 autoComplete="new-password"

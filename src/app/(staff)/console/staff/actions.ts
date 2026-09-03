@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePrincipal } from "@/lib/roles";
+import { requirePrincipal, requireSuperAdmin } from "@/lib/roles";
 import { alertsForDeactivatedStaff, insertStaffAlerts } from "@/lib/staff-alerts";
 import type { Enums } from "@/lib/supabase/database.types";
 
@@ -26,7 +26,10 @@ export async function createStaffAccount(input: {
   email: string;
   role: Enums<"role">;
 }) {
-  await requirePrincipal();
+  // Only a super_admin may mint another super_admin — otherwise a coordinator /
+  // principal could self-escalate past the stricter requireSuperAdmin() gate.
+  if (input.role === "super_admin") await requireSuperAdmin();
+  else await requirePrincipal();
   const name = input.name.trim();
   const username = input.username.trim().toLowerCase();
   const password = input.password;
@@ -36,7 +39,7 @@ export async function createStaffAccount(input: {
   if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
     throw new Error("Username must be 3-32 characters: letters, numbers, dots, dashes or underscores");
   }
-  if (password.length < 6) throw new Error("Password must be at least 6 characters");
+  if (password.length < 8) throw new Error("Password must be at least 8 characters");
 
   const admin = createAdminClient();
 
@@ -77,10 +80,15 @@ export async function createStaffAccount(input: {
 
 /** Changes a staff member's role. */
 export async function updateStaffRole(staffId: string, role: Enums<"role">) {
-  await requirePrincipal();
   if (!staffId) throw new Error("Staff member is required");
 
   const supabase = await createClient();
+  // Granting super_admin, or touching an existing super_admin, is super_admin-only
+  // (RLS enforces this too — see migration 0050). Everything else is principal-tier.
+  const { data: target } = await supabase.from("staff").select("role").eq("id", staffId).maybeSingle();
+  if (role === "super_admin" || target?.role === "super_admin") await requireSuperAdmin();
+  else await requirePrincipal();
+
   const { error } = await supabase.from("staff").update({ role }).eq("id", staffId);
   if (error) throw new Error(error.message);
   revalidatePath("/console/staff");
@@ -91,10 +99,13 @@ export async function updateStaffRole(staffId: string, role: Enums<"role">) {
  * Deactivating raises an alert for every class/subject assignment they held,
  * so the principal knows what needs reassigning. */
 export async function setStaffActive(staffId: string, active: boolean) {
-  await requirePrincipal();
   if (!staffId) throw new Error("Staff member is required");
 
   const supabase = await createClient();
+  // Deactivating a super_admin is super_admin-only (RLS enforces it too).
+  const { data: target } = await supabase.from("staff").select("role").eq("id", staffId).maybeSingle();
+  if (target?.role === "super_admin") await requireSuperAdmin();
+  else await requirePrincipal();
 
   if (!active) {
     const alerts = await alertsForDeactivatedStaff(supabase, staffId);

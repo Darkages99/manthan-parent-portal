@@ -1967,7 +1967,15 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      staff_directory: {
+        Row: {
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["role"]
+          active: boolean
+        }
+        Relationships: []
+      }
     }
     Functions: {
       attendance_summary: {

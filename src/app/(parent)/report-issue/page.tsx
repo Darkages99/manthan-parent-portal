@@ -31,7 +31,7 @@ export default async function ReportIssuePage() {
       .select("*")
       .eq("reported_by_guardian_id", viewer.guardian.id)
       .order("created_at", { ascending: false }),
-    supabase.from("staff").select("id, name").eq("role", "class_teacher").order("name"),
+    supabase.from("staff_directory").select("id, name").eq("role", "class_teacher").order("name"),
   ]);
 
   const teachers: TypeaheadOption[] = (teacherRows ?? []).map((t) => ({ id: t.id, label: t.name }));

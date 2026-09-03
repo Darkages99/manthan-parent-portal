@@ -18,7 +18,7 @@ export default async function ParentTimetablePage() {
     await Promise.all([
       supabase.from("timetable_periods").select("*"),
       supabase.from("subjects").select("id, name"),
-      supabase.from("staff").select("id, name"),
+      supabase.from("staff_directory").select("id, name"),
       classIds.length > 0
         ? supabase.from("timetable_entries").select("*").in("class_section_id", classIds)
         : Promise.resolve({ data: [] as never[] }),

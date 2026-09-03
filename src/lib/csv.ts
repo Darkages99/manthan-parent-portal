@@ -10,7 +10,12 @@ export function toCsv(rows: Record<string, unknown>[]): string {
   const headers = Object.keys(rows[0]);
 
   const escape = (value: unknown): string => {
-    const str = value === null || value === undefined ? "" : String(value);
+    let str = value === null || value === undefined ? "" : String(value);
+    // Neutralize CSV/formula injection: a cell that a spreadsheet would
+    // interpret as a formula (leading = + - @, or tab/CR) is prefixed with a
+    // single quote so Excel/Sheets renders it as literal text. See OWASP
+    // "CSV Injection". Guardian-controlled fields (names, messages) end up here.
+    if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
     if (/[",\r\n]/.test(str)) {
       return `"${str.replace(/"/g, '""')}"`;
     }

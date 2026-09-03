@@ -14,24 +14,37 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * "already activated" so this can't be used to probe which emails are on
  * file.
  */
-export async function activateGuardianAccount(rawEmail: string, password: string) {
+/** Last 10 digits of a phone number, ignoring spaces, dashes and country code —
+ * enough to compare "+91 98765 43210" against a stored "9876543210". */
+function phoneKey(raw: string): string {
+  return raw.replace(/\D/g, "").slice(-10);
+}
+
+export async function activateGuardianAccount(rawEmail: string, password: string, rawPhone: string) {
   const email = rawEmail.trim().toLowerCase();
+  const phone = phoneKey(rawPhone ?? "");
   const GENERIC_ERROR =
-    "That email isn't ready to activate. If you already set a password, sign in instead — otherwise contact the front office.";
+    "That email and phone don't match an account ready to activate. If you already set a password, sign in instead — otherwise contact the front office.";
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("Enter a valid email address");
   }
-  if (password.length < 6) throw new Error("Password must be at least 6 characters");
+  if (phone.length < 10) throw new Error("Enter the mobile number the school has on file");
+  if (password.length < 8) throw new Error("Password must be at least 8 characters");
 
   const admin = createAdminClient();
 
   const { data: guardian } = await admin
     .from("guardians")
-    .select("id, name, auth_user_id")
+    .select("id, name, auth_user_id, phone")
     .ilike("email", email)
     .maybeSingle();
+  // Require the on-file phone to match as a proof-of-ownership second factor:
+  // a parent's email alone (known to the school, classmates, etc.) must not be
+  // enough to claim their account. Same generic error throughout so this can't
+  // be used to probe which emails/phones are on file.
   if (!guardian || guardian.auth_user_id) throw new Error(GENERIC_ERROR);
+  if (!guardian.phone || phoneKey(guardian.phone) !== phone) throw new Error(GENERIC_ERROR);
 
   // Phone is deliberately not attached here — the same mobile number is
   // often shared across two guardian rows (e.g. both parents), and phone

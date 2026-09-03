@@ -33,9 +33,12 @@ export async function savePushSubscription(sub: PushSubscriptionInput): Promise<
 }
 
 /** Removes a subscription when the user turns notifications off or the browser
- * revokes it. RLS scopes the delete to rows the user owns. */
+ * revokes it. Requires a session, and RLS (migration 0050) scopes the delete to
+ * rows the caller owns so one user can't unregister another's device. */
 export async function deletePushSubscription(endpoint: string): Promise<void> {
   if (!endpoint) return;
+  const viewer = await getViewer();
+  if (!viewer) throw new Error("Not signed in");
   const supabase = await createClient();
   await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
 }

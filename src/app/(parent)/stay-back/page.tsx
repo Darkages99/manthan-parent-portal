@@ -30,7 +30,7 @@ export default async function StayBackPage({
 
   const [{ data: consents }, { data: teachers }, { data: lastConsent }] = await Promise.all([
     consentsQuery,
-    supabase.from("staff").select("*").in("role", ["class_teacher", "principal"]),
+    supabase.from("staff_directory").select("id, name, role").in("role", ["class_teacher", "principal"]),
     supabase
       .from("stay_back_consents")
       .select("mode_of_transport")

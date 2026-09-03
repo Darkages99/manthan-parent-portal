@@ -9,8 +9,15 @@ import { notifyUnsubmittedHomework } from "@/lib/homework-notify";
  * schedule if triggered manually too.
  */
 export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  // Fail closed: an unset/empty secret must never authenticate (otherwise a
+  // bare `Bearer ` / `Bearer undefined` would pass).
+  if (!secret) {
+    console.error("[cron] CRON_SECRET is not configured — refusing to run.");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
