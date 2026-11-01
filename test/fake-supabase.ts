@@ -10,8 +10,8 @@ type Op =
   | ["order", string]
   | ["limit", number];
 
-export type RecordedQuery = { table: string; ops: Op[] };
-export type RecordedWrite = { table: string; kind: "insert" | "upsert" | "update" | "delete"; payload?: unknown; options?: unknown };
+type RecordedQuery = { table: string; ops: Op[] };
+type RecordedWrite = { table: string; kind: "insert" | "upsert" | "update" | "delete"; payload?: unknown; options?: unknown };
 
 /**
  * In-memory stand-in for the slice of supabase-js the app's pure-ish modules use.

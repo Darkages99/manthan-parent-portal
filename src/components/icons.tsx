@@ -266,15 +266,6 @@ export function MoreIcon(p: IconProps) {
   );
 }
 
-export function SidebarIcon(p: IconProps) {
-  return (
-    <Svg {...p}>
-      <rect x="3.5" y="5" width="17" height="14" rx="2" />
-      <path d="M9.5 5v14" />
-    </Svg>
-  );
-}
-
 export function EyeIcon(p: IconProps) {
   return (
     <Svg {...p}>

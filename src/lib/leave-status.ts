@@ -2,7 +2,7 @@ import type { Enums, Tables } from "@/lib/supabase/database.types";
 
 /** Leave spanning more than this many days needs the principal's sign-off —
  * a class teacher can view it but not approve it. */
-export const PRINCIPAL_APPROVAL_DAY_SPAN = 3;
+const PRINCIPAL_APPROVAL_DAY_SPAN = 3;
 
 /** Inclusive number of calendar days from `fromDate` to `toDate` (both `YYYY-MM-DD`). */
 export function leaveDaySpan(fromDate: string, toDate: string): number {

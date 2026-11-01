@@ -6,10 +6,9 @@
  * honours prefers-reduced-motion by snapping to the final frame instead.
  *
  * These exist so analytical screens can show information as a glance-able
- * picture — a donut, a bar, a trend line — instead of a wall of numbers.
+ * picture — a donut, a bar, a ring — instead of a wall of numbers.
  */
 
-import { useId } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 
@@ -197,114 +196,6 @@ export function BarList({
         );
       })}
     </ul>
-  );
-}
-
-/* ------------------------------------------------------------ Trend line -- */
-
-export type TrendPoint = { label: string; value: number };
-
-/**
- * Compact line-with-area chart for a short series (term averages, weekly
- * counts). Draws the stroke in, fades the fill, and pops the point markers.
- * `domain` fixes the y-range; otherwise it fits the data with light padding.
- */
-export function TrendLine({
-  points,
-  height = 120,
-  color = "var(--color-rust)",
-  domain,
-  valueSuffix = "",
-}: {
-  points: TrendPoint[];
-  height?: number;
-  color?: string;
-  domain?: [number, number];
-  valueSuffix?: string;
-}) {
-  const reduce = useReducedMotion();
-  const gradientId = useId();
-  const width = 320;
-  const padX = 10;
-  const padTop = 14;
-  const padBottom = 22;
-
-  if (points.length === 0) return null;
-
-  const values = points.map((p) => p.value);
-  const lo = domain?.[0] ?? Math.min(...values);
-  const hi = domain?.[1] ?? Math.max(...values);
-  const span = hi - lo || 1;
-
-  const x = (i: number) =>
-    points.length === 1
-      ? width / 2
-      : padX + (i / (points.length - 1)) * (width - padX * 2);
-  const y = (v: number) =>
-    padTop + (1 - (v - lo) / span) * (height - padTop - padBottom);
-
-  const line = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
-  const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
-
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="block w-full"
-      style={{ height }}
-      role="img"
-      aria-label={points.map((p) => `${p.label}: ${p.value}${valueSuffix}`).join(", ")}
-      preserveAspectRatio="none"
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <motion.polygon
-        points={area}
-        fill={`url(#${gradientId})`}
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      />
-      <motion.polyline
-        points={line}
-        fill="none"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        initial={reduce ? false : { pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
-      />
-      {points.map((p, i) => (
-        <g key={`${p.label}-${i}`}>
-          <motion.circle
-            cx={x(i)}
-            cy={y(p.value)}
-            r="3.5"
-            fill="var(--color-surface)"
-            stroke={color}
-            strokeWidth="2.5"
-            initial={reduce ? false : { scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.5 + i * 0.05, ease: EASE_OUT_EXPO }}
-            style={{ transformOrigin: `${x(i)}px ${y(p.value)}px` }}
-          />
-          <text
-            x={x(i)}
-            y={height - 6}
-            textAnchor="middle"
-            className="fill-slate"
-            style={{ fontSize: 10 }}
-          >
-            {p.label}
-          </text>
-        </g>
-      ))}
-    </svg>
   );
 }
 

@@ -1,4 +1,4 @@
-export const MALE_FIRST_NAMES = [
+const MALE_FIRST_NAMES = [
   "Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", "Sai", "Reyansh", "Ayaan",
   "Krishna", "Ishaan", "Rohan", "Kabir", "Aryan", "Dhruv", "Karthik",
   "Siddharth", "Rahul", "Rajesh", "Manish", "Sanjay", "Vikram", "Anil",
@@ -9,7 +9,7 @@ export const MALE_FIRST_NAMES = [
   "Sameer", "Tarun", "Uday", "Vinay", "Yuvraj", "Zubin", "Ashwin",
 ];
 
-export const FEMALE_FIRST_NAMES = [
+const FEMALE_FIRST_NAMES = [
   "Aanya", "Diya", "Saanvi", "Ananya", "Aadhya", "Pari", "Myra", "Sara",
   "Ira", "Anika", "Kiara", "Riya", "Ishita", "Aditi", "Priya", "Neha",
   "Pooja", "Kavita", "Sneha", "Meera", "Anjali", "Divya", "Shreya",
@@ -20,7 +20,7 @@ export const FEMALE_FIRST_NAMES = [
   "Rhea", "Sanya", "Tara", "Urvi", "Vidya", "Yamini", "Zara",
 ];
 
-export const SURNAMES = [
+const SURNAMES = [
   "Sharma", "Verma", "Gupta", "Iyer", "Nair", "Menon", "Reddy", "Rao",
   "Naidu", "Pillai", "Krishnan", "Subramaniam", "Joshi", "Patel", "Shah",
   "Mehta", "Desai", "Kulkarni", "Deshmukh", "Pawar", "Bhatt", "Trivedi",

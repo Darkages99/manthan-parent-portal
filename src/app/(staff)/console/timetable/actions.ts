@@ -129,6 +129,10 @@ export async function updatePeriod(input: {
  * subject/teacher are matched by name and may be left blank to clear a cell.
  * Each row is applied independently; a bad row is reported but doesn't abort
  * the rest of the file.
+ *
+ * Not wired into any page yet; kept (with `timetable-csv-import.tsx`) for the
+ * in-app roster/timetable import planned in TODO 7.3.
+ * @public
  */
 export async function importTimetableCsv(
   csvText: string
