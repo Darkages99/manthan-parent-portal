@@ -5,19 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/session";
 import { sendPush } from "@/lib/notifications/push";
 import { formatTime } from "@/lib/format";
+import { generateSlotWindows } from "@/lib/ptm-slots";
 import type { Enums } from "@/lib/supabase/database.types";
 
 function toIst(date: string, hhmm: string): string {
   // Build an IST (+05:30) timestamptz from a date and "HH:MM".
   return `${date}T${hhmm}:00+05:30`;
-}
-
-function addMinutes(hhmm: string, mins: number): string {
-  const [h, m] = hhmm.split(":").map(Number);
-  const total = h * 60 + m + mins;
-  const hh = Math.floor(total / 60) % 24;
-  const mm = total % 60;
-  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
 /** Creates a PTM meeting for a class on a date, with its own booking window
@@ -160,25 +153,13 @@ export async function createSlots(meetingId: string) {
   if (endTime <= startTime) throw new Error("End time must be after start time");
   if (slotMinutes < 5) throw new Error("Slot length is too short");
 
-  const rows: {
-    meeting_id: string;
-    teacher_id: string;
-    class_section_id: string;
-    starts_at: string;
-    ends_at: string;
-  }[] = [];
-  let cursor = startTime;
-  while (addMinutes(cursor, slotMinutes) <= endTime) {
-    const next = addMinutes(cursor, slotMinutes);
-    rows.push({
-      meeting_id: meeting.id,
-      teacher_id: meeting.teacher_id,
-      class_section_id: meeting.class_section_id,
-      starts_at: toIst(meeting.meeting_date, cursor),
-      ends_at: toIst(meeting.meeting_date, next),
-    });
-    cursor = next;
-  }
+  const rows = generateSlotWindows(startTime, endTime, slotMinutes).map((w) => ({
+    meeting_id: meeting.id,
+    teacher_id: meeting.teacher_id,
+    class_section_id: meeting.class_section_id,
+    starts_at: toIst(meeting.meeting_date, w.start),
+    ends_at: toIst(meeting.meeting_date, w.end),
+  }));
 
   if (rows.length === 0) throw new Error("That window doesn't fit a single slot");
 

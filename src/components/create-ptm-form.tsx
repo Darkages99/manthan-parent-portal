@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMeeting } from "@/app/(staff)/console/ptm/actions";
+import { defaultSlotMinutesForGrade } from "@/lib/ptm-slots";
 import { ComboBox } from "./combobox";
 import { Button } from "./button";
 import { PlusIcon } from "./icons";
@@ -11,20 +12,6 @@ import type { Tables } from "@/lib/supabase/database.types";
 type ClassSection = Tables<"class_sections">;
 
 const SLOT_OPTIONS = [7, 10, 15, 20, 30];
-/** Grades above this get the longer default slot; at/below get the shorter one. */
-const SHORT_SLOT_MAX_GRADE = 5;
-const SHORT_SLOT_MINUTES = 7;
-const LONG_SLOT_MINUTES = 10;
-
-/** Parses the leading integer off a grade label (e.g. "5", "Grade 5", "5A")
- * so the default slot length can vary by grade; falls back to the longer
- * default when the grade doesn't parse. */
-function defaultSlotMinutesForGrade(grade: string): number {
-  const n = parseInt(grade, 10);
-  if (Number.isNaN(n)) return LONG_SLOT_MINUTES;
-  return n <= SHORT_SLOT_MAX_GRADE ? SHORT_SLOT_MINUTES : LONG_SLOT_MINUTES;
-}
-
 /** Creates a PTM meeting for a class + date, then jumps to its slot page.
  * Only rendered for super_admin/principal — see console/ptm/page.tsx. Booking
  * is plain first-come-first-served; the class's own class teacher takes the
