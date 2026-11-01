@@ -52,7 +52,7 @@ not scale.
 | Dependency security | 🔴 37 advisories: **1 critical (`next@16.2.12`, fix `16.4.3`)**, 10 high (`firebase`, `postcss`, `sharp`, `zod`, …) | `npm audit` |
 | Secrets in git | ✅ none tracked, none in history | `git log --all --diff-filter=A --name-only` |
 | Secret files on disk | 🟡 service-account / OAuth JSONs sit in the repo working directory (gitignored) | repo root listing |
-| Reproducible DB | 🟡 `supabase/migrations/0001…0052` exist; **never proven to rebuild an identical schema from zero**; no `supabase/config.toml`; live migration history uses different names/versions than the files | `list_migrations` vs `ls supabase/migrations` |
+| Reproducible DB | 🟡 *(updated 2026-11-01)* `supabase/config.toml` committed; all 54 migration files + `seed.sql` replay from empty in CI ("Migrations replay" job). **Not yet proven identical to live** (3.2): live history has 56 timestamp versions, not the file numbers, with `0001` split into 3 live entries and a different apply order in places | `list_migrations` vs `ls supabase/migrations` |
 | Offline / self-host build | ❌ `next build` needs Google Fonts at build time | `src/app/layout.tsx` (`next/font/google`) |
 | Observability | ❌ no health endpoint, no error tracking, `console.*` + Vercel logs only | grep |
 | Rate limiting | ❌ none on app endpoints (listed as a check in `SECURITY_AUDIT.md` §4.10, never closed) | |

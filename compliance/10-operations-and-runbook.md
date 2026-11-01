@@ -134,7 +134,7 @@ per-job status (`sheetSync`, `homeworkNotify`, `retention`).
 | Secrets | out-of-band secure store (not git) | Re-enter in Vercel |
 
 **Rebuild-from-scratch order:** provision Supabase project → apply migrations
-`0001…0053` → set env → provision/point the Sheet → first sync seeds/loads roster →
+`0001…0053` + `20260801170328_…` (in file-name order, as `supabase db reset` does; proven from empty by CI's "Migrations replay" job) → set env → provision/point the Sheet → first sync seeds/loads roster →
 verify with the RLS suite.
 
 ---
