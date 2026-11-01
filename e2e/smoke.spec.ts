@@ -8,8 +8,9 @@ test.describe("sign-in landing", () => {
   test("renders the sign-in form", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Parent Portal" })).toBeVisible();
-    await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByLabel("Username or email")).toBeVisible();
+    // Not getByLabel("Password"): the show/hide toggle sits inside that label and also matches.
+    await expect(page.locator('input[type="password"]')).toBeVisible();
     await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
   });
 });

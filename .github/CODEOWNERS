@@ -1,0 +1,9 @@
+# Review is requested automatically from these owners.
+* @Darkages99
+
+# Database, access control and security-relevant code: always the owner.
+/supabase/migrations/ @Darkages99
+/src/proxy.ts @Darkages99
+/src/lib/supabase/ @Darkages99
+/.github/ @Darkages99
+/compliance/ @Darkages99
