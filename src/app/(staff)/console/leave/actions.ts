@@ -3,18 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/session";
+import { leaveNeedsPrincipalApproval } from "@/lib/leave-status";
 import { sendPush } from "@/lib/notifications/push";
 import { sendMessage } from "@/app/(staff)/console/messages/compose/actions";
-
-/** Leave spanning more than this many days needs the principal's sign-off —
- * a class teacher can view it but not approve it. */
-const PRINCIPAL_APPROVAL_DAY_SPAN = 3;
-
-function daySpan(fromDate: string, toDate: string): number {
-  const from = new Date(fromDate);
-  const to = new Date(toDate);
-  return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
-}
 
 /** Approves a leave request. There's no decline anymore — a class teacher who
  * has a concern uses `sendLeaveMessage` instead of rejecting outright. Leaves
@@ -32,10 +23,7 @@ export async function decideLeave(id: string) {
     .single();
   if (!leave) throw new Error("Leave request not found");
 
-  if (
-    viewer.staff.role === "class_teacher" &&
-    daySpan(leave.from_date, leave.to_date) > PRINCIPAL_APPROVAL_DAY_SPAN
-  ) {
+  if (leaveNeedsPrincipalApproval(viewer.staff.role, leave.from_date, leave.to_date)) {
     throw new Error("Only the principal can approve a leave over 3 days");
   }
 

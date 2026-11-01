@@ -4,19 +4,12 @@ import { useState, useTransition } from "react";
 import { StatusPill } from "@/components/status-pill";
 import { decideLeave, sendLeaveMessage } from "@/app/(staff)/console/leave/actions";
 import { formatDate } from "@/lib/format";
+import { leaveNeedsPrincipalApproval } from "@/lib/leave-status";
 import { useToast } from "./toast-provider";
 import { Button } from "./button";
 import type { Tables, Enums } from "@/lib/supabase/database.types";
 
 type Leave = Tables<"leave_requests">;
-
-const PRINCIPAL_APPROVAL_DAY_SPAN = 3;
-
-function daySpan(fromDate: string, toDate: string): number {
-  const from = new Date(fromDate);
-  const to = new Date(toDate);
-  return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
-}
 
 export function LeaveApprovalList({
   leaves,
@@ -59,8 +52,7 @@ export function LeaveApprovalList({
     <div className="flex flex-col gap-3">
     <ul className="flex flex-col gap-4">
       {shown.map((l) => {
-        const needsPrincipal =
-          viewerRole === "class_teacher" && daySpan(l.from_date, l.to_date) > PRINCIPAL_APPROVAL_DAY_SPAN;
+        const needsPrincipal = leaveNeedsPrincipalApproval(viewerRole, l.from_date, l.to_date);
         return (
         <li key={l.id} className="rounded-sm border border-hairline bg-surface p-5 shadow-[var(--shadow-card)]">
           <div className="flex items-start justify-between gap-4">
