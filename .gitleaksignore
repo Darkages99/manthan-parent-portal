@@ -1,0 +1,2 @@
+# False positive: prose in TODO.md (a task title), not a credential.
+9037df223778965db1ec9be36869c5e13bb96ac3:TODO.md:generic-api-key:133

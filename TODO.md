@@ -48,7 +48,7 @@
 - [x] 1.1b Fix lint warning `src/components/results-view.tsx` (exhaustive-deps) — 2026-11-01; `results` memoised
 - [x] 1.1c `npx eslint src` exits 0 with zero warnings — 2026-11-01; `npx eslint src test e2e --max-warnings 0` exit 0
 - [x] 1.2a Add Vitest + config + `npm run test:unit` — 2026-11-01; Vitest 5.0.5, `vitest.config.mts`, 313 tests pass; mutation-checked (breaking `computeSubjectStatus` fails 3 tests)
-- [~] 1.2b `.github/workflows/ci.yml`: tsc, eslint, unit, build, audit (omit dev, high), gitleaks — 2026-11-01 WRITTEN, NOT YET RUN ON GITHUB. YAML parses; tsc/eslint/unit+coverage/build/audit/Playwright each run locally with exit 0. gitleaks not run locally. Also has an e2e job. Tick when the first push shows a green run (needs the user to commit + push)
+- [~] 1.2b `.github/workflows/ci.yml`: tsc, eslint, unit, build, audit (omit dev, high), gitleaks — 2026-11-01 WRITTEN, NOT YET RUN ON GITHUB. YAML parses; tsc/eslint/unit+coverage/build/audit/Playwright each run locally with exit 0. gitleaks not run locally. Also has an e2e job. FIRST RUN 2026-11-01 (run 41320429180): verify, e2e, audit GREEN; secrets RED = false positive on TODO.md:133 (prose 'wrong secret' matched generic-api-key). Fixed by rewording + `.gitleaksignore`; tick when the next push is fully green
 - [x] 1.3a PR template `.github/pull_request_template.md` (tests, docs, migration, RLS checklist) — 2026-11-01
 - [~] 1.3b Branch protection on `master` (user must set in GitHub; give exact steps) — needs the user; steps given 2026-11-01 (require PR, require checks `verify`, `e2e`, `audit`, `secrets`)
 - [x] 1.4 `.github/dependabot.yml` (npm + actions) — 2026-11-01 (weekly, minor+patch grouped); activates on push
@@ -130,7 +130,7 @@ Open, need a decision or more work:
 - [ ] 2C.4 Stay-back: chain build, decide order, decline closes
 - [ ] 2C.5 `saveMarks` scope; grade auto-fill
 - [ ] 2C.6 Attachment upload ownership/UUID/basename; report-card upload + zip-slip
-- [ ] 2C.7 Cron auth: missing/empty/wrong secret → 401; correct → runs 3 jobs
+- [ ] 2C.7 Cron auth: missing/empty/wrong credential → 401; correct → runs 3 jobs
 - [ ] 2C.8 `eraseStudent` end-to-end; `prune_old_records` windows
 - [ ] 2C.9 Staff management: principal cannot create/modify super_admin
 
@@ -202,3 +202,4 @@ Open, need a decision or more work:
 - 2026-11-01 — Docs re-verified vs live DB + code; plan written; decisions recorded; this TODO created. Nothing committed.
 - 2026-11-01 (Phase 1 session) — User put third-party replacement on hold; Phase 4 deferred. Done: lint clean; Vitest + 313 tests (src/lib 58.99% lines); CI workflow, PR template, Dependabot, CODEOWNERS, CONTRIBUTING, CHANGELOG written; `next` 16.4.3; prod audit 0 critical/high; unused client Firebase SDK removed; 6 defects found by the tests and fixed (F-A…F-F). NOT done: CI never run on GitHub (nothing pushed), branch protection (user), tag, 2A.10 (58.99% < 80%), WS-4 items 4.1/4.2 (destructive migrations — need user go-ahead). Nothing committed. Next: 2A.11 (google-sheets tests), then Phase 2.
 - 2026-11-01 (commit session) — Tree verified first (tsc 0, eslint 0 warnings, 313/313 tests), then committed in 12 logical commits on `master`; NOT pushed. Left uncommitted on purpose: `User Reviews.md` (names 23 real parents — user decides whether it belongs in the repo) and the modified `Teacher-parent portal clarification.docx` (not mine, 0-line diff). Waiting on the user: push, first green CI run (1.2b), branch protection (1.3b), then tag (1.5b).
+- 2026-11-01 (CI triage) — First CI run: 3/4 jobs green. gitleaks false positive on TODO.md prose (reworded, fingerprint in `.gitleaksignore`). Dependabot TS 7.0.2 PR fails: typescript-eslint does not support TS 7 → major `typescript` bumps now ignored in dependabot.yml (close that PR). `User Reviews.md` and the `.docx` are now git-ignored; the docx was untracked with `git rm --cached` (file kept on disk, still in history).
