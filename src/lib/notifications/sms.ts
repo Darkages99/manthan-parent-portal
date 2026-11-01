@@ -21,10 +21,12 @@ export interface SmsRelay {
 
 /** No relay configured yet — logs instead of sending, so nothing throws in dev. */
 class NoopSmsRelay implements SmsRelay {
-  async send(toE164: string, message: string) {
+  async send() {
+    // Deliberately no recipient number or message text: logs are retained
+    // outside the app's access controls (see log.ts, DG-4).
     console.warn(
-      `[sms] no relay configured — would have sent to ${toE164}: "${message}". ` +
-        `Set SMS_GATEWAY_URL + SMS_GATEWAY_TOKEN once the Android relay phone is set up.`
+      "[sms] no relay configured — message not sent. " +
+        "Set SMS_GATEWAY_URL + SMS_GATEWAY_TOKEN once the Android relay phone is set up."
     );
     return { ok: false, error: "SMS relay not configured" };
   }
