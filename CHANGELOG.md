@@ -4,6 +4,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
 ### Added
 - CI (GitHub Actions): typecheck, lint, unit tests with coverage, build, Playwright smoke
   tests, production dependency audit, secret scan. Actions pinned by commit SHA.
