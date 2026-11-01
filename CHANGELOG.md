@@ -15,7 +15,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 - `leaveNeedsPrincipalApproval` in `src/lib/leave-status.ts`: the 3-day leave rule,
   previously duplicated in the approve action and the approval list.
 
+- Unit tests for the Google Sheets sync (`src/lib/google-sheets.test.ts`, 52 tests) with an
+  in-memory database and Sheets API fake. `src/lib` line coverage 59% → 95%; ratchet raised.
+
 ### Changed
+- **Pass mark: exactly 40% is a pass everywhere.** The console low-score alert treated 40%
+  as failing while results analytics treated it as a pass; both now use `FAIL_THRESHOLD_PCT`.
 - Upgraded Next.js 16.2.12 → 16.4.3, which fixes a critical advisory.
 - Cleared all high-severity production advisories. `npm audit --omit=dev --audit-level=high`
   now exits 0 (5 moderate remain, accepted with an expiry in `SECURITY_AUDIT.md`).
@@ -31,6 +36,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 - Two orphaned components: `approval-checklist.tsx`, `class-teacher-assigner.tsx`.
 
 ### Fixed
+- **Sheets sync queued live rows for deletion**: a row with an id that failed validation
+  (e.g. a blank phone) or whose database write failed was treated as missing from the sheet
+  and queued in Pending Deletions. Affected all six tabs. A super admin still had to confirm,
+  so nothing was deleted, but the queue was misleading.
 - **Console "homework due today" alert was inverted**: it blamed students who had done the
   work and missed those who had not (it misread `homework_submissions` overrides). It now
   matches the homework page and the nightly notifier.
