@@ -28,6 +28,27 @@ export interface PushPayload {
   url?: string; // deep link opened on tap, e.g. /stay-back/sb-1
 }
 
+/** Recipients per lookup. Every id travels in the query string (`.or("guardian_id.in.(…)")`),
+ * and ~1,600 uuids (a school-wide broadcast) is ~60 KB of URL — far past what gateways
+ * accept, so the lookup fails outright. 100 ids keeps each URL around 4 KB. */
+const RECIPIENT_CHUNK = 100;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/** PostgREST `or(...)` expression matching any of these targets, or null for none. */
+function recipientFilter(targets: PushTarget[]): string | null {
+  const guardianIds = targets.filter((t) => t.role === "guardian").map((t) => t.userId);
+  const staffIds = targets.filter((t) => t.role === "staff").map((t) => t.userId);
+  const clauses: string[] = [];
+  if (guardianIds.length) clauses.push(`guardian_id.in.(${guardianIds.join(",")})`);
+  if (staffIds.length) clauses.push(`staff_id.in.(${staffIds.join(",")})`);
+  return clauses.length ? clauses.join(",") : null;
+}
+
 let vapidConfigured = false;
 
 /** Configures web-push from env the first time it's needed. Returns false when
@@ -52,28 +73,31 @@ async function filterByPreference(
   targets: PushTarget[],
   category: NotificationCategory
 ): Promise<PushTarget[]> {
-  const guardianIds = targets.filter((t) => t.role === "guardian").map((t) => t.userId);
-  const staffIds = targets.filter((t) => t.role === "staff").map((t) => t.userId);
+  const disabledGuardianIds = new Set<string>();
+  const disabledStaffIds = new Set<string>();
 
-  const orClauses: string[] = [];
-  if (guardianIds.length) orClauses.push(`guardian_id.in.(${guardianIds.join(",")})`);
-  if (staffIds.length) orClauses.push(`staff_id.in.(${staffIds.join(",")})`);
-  if (orClauses.length === 0) return targets;
+  await Promise.all(
+    chunk(targets, RECIPIENT_CHUNK).map(async (group) => {
+      const filter = recipientFilter(group);
+      if (!filter) return;
+      const { data: disabled, error } = await supabase
+        .from("notification_preferences")
+        .select("guardian_id, staff_id")
+        .eq("category", category)
+        .eq("enabled", false)
+        .or(filter);
+      if (error) {
+        // Fail open: an unreadable preference must not silence a notification.
+        logError("[push] could not read notification preferences", error);
+        return;
+      }
+      for (const d of disabled ?? []) {
+        if (d.guardian_id) disabledGuardianIds.add(d.guardian_id);
+        if (d.staff_id) disabledStaffIds.add(d.staff_id);
+      }
+    })
+  );
 
-  const { data: disabled, error } = await supabase
-    .from("notification_preferences")
-    .select("guardian_id, staff_id")
-    .eq("category", category)
-    .eq("enabled", false)
-    .or(orClauses.join(","));
-  if (error) {
-    logError("[push] could not read notification preferences", error);
-    return targets;
-  }
-  if (!disabled || disabled.length === 0) return targets;
-
-  const disabledGuardianIds = new Set(disabled.map((d) => d.guardian_id).filter(Boolean));
-  const disabledStaffIds = new Set(disabled.map((d) => d.staff_id).filter(Boolean));
   return targets.filter((t) =>
     t.role === "guardian" ? !disabledGuardianIds.has(t.userId) : !disabledStaffIds.has(t.userId)
   );
@@ -96,22 +120,32 @@ export async function sendPush(
   const targets = await filterByPreference(supabase, targetsIn, category);
   if (targets.length === 0) return;
 
-  const guardianIds = targets.filter((t) => t.role === "guardian").map((t) => t.userId);
-  const staffIds = targets.filter((t) => t.role === "staff").map((t) => t.userId);
-
-  const orClauses: string[] = [];
-  if (guardianIds.length) orClauses.push(`guardian_id.in.(${guardianIds.join(",")})`);
-  if (staffIds.length) orClauses.push(`staff_id.in.(${staffIds.join(",")})`);
-  if (orClauses.length === 0) return;
-
-  const { data: subs, error } = await supabase
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth, guardian_id, staff_id")
-    .or(orClauses.join(","));
-  if (error) {
-    logError("[push] could not read subscriptions", error);
-    return;
-  }
+  type Sub = {
+    id: string;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    guardian_id: string | null;
+    staff_id: string | null;
+  };
+  const subs: Sub[] = [];
+  await Promise.all(
+    chunk(targets, RECIPIENT_CHUNK).map(async (group) => {
+      const filter = recipientFilter(group);
+      if (!filter) return;
+      const { data, error } = await supabase
+        .from("push_subscriptions")
+        .select("id, endpoint, p256dh, auth, guardian_id, staff_id")
+        .or(filter);
+      if (error) {
+        // A failed chunk only loses that chunk's devices; the audit log below
+        // still records those recipients as not delivered.
+        logError("[push] could not read subscriptions", error);
+        return;
+      }
+      subs.push(...(data ?? []));
+    })
+  );
 
   const notification = JSON.stringify(payload);
 
@@ -120,7 +154,7 @@ export async function sendPush(
   // not per-subscription.
   const deliveredKeys = new Set<string>();
 
-  if (subs && subs.length > 0) {
+  if (subs.length > 0) {
     await Promise.all(
       subs.map(async (s) => {
         try {
