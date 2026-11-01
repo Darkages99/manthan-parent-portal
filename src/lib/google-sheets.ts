@@ -16,6 +16,8 @@ import type { Enums } from "@/lib/supabase/database.types";
 // mutate them). Additions/amendments apply automatically; a row that
 // disappears from the sheet is queued in `sheet_sync_pending_deletions`
 // rather than deleted, so a super_admin has to confirm data loss explicitly.
+// A row that is in the sheet but fails validation or its write is not
+// "missing", so its id counts as seen and it is never queued.
 //
 // A tab that has never had any data rows (freshly provisioned sheet, or one
 // that was cleared entirely) is treated as "not yet seeded" rather than
@@ -446,6 +448,7 @@ async function syncTeachers(
     try {
       const [idRaw, nameRaw, roleRaw, phoneRaw] = row;
       const id = cell(idRaw);
+      if (id) seen.add(id); // still in the sheet, even if this row fails below
       const name = cell(nameRaw);
       const role = cell(roleRaw) as Enums<"role">;
       const phone = cell(phoneRaw);
@@ -466,7 +469,6 @@ async function syncTeachers(
           updates.push(statusCell(tab, sheetRow, `Error: ${error.message}`));
           continue;
         }
-        seen.add(id);
       } else {
         const username = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_${phone.replace(/\D/g, "").slice(-4)}`;
         const { data: inserted, error } = await supabase
@@ -513,6 +515,7 @@ async function syncClassSections(
     try {
       const [idRaw, academicYearRaw, gradeRaw, sectionRaw, teacherNameRaw] = row;
       const id = cell(idRaw);
+      if (id) seen.add(id); // still in the sheet, even if this row fails below
       const academic_year = cell(academicYearRaw);
       const grade = cell(gradeRaw);
       const section = cell(sectionRaw);
@@ -539,7 +542,6 @@ async function syncClassSections(
           updates.push(statusCell(tab, sheetRow, `Error: ${error.message}`));
           continue;
         }
-        seen.add(id);
       } else {
         const { data: inserted, error } = await supabase
           .from("class_sections")
@@ -584,6 +586,7 @@ async function syncSubjects(
     try {
       const [idRaw, nameRaw] = row;
       const id = cell(idRaw);
+      if (id) seen.add(id); // still in the sheet, even if this row fails below
       const name = cell(nameRaw);
       if (!name) {
         updates.push(statusCell(tab, sheetRow, "Error: name is required"));
@@ -596,7 +599,6 @@ async function syncSubjects(
           updates.push(statusCell(tab, sheetRow, `Error: ${error.message}`));
           continue;
         }
-        seen.add(id);
       } else {
         const { data: inserted, error } = await supabase
           .from("subjects")
@@ -642,6 +644,7 @@ async function syncStudents(
     try {
       const [idRaw, firstRaw, lastRaw, rollRaw, classLabelRaw, photoRaw] = row;
       const id = cell(idRaw);
+      if (id) seen.add(id); // still in the sheet, even if this row fails below
       const first_name = cell(firstRaw);
       const last_name = cell(lastRaw);
       const roll_no = cell(rollRaw);
@@ -667,7 +670,6 @@ async function syncStudents(
           updates.push(statusCell(tab, sheetRow, `Error: ${error.message}`));
           continue;
         }
-        seen.add(id);
       } else {
         const { data: inserted, error } = await supabase
           .from("students")
@@ -713,6 +715,7 @@ async function syncGuardians(
     try {
       const [idRaw, nameRaw, relationRaw, phoneRaw, emailRaw, linkedRaw] = row;
       const id = cell(idRaw);
+      if (id) seen.add(id); // still in the sheet, even if this row fails below
       const name = cell(nameRaw);
       const relation = cell(relationRaw);
       const phone = cell(phoneRaw);
@@ -812,6 +815,7 @@ async function syncTimetable(
     try {
       const [idRaw, classLabelRaw, subjectRaw, dayRaw, periodRaw, teacherRaw] = row;
       const id = cell(idRaw);
+      if (id) seen.add(id); // still in the sheet, even if this row fails below
       const classLabel = cell(classLabelRaw);
       const subjectName = cell(subjectRaw);
       const dayOfWeek = Number(cell(dayRaw));
@@ -869,7 +873,6 @@ async function syncTimetable(
           updates.push(statusCell(tab, sheetRow, `Error: ${error.message}`));
           continue;
         }
-        seen.add(id);
       } else {
         const { data: inserted, error } = await supabase
           .from("timetable_entries")
