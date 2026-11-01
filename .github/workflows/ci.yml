@@ -74,6 +74,17 @@ jobs:
       - run: supabase db start
       # And again through the path developers use, to prove the replay is repeatable.
       - run: supabase db reset --local
+      - name: Every migration recorded and the seed loaded
+        run: |
+          set -eu
+          q() { docker exec supabase_db_manthan-parent-portal psql -U postgres -tAc "$1"; }
+          files=$(ls supabase/migrations/*.sql | wc -l)
+          recorded=$(q "select count(*) from supabase_migrations.schema_migrations")
+          echo "migration files: $files, recorded: $recorded"
+          test "$files" = "$recorded"
+          seed=$(q "select (select count(*) from students)||','||(select count(*) from ptm_slots)||','||(select count(*) from ptm_slots where booked_by_guardian_id is not null)||','||(select count(*) from custom_group_students)")
+          echo "students,ptm_slots,booked,group_members: $seed"
+          test "$seed" = "2,16,1,1"
 
   audit:
     name: Dependency audit (production, high+)
