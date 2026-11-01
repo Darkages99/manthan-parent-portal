@@ -9,9 +9,10 @@ export default defineConfig({
     },
   },
   test: {
+    // Component tests opt into a DOM with `// @vitest-environment happy-dom`.
     environment: "node",
     // Unit tests live next to the code. e2e/ belongs to Playwright, not Vitest.
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     coverage: {
       provider: "v8",
       include: ["src/lib/**/*.ts"],

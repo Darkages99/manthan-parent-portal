@@ -15,7 +15,8 @@
     "demo:seed": "node --env-file=.env.local scripts/demo-seed/seed.mjs",
     "demo:teardown": "node --env-file=.env.local scripts/demo-seed/teardown.mjs",
     "demo:add-test-account": "node --env-file=.env.local scripts/demo-seed/add-test-account.mjs",
-    "demo:refresh-today": "node --env-file=.env.local scripts/demo-seed/refresh-today.mjs"
+    "demo:refresh-today": "node --env-file=.env.local scripts/demo-seed/refresh-today.mjs",
+    "knip": "knip"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -42,6 +43,8 @@
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "happy-dom": "20.14.6",
+    "knip": "6.44.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.5"

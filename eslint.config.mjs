@@ -5,6 +5,9 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // No `eslint-disable` comments: fix the code instead. Any such comment is
+  // reported as a warning, which `--max-warnings 0` in CI turns into a failure.
+  { linterOptions: { noInlineConfig: true } },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
