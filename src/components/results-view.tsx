@@ -20,7 +20,7 @@ export function ResultsView({
 }) {
   const { selectedChildId } = useSelectedChild();
   const activeId = selectedChildId ?? students[0]?.id;
-  const results = resultsByStudent[activeId] ?? [];
+  const results = useMemo(() => resultsByStudent[activeId] ?? [], [resultsByStudent, activeId]);
 
   // Opening Results acknowledges every published report card, clearing the
   // dashboard alert for each child (per-device, via localStorage).

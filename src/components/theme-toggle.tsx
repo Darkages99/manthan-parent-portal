@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 
@@ -11,22 +11,31 @@ function apply(theme: Theme) {
   } catch {}
 }
 
+// The <html data-theme> attribute is the source of truth (set pre-paint by the
+// root layout script), so we subscribe to it instead of mirroring it in state.
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
+
+function getSnapshot(): Theme {
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+
+function getServerSnapshot(): Theme {
+  return "light";
+}
+
 /**
  * Light/dark switch. The initial theme is set before paint by the inline script
  * in the root layout (no flash); this control just flips and persists it.
  */
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("light");
-
-  useEffect(() => {
-    const current = (document.documentElement.getAttribute("data-theme") as Theme) || "light";
-    setTheme(current);
-  }, []);
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    apply(next);
+    apply(theme === "dark" ? "light" : "dark");
   }
 
   const dark = theme === "dark";
