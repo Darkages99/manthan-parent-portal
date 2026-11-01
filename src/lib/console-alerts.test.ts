@@ -4,7 +4,7 @@ import { fakeSupabase } from "../../test/fake-supabase";
 const createClient = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 
-import { PASS_FRACTION, getConsoleAlerts } from "./console-alerts";
+import { getConsoleAlerts } from "./console-alerts";
 
 // Mon 2 Nov 2026, 15:30 IST.
 const NOW = "2026-11-02T10:00:00Z";
@@ -40,8 +40,9 @@ const fixture = () => ({
     { id: "sb4", student_id: "s1", status: "approved", stay_date: "2026-11-03", from_time: "15:00", to_time: "17:00" },
   ],
   exam_results: [
-    { student_id: "s1", subject: "Maths", marks: 40, max_marks: 100 }, // exactly 40% → counted as failing
-    { student_id: "s1", subject: "Science", marks: 41, max_marks: 100 },
+    { student_id: "s1", subject: "Maths", marks: 39, max_marks: 100 },
+    { student_id: "s1", subject: "Science", marks: 40, max_marks: 100 }, // exactly 40% → a pass
+    { student_id: "s1", subject: "Art", marks: 20, max_marks: 50 }, // 40% of a 50-mark paper → a pass
     { student_id: "s2", subject: "Hindi", marks: 30, max_marks: 100 },
     { student_id: "s2", subject: "English", marks: 10, max_marks: 100 },
     { student_id: "s2", subject: "Art", marks: 0, max_marks: 0 }, // zero max: ignored
@@ -124,9 +125,11 @@ describe("getConsoleAlerts — class teacher (own class only)", () => {
     ]);
   });
 
-  it("pass mark: a score of exactly 40% still counts as failing here", () => {
-    // Note: results-analytics treats <40% as failing, so exactly 40% is a pass there.
-    expect(PASS_FRACTION).toBe(0.4);
+  // School decision (2026-11-01): 40% is a pass, same rule as results-analytics.
+  it("pass mark: exactly 40% is a pass, just below is a fail", async () => {
+    const a = await getConsoleAlerts(staff("class_teacher", "T"));
+    const asha = a.lowScores.find((s) => s.id === "s1");
+    expect(asha?.subjects).toEqual(["Maths"]);
   });
 
   // homework_submissions rows are overrides of the assignment's `checked` default
