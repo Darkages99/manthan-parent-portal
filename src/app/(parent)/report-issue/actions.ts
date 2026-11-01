@@ -61,7 +61,7 @@ export async function reportIssue(input: ReportIssueInput) {
       const { data: frontOffice } = await admin
         .from("staff")
         .select("id")
-        .in("role", ["front_office", "admin"]);
+        .eq("role", "front_office");
       for (const f of frontOffice ?? []) targetIds.add(f.id);
     }
 

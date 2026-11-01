@@ -10,7 +10,7 @@ All column and constraint facts below are taken directly from those files. Where
 later migration altered an earlier table, the current state is described and the
 altering migration noted.
 
-**Scope:** ~49 live tables (one, `reminders`, is deprecated — see §5.7;
+**Scope:** 48 live tables (`reminders` was dropped in 0053 — see §5.7;
 `audit_log` added in migration 0051 — see §6.5a). Every table has RLS **enabled**.
 The extension `pgcrypto` provides `gen_random_uuid()`.
 
@@ -20,7 +20,7 @@ The extension `pgcrypto` provides `gen_random_uuid()`.
 
 | Enum | Values | Defined in |
 |------|--------|-----------|
-| `role` | `parent`, `class_teacher`, `front_office`, `accounts`, `principal`, `super_admin`, `coordinator`, `admin` (`admin` was added in 0030 for the since-removed per-PTM approver; the value remains in the enum but no current feature assigns it) | 0001:12, +0009, +0030 |
+| `role` | `parent`, `class_teacher`, `front_office`, `accounts`, `principal`, `super_admin`, `coordinator`, `admin` (**retired** — added in 0030 for the since-removed per-PTM approver; 0053 removed every use and added CHECK `role <> 'admin'` on `staff` and `message_send_permissions`. The value stays in the enum because `current_staff_role()` returns this type) | 0001:12, +0009, +0030, 0053 |
 | `attendance_status` | `present`, `absent`, `late`, `half_day` | 0001:62, +0004 |
 | `leave_status` | `pending`, `approved`, `declined` | 0001:73 |
 | `stay_back_status` | `pending`, `approved`, `declined` | 0001:95 |
@@ -29,7 +29,7 @@ The extension `pgcrypto` provides `gen_random_uuid()`.
 | `invoice_status` | `due`, `partially_paid`, `paid`, `overdue` | 0001:142 |
 | `message_scope_type` | `school`, `class`, `student`, `group` | 0001:223 |
 | `ptm_status` | `open`, `closed` | 0006:10 |
-| `approval_subject_type` | `stay_back_consent`, `ptm_slot_request` (**unused** — PTM approval was removed in 0041; value left in the enum) | 0010:6 |
+| `approval_subject_type` | `stay_back_consent`, `ptm_slot_request` (**retired** — PTM approval was removed in 0041; 0053 dropped it from the guardian policy and added CHECK `subject_type = 'stay_back_consent'` on `approval_steps`; value left in the enum) | 0010:6, 0053 |
 | `approval_step_role` | `class_teacher`, `front_office`, `coordinator`, `principal` | 0010:7 |
 | `stay_back_purpose` | `cultural`, `project`, `competitions_prep`, `ihc`, `others` | 0011 |
 | `notification_category` | `stay_back`, `leave`, `ptm`, `messages`, `reminders`, `defaulters`, `consultations`, `homework` | 0015:4, +0043, +0046 |
@@ -313,7 +313,7 @@ guardian insert `WITH CHECK`-bound to own child; staff decide.
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | uuid PK | |
-| `subject_type` | `approval_subject_type` NOT NULL | `stay_back_consent` in use (`ptm_slot_request` retired in 0041) |
+| `subject_type` | `approval_subject_type` NOT NULL | only `stay_back_consent` (CHECK, 0053; `ptm_slot_request` retired in 0041) |
 | `subject_id` | uuid NOT NULL | polymorphic (not FK) |
 | `step_order` | smallint NOT NULL | ordered |
 | `approver_role` | `approval_step_role` NOT NULL | |
@@ -364,11 +364,11 @@ may update **only to cancel** their own (`status='cancelled'`); staff manage.
 | `custom_group_staff_access` (0023) | `custom_group_id`, `staff_id`, `granted_by`, PK(pair) | staff read own; principal-tier grant |
 | `message_send_permissions` (0016) | PK(`role`, `scope_type`), `allowed` | authenticated read; principal/super_admin manage |
 
-### 5.7 `reminders` (0018) — **DEPRECATED**
+### 5.7 `reminders` (0018) — **DROPPED in 0053**
 Owner-scoped reminders table. The reminders feature (parent nav, route, cron
-dispatch) was removed (`FEATURES.md`, "Reminders tab removal"). The table and its
-owner-RLS may still exist in the schema but is not exercised by current code. Do
-not build on it without re-review.
+dispatch) was removed (`FEATURES.md`, "Reminders tab removal") and the table, which
+had no rows, was dropped in 0053. The `reminders` value of `notification_category`
+is unrelated to the table and remains.
 
 ### 5.8 Report-an-issue family
 | Table | Key columns | RLS summary |
@@ -491,7 +491,8 @@ finding F13). `EXECUTE` on the helper/definer functions is revoked from `anon`
 | One timetable cell per class/day/period | UNIQUE(class_section_id, day_of_week, period_id) | 0008 |
 | A student has ≥1 guardian | deferred constraint trigger + RPC | 0040 |
 | A guardian has a child or an email | deferred constraint trigger | 0040 |
-| Owner XOR on push/preferences/reminders | CHECK `num_nonnulls(...) = 1` | 0001/0015/0018 |
+| Owner XOR on push/preferences | CHECK `num_nonnulls(...) = 1` | 0001/0015 |
+| Retired enum values unusable | CHECK `role <> 'admin'` (staff, message_send_permissions); CHECK `subject_type = 'stay_back_consent'` (approval_steps) | 0053 |
 | Consultation date must be Tue/Thu | CHECK on `extract(dow ...)` | 0044 |
 | One push subscription per endpoint | UNIQUE(endpoint) | 0005b |
 | Approval steps ordered & unique | UNIQUE(subject_type, subject_id, step_order) | 0010 |

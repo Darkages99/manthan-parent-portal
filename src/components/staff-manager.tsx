@@ -15,8 +15,8 @@ const SELECT_PILL =
   "rounded-full border border-hairline bg-surface px-4 py-2.5 text-sm text-slate-strong shadow-[var(--shadow-card)] transition-colors focus:border-rust/60";
 
 type StaffRow = Tables<"staff">;
-// "admin" is a retired role (PTM approval now uses front_office) — excluded
-// so it can't be assigned to new or existing staff from this picker.
+// "admin" is a retired role (PTM approval now uses front_office). It stays in the
+// enum, but migration 0053 forbids it on staff, so it must not be offered here.
 const ROLE_OPTIONS: Enums<"role">[] = (Object.keys(ROLE_LABELS) as Enums<"role">[]).filter(
   (r) => r !== "admin"
 );

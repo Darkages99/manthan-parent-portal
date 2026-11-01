@@ -21,7 +21,7 @@
 | System | Manthan Vidyashram Parent Portal |
 | Document set version | 1.1 |
 | Date issued | 2026-09-03 (rev. 1.1: 2026-11-01) |
-| Status | Re-verified 2026-11-01 against the live database (project `symyylbkadpzzyncwjbd`, 49 tables) and the working tree at `HEAD` (`030b5a7`) |
+| Status | Re-verified 2026-11-01 against the live database (project `symyylbkadpzzyncwjbd`, 49 tables; 48 after migration 0053 dropped `reminders`) and the working tree at `HEAD` (`030b5a7`) |
 | Database schema baseline | migrations `0001` … `0052` |
 | Owner | Engineering |
 | Audience | School leadership, teaching staff, auditors, data-protection reviewers, engineers |

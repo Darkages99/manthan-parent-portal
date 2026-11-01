@@ -78,18 +78,6 @@ async function main() {
   if (toDelete.length === 0) {
     console.log(`Only ${meetings?.length ?? 0} dummy meetings exist — nothing to trim.`);
   } else {
-    const { error: stepsError } = await supabase
-      .from("approval_steps")
-      .delete()
-      .eq("subject_type", "ptm_slot_request")
-      .in(
-        "subject_id",
-        (
-          await supabase.from("ptm_slots").select("id").in("meeting_id", toDelete)
-        ).data?.map((s) => s.id) ?? []
-      );
-    if (stepsError) throw new Error(stepsError.message);
-
     const { error: slotsError } = await supabase.from("ptm_slots").delete().in("meeting_id", toDelete);
     if (slotsError) throw new Error(slotsError.message);
 
