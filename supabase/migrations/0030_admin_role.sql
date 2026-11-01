@@ -9,6 +9,9 @@ alter table staff alter column phone drop not null;
 -- Link the real owner login (Google OAuth, sarangdrajgopaul@gmail.com) to a
 -- super_admin staff row — it had no linked staff row at all, so it couldn't
 -- get past the staff sign-in redirect.
+-- The auth user exists only on the live project; the `exists` guard (added
+-- 2026-11-01, no effect on live) skips this on a fresh replay.
 insert into staff (auth_user_id, name, role, email, active)
 select 'e0000000-0000-0000-0000-000000000001', 'Sarang', 'super_admin', 'sarangdrajgopaul@gmail.com', true
-where not exists (select 1 from staff where auth_user_id = 'e0000000-0000-0000-0000-000000000001');
+where not exists (select 1 from staff where auth_user_id = 'e0000000-0000-0000-0000-000000000001')
+  and exists (select 1 from auth.users where id = 'e0000000-0000-0000-0000-000000000001');
