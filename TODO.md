@@ -53,7 +53,7 @@
 - [x] 1.3b Branch protection on `master` — 2026-11-01, set via `gh api` at the user's request; read back: PR required (0 approvals, sole maintainer), 4 required checks (the job *names*: "Types, lint, unit tests, build", "E2E smoke (Playwright)", "Dependency audit (production, high+)", "Secret scan (gitleaks)"), enforce_admins on, no force-push/delete, conversations must be resolved. **All changes now go through a PR**; renaming a CI job requires updating the protection
 - [x] 1.4 `.github/dependabot.yml` (npm + actions) — 2026-11-01 (weekly, minor+patch grouped); activates on push
 - [x] 1.5a `CODEOWNERS`, `CONTRIBUTING.md`, `CHANGELOG.md` — 2026-11-01
-- [ ] 1.5b Tag `v0.2.0` after CI is green (also bump `package.json` version) — unblocked 2026-11-01; do it after the `phase1/sheets-tests-pass-mark` PR merges
+- [x] 1.5b Tag `v0.2.0` after CI is green (also bump `package.json` version) — 2026-11-01; `package.json` 0.1.0 → 0.2.0 and CHANGELOG `[0.2.0]` section via the `release/v0.2.0` PR; annotated tag `v0.2.0` on that PR's merge commit, after `master` CI was green
 - [~] 1.6 Make `next build` work offline: replace `next/font/google` with `next/font/local` (also WS-7 blocker) — DEFERRED by user 2026-11-01 (third-party replacement on hold)
 
 ### WS-5 (first slice) Critical/high advisories
