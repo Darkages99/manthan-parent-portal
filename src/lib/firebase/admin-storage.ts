@@ -3,10 +3,16 @@ import { randomUUID } from "crypto";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getStorage } from "firebase-admin/storage";
 
-// Server-only counterpart to src/lib/firebase/storage.ts. Storage rules deny
-// all client access by design (see that file's comment) — this is the actual
-// write path, authenticated via a service-account key rather than Firebase
-// Auth, and it's the only thing allowed to touch the bucket.
+// Firebase is used strictly for file storage — report card PDFs, fee receipts and
+// message attachments. Everything relational (who a file belongs to, permissions)
+// stays in Supabase Postgres; Firebase Storage only ever holds the bytes.
+//
+// Deployed Storage rules deny all client access ("allow read, write: if false"),
+// which is deliberate: the app authenticates through Supabase, not Firebase Auth,
+// so request.auth in Storage rules would never be populated and open rules would
+// mean an unauthenticated public bucket. There is therefore no client-side Firebase
+// SDK in this app. This module is the only write path, authenticated via a
+// service-account key, and the only thing allowed to touch the bucket.
 function adminApp() {
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
