@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAttendanceForDate } from "@/lib/attendance-today";
 import { fetchInChunks } from "@/lib/supabase/chunked-in";
 import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
+import { FAIL_THRESHOLD_PCT } from "@/lib/results-analytics";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type LowAttendanceStudent = {
@@ -69,9 +70,6 @@ export type ConsoleAlertData = {
   dueHomeworkToday: DueHomeworkStudent[];
   stayingBackToday: StayingBackToday[];
 };
-
-/** Marks at or below this fraction of the maximum count as failing. */
-export const PASS_FRACTION = 0.4;
 
 /** Today's date in IST as YYYY-MM-DD (matches how dates are stored/marked). */
 function istToday(): string {
@@ -220,13 +218,13 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
       reason: approvedTodayReason.get(r.student_id) ?? "No approved leave on record",
     }));
 
-  // --- Students failing (≤40%) one or more subjects, one alert per student ---
+  // --- Students failing (<40%; 40% is a pass) one or more subjects, one alert per student ---
   const failingSubjects = new Map<string, Set<string>>();
   for (const r of examResults ?? []) {
     if (!studentIds.has(r.student_id)) continue;
     const max = Number(r.max_marks);
     if (max <= 0) continue;
-    if (Number(r.marks) / max <= PASS_FRACTION) {
+    if (Number(r.marks) * 100 < FAIL_THRESHOLD_PCT * max) {
       const set = failingSubjects.get(r.student_id) ?? new Set<string>();
       set.add(r.subject);
       failingSubjects.set(r.student_id, set);

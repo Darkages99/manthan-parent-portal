@@ -282,6 +282,8 @@ syncFromSheet():
        e. Write generated id + a per-row "Sync Status" (OK / Error: …) back to the sheet.
   4. queuePendingDeletions(): any Postgres row whose id wasn't seen this pass is
      inserted into sheet_sync_pending_deletions (snapshot kept) — NOT deleted.
+     An id that is in the sheet counts as seen even if its row failed validation
+     or its write, so a broken row is never queued as missing.
   5. writePendingDeletionsTab(): mirror the unresolved queue into a red-highlighted
      "Pending Deletions" tab.
   6. Close the run row (status=success | failed + error_summary). Never throws.

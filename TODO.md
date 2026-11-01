@@ -48,12 +48,12 @@
 - [x] 1.1b Fix lint warning `src/components/results-view.tsx` (exhaustive-deps) — 2026-11-01; `results` memoised
 - [x] 1.1c `npx eslint src` exits 0 with zero warnings — 2026-11-01; `npx eslint src test e2e --max-warnings 0` exit 0
 - [x] 1.2a Add Vitest + config + `npm run test:unit` — 2026-11-01; Vitest 5.0.5, `vitest.config.mts`, 313 tests pass; mutation-checked (breaking `computeSubjectStatus` fails 3 tests)
-- [~] 1.2b `.github/workflows/ci.yml`: tsc, eslint, unit, build, audit (omit dev, high), gitleaks — 2026-11-01 WRITTEN, NOT YET RUN ON GITHUB. YAML parses; tsc/eslint/unit+coverage/build/audit/Playwright each run locally with exit 0. gitleaks not run locally. Also has an e2e job. FIRST RUN 2026-11-01 (run 41320429180): verify, e2e, audit GREEN; secrets RED = false positive on TODO.md:133 (prose 'wrong secret' matched generic-api-key). Fixed by rewording + `.gitleaksignore`; tick when the next push is fully green
+- [x] 1.2b `.github/workflows/ci.yml`: tsc, eslint, unit, build, audit (omit dev, high), gitleaks — 2026-11-01; run 41322329156 on `master` @ 497cdd2: all 4 jobs green (first run's gitleaks false positive fixed via `.gitleaksignore`)
 - [x] 1.3a PR template `.github/pull_request_template.md` (tests, docs, migration, RLS checklist) — 2026-11-01
-- [~] 1.3b Branch protection on `master` (user must set in GitHub; give exact steps) — needs the user; steps given 2026-11-01 (require PR, require checks `verify`, `e2e`, `audit`, `secrets`)
+- [x] 1.3b Branch protection on `master` — 2026-11-01, set via `gh api` at the user's request; read back: PR required (0 approvals, sole maintainer), 4 required checks (the job *names*: "Types, lint, unit tests, build", "E2E smoke (Playwright)", "Dependency audit (production, high+)", "Secret scan (gitleaks)"), enforce_admins on, no force-push/delete, conversations must be resolved. **All changes now go through a PR**; renaming a CI job requires updating the protection
 - [x] 1.4 `.github/dependabot.yml` (npm + actions) — 2026-11-01 (weekly, minor+patch grouped); activates on push
 - [x] 1.5a `CODEOWNERS`, `CONTRIBUTING.md`, `CHANGELOG.md` — 2026-11-01
-- [ ] 1.5b Tag `v0.2.0` after CI is green (blocked on 1.2b; also bump `package.json` version)
+- [ ] 1.5b Tag `v0.2.0` after CI is green (also bump `package.json` version) — unblocked 2026-11-01; do it after the `phase1/sheets-tests-pass-mark` PR merges
 - [~] 1.6 Make `next build` work offline: replace `next/font/google` with `next/font/local` (also WS-7 blocker) — DEFERRED by user 2026-11-01 (third-party replacement on hold)
 
 ### WS-5 (first slice) Critical/high advisories
@@ -73,7 +73,7 @@
 - [x] 2A.7 `date-range.ts`, `format.ts`, `calendar.ts`, `timetable.ts`, `dtr.ts` — 2026-11-01; date-range tested under 4 host time zones, old code fails 12 of them
 - [x] 2A.8 `attendance*.ts`, `alerts.ts`, `console-alerts.ts`, `staff-alerts.ts` — 2026-11-01
 - [x] 2A.9 PTM slot generation + default slot length by grade (extract pure fn) — 2026-11-01; `src/lib/ptm-slots.ts`
-- [ ] 2A.10 Coverage report published by CI; threshold enforced — PARTIAL 2026-11-01: CI uploads `coverage/`; ratchet enforced in `vitest.config.mts` (proved: `--coverage.thresholds.lines=99` exits 1). **src/lib is 58.99% lines vs the 80% target.** Close when ≥80%
+- [x] 2A.10 Coverage report published by CI; threshold enforced — 2026-11-01; CI uploads `coverage/`; `src/lib` now 95.04% lines / 84.45% branches (365 tests); ratchet raised to 95/94/92/84. Uncovered remainder: thin Supabase/Firebase/QR wrappers
 
 ### Dead code / legacy (WS-4, can run in Phase 1)
 - [ ] 4.1 Migration dropping `reminders` table (confirm unused first)
@@ -90,10 +90,10 @@ Fixed, each with a test that fails on the old code:
 - [x] F-E `createSlots` could loop forever for a window ending after ~23:45. Pure numeric `generateSlotWindows`
 - [x] F-F `.env.example` was never committed (`.env*` ignore rule). Un-ignored; it is now committed
 Open, need a decision or more work:
-- [ ] G-1 `google-sheets.ts`: a sheet row WITH an id that fails validation (e.g. blank phone) skips `seen.add(id)` so `queuePendingDeletions` queues a row that IS in the sheet. Confirmed in `syncTeachers` and `syncTimetable`; the other 4 syncs unread. Safe (super-admin confirms) but misleading. Fix needs a mocked-googleapis harness → see 2A.11
-- [ ] 2A.11 Test `google-sheets.ts` (currently 0%, ~1,100 lines): mock `googleapis` + `test/fake-supabase.ts`; cover tab parsing, per-row errors, `queuePendingDeletions`, G-1. This is most of the gap to 80%
+- [x] G-1 `google-sheets.ts`: a row WITH an id that failed validation or its DB write was queued as a pending deletion — 2026-11-01; confirmed in all 6 tabs (9 tests fail on the old code). Fix: the id counts as seen as soon as it is read. Docs 04 + 07 updated
+- [x] 2A.11 Test `google-sheets.ts` — 2026-11-01; `src/lib/google-sheets.test.ts`, 52 tests, own stateful DB + Sheets fakes (the shared fake is read-only). File at 98.87% lines. Mutation check: removing the Students "seed only if empty" guard fails 7 tests
 - [ ] N-1 Dockerfile uses `node:20-alpine` (Node 20 is end-of-life since Apr 2026). Bump to 24 and rebuild when Docker is available (3.3). Docker is not installed on this machine, so untested
-- [ ] N-2 Pass mark differs: `console-alerts.ts` treats exactly 40% as failing (`<= 0.4`), `results-analytics.ts` treats 40% as a pass (`< 40`). Product decision for the school; then make one constant
+- [x] N-2 Pass mark — 2026-11-01; user decided **40% is a pass**. `console-alerts.ts` now uses `FAIL_THRESHOLD_PCT` from `results-analytics.ts` (integer compare); its test fails on the old code (2 tests)
 - [ ] N-3 `sendPush` fans out with unbounded `Promise.all` over every device (~3,000 for a full broadcast). Measure in the load test (8.1); add a concurrency cap if needed
 - [ ] N-4 `csv.ts` prefixes any cell starting with `-` (so negative numbers export as text) and `parseCsv` does not strip the `'` it adds on re-import. Check whether any export is re-imported before changing
 - [ ] N-5 npm warns 3 packages have install scripts not covered by `allowScripts` (sharp, protobufjs, unrs-resolver). Build and e2e pass; confirm `next/image` works in the Docker build (3.3)
@@ -203,3 +203,4 @@ Open, need a decision or more work:
 - 2026-11-01 (Phase 1 session) — User put third-party replacement on hold; Phase 4 deferred. Done: lint clean; Vitest + 313 tests (src/lib 58.99% lines); CI workflow, PR template, Dependabot, CODEOWNERS, CONTRIBUTING, CHANGELOG written; `next` 16.4.3; prod audit 0 critical/high; unused client Firebase SDK removed; 6 defects found by the tests and fixed (F-A…F-F). NOT done: CI never run on GitHub (nothing pushed), branch protection (user), tag, 2A.10 (58.99% < 80%), WS-4 items 4.1/4.2 (destructive migrations — need user go-ahead). Nothing committed. Next: 2A.11 (google-sheets tests), then Phase 2.
 - 2026-11-01 (commit session) — Tree verified first (tsc 0, eslint 0 warnings, 313/313 tests), then committed in 12 logical commits on `master`; NOT pushed. Left uncommitted on purpose: `User Reviews.md` (names 23 real parents — user decides whether it belongs in the repo) and the modified `Teacher-parent portal clarification.docx` (not mine, 0-line diff). Waiting on the user: push, first green CI run (1.2b), branch protection (1.3b), then tag (1.5b).
 - 2026-11-01 (CI triage) — First CI run: 3/4 jobs green. gitleaks false positive on TODO.md prose (reworded, fingerprint in `.gitleaksignore`). Dependabot TS 7.0.2 PR fails: typescript-eslint does not support TS 7 → major `typescript` bumps now ignored in dependabot.yml (close that PR). `User Reviews.md` and the `.docx` are now git-ignored; the docx was untracked with `git rm --cached` (file kept on disk, still in history).
+- 2026-11-01 (2A.11 session) — CI fully green on `master` (1.2b). Branch protection applied via `gh api` (1.3b); from now on work happens on branches + PRs. N-2 fixed (40% passes). 2A.11 done: 52 Sheets-sync tests; they exposed G-1 in all 6 tabs, now fixed. `src/lib` coverage 59% → 95% (2A.10 closed). tsc 0, eslint 0, 365/365 tests locally. Work on branch `phase1/sheets-tests-pass-mark` → PR. Next: merge PR, tag v0.2.0 (1.5b), then WS-4 leftovers (4.3/4.4) or start Phase 2 (3.1a `supabase init`). Still need user go-ahead for 4.1/4.2. Open Dependabot PR #5 (googleapis 188, CI green) awaits review. Lesson: Windows PowerShell 5.1 `Get-Content`/`Set-Content` mangles UTF-8 (adds BOM, breaks `—`); don't round-trip source files through it.

@@ -17,10 +17,9 @@ export default defineConfig({
       include: ["src/lib/**/*.ts"],
       exclude: ["src/lib/**/*.test.ts", "src/lib/supabase/database.types.ts"],
       reporter: ["text-summary", "lcov", "json-summary"],
-      // Ratchet, not the goal: the target is 80% lines (TODO 2A). The gap is almost all
-      // google-sheets.ts and the thin Supabase/Firebase wrappers. Raise these as tests
-      // land; never lower them.
-      thresholds: { lines: 57, statements: 58, functions: 67, branches: 54 },
+      // Ratchet: set just under the current numbers. Raise these as tests land; never
+      // lower them. What's left uncovered is the thin Supabase/Firebase/QR wrappers.
+      thresholds: { lines: 95, statements: 94, functions: 92, branches: 84 },
     },
   },
 });

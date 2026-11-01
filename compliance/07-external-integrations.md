@@ -57,7 +57,8 @@ TB-* set from `02-architecture-and-trust-boundaries.md` §7.
   unresolved deletion queue.
 - **Safety model:** additions/amendments auto-apply; **deletions are queued, never
   applied** (`sheet_sync_pending_deletions`); only a super_admin confirms. Per-row
-  validation writes an error into that row's status cell without aborting the tab.
+  validation writes an error into that row's status cell without aborting the tab;
+  a row with an id that fails is still "in the sheet" and is never queued for deletion.
   Guardian upsert uses the atomic `sync_upsert_guardian` RPC to satisfy integrity
   triggers.
 - **Failure behaviour:** `syncFromSheet()` never throws — it always closes a
