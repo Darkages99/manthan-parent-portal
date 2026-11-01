@@ -264,7 +264,9 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
 
   // --- Students with homework due today they haven't done ---
   // A homework_submissions row is an *override* of the assignment's `checked`
-  // default (migration 0036): done = checked ? overridden : !overridden.
+  // default (migration 0036): unchecked ⇒ nobody is done and a row marks a
+  // student done; checked ⇒ everyone is done and a row marks a student not done.
+  // So done = checked ? !overridden : overridden (same as homework-notify.ts).
   const hwToday = homeworkToday ?? [];
   const hwIds = hwToday.map((h) => h.id);
   const { data: hwSubs } = hwIds.length
@@ -288,7 +290,7 @@ export async function getConsoleAlerts(staff: Tables<"staff">): Promise<ConsoleA
     const overridden = overrideByHw.get(h.id) ?? new Set<string>();
     for (const sid of roster) {
       const isOverridden = overridden.has(sid);
-      const done = h.checked ? isOverridden : !isOverridden;
+      const done = h.checked ? !isOverridden : isOverridden;
       if (!done) notDoneCount.set(sid, (notDoneCount.get(sid) ?? 0) + 1);
     }
   }
