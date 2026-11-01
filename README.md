@@ -59,7 +59,6 @@ npm install
 ```
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=<your-firebase-project-id>
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=<your-firebase-storage-bucket>
 ```
 
@@ -95,6 +94,9 @@ src/
 - `npm run build` – Build for production
 - `npm start` – Start production server
 - `npm run lint` – Run ESLint
+- `npm run typecheck` – TypeScript check
+- `npm run test:unit` – Vitest unit tests (`npm run test:unit:coverage` for coverage)
+- `npm test` – Playwright smoke tests
 
 ## Authentication & Authorization
 

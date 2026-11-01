@@ -23,7 +23,7 @@ Conventions: **Parent** = `parent` role; **Staff** = any staff role;
 - **Requirements:** FR-ATT-1..3.
 - **Parent:** view own child history + summary (donut with a distinct "not marked"
   slice; present % is roster-relative).
-- **Staff:** mark daily attendance (present/absent/late/excused, half-day);
+- **Staff:** mark daily attendance (present/absent/late/half-day);
   "mark today" prompt + nav badge; defaulters/absent-today view.
 - **Tables:** `attendance_records` (UNIQUE student+date); helper `attendance_summary()`.
 - **Source:** `console/attendance/*`, `(parent)/attendance/*`, components
@@ -53,7 +53,8 @@ Conventions: **Parent** = `parent` role; **Staff** = any staff role;
   (dedup), `homework_comments`.
 - **Source:** `console/homework/*`, `(parent)/homework/*`,
   `src/lib/homework-notify.ts`, components `homework-*.tsx`.
-- **Rules:** default-submitted design (a row is a not-done override, 0036); one
+- **Rules:** per-assignment `checked` default (0036) - a `homework_submissions` row is
+  an override of that default ("done" when unchecked, "not done" when checked); one
   "not-done" push per assignment via the dedup ledger; dispatched by cron.
 
 ## 5. Timetable
@@ -72,7 +73,10 @@ Conventions: **Parent** = `parent` role; **Staff** = any staff role;
 - **Requirements:** FR-LV-1..3. **Tables:** `leave_requests`.
 - **Source:** `(parent)/leave/*`, `console/leave/*`, `src/lib/leave-status.ts`,
   `leave-form.tsx`, `leave-approval-list.tsx`.
-- **Rules:** guardian raises for own child (RLS `WITH CHECK`); staff decide; pending
+- **Rules:** guardian raises for own child (RLS `WITH CHECK`); staff **approve only**
+  (no decline - `sendLeaveMessage` messages the guardian instead); a class teacher
+  cannot approve a leave over 3 days (`PRINCIPAL_APPROVAL_DAY_SPAN`); approval pushes
+  the guardian; a pending request past its end date displays as *expired*; pending
   queue ordered by leave date.
 
 ## 7. Stay-back consent
@@ -86,12 +90,15 @@ Conventions: **Parent** = `parent` role; **Staff** = any staff role;
 
 ## 8. Parent-teacher meetings (PTM)
 - **Requirements:** FR-PTM-1..3.
-- **Tables:** `ptm_meetings`, `ptm_meeting_teachers`, `ptm_slots`, `approval_steps`.
+- **Tables:** `ptm_meetings`, `ptm_slots` (no approval chain - removed in 0041).
 - **Source:** `console/ptm/*`, `(parent)/ptm/*`, `create-ptm-form.tsx`,
   `meeting-slot-manager.tsx`, `ptm-view.tsx`.
-- **Rules:** staff create meeting + open slots; parent books/cancels for own child;
-  booking creates a principal + named-teacher chain; meeting undeletable while any
-  slot booked/pending; all meeting teachers notified on a decision.
+- **Rules:** only principal/super_admin create a meeting (class teacher attached
+  automatically; slot length defaults 7 min up to Class 5, 10 min above); any staff can
+  generate slots, open/close, and delete unbooked slots; a parent books an open slot
+  first-come-first-served (race-safe conditional `UPDATE ... WHERE booked_by_guardian_id
+  IS NULL`) and may cancel their own; staff may delete a meeting at any time - slots
+  cascade and booked guardians are pushed a cancellation notice.
 
 ## 9. Consultations
 - **Requirements:** FR-CON-1..2. **Tables:** `parent_consultations`.
@@ -107,7 +114,7 @@ Conventions: **Parent** = `parent` role; **Staff** = any staff role;
   `custom_group_staff_access`, `message_send_permissions`.
 - **Source:** `console/messages/*` (compose/groups/permissions),
   `(parent)/messages/*`, `api/attachments/upload`, `compose-form.tsx`,
-  `bulk-message-csv-import.tsx`, `message-permissions-grid.tsx`,
+  `bulk-message-csv-import.tsx` (principal-tier CSV mass-messaging by roll number), `message-permissions-grid.tsx`,
   `notifications-inbox.tsx`.
 - **Rules:** send subject to `message_send_permissions(role, scope_type)`; teachers
   scoped to their taught classes/students/groups and cannot send school-wide;

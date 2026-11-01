@@ -28,22 +28,22 @@ Test-level codes: **L1** static · **L3** RLS impersonation · **L4** integratio
 | FR-RES-4 | Results | `(parent)/results` | `exam_results` | guardian own | L3,L5,L6 |
 | FR-RES-5 | Results | `results-analytics.tsx` | `exam_results` | staff | L6 |
 | FR-HW-1 | Homework | `console/homework/actions.ts` | `homework_assignments` | staff | L4,L6 |
-| FR-HW-2 | Homework | `console/homework/*` | `homework_submissions`, `homework_comments` | staff | L4,L6 |
+| FR-HW-2 | Homework | `console/homework/*` | `homework_assignments.checked`, `homework_submissions`, `homework_comments` | staff | L4,L6 |
 | FR-HW-3 | Homework | `(parent)/homework` | `homework_assignments`, `homework_comments` | guardian own | L3,L6 |
 | FR-HW-4 | Homework | `lib/homework-notify.ts` | `homework_notifications`, `notification_log` | service-role | L4 |
 | FR-TT-1 | Timetable | `console/timetable/actions.ts` | `timetable_periods`, `timetable_entries` | principal-tier | L3,L4,L6 |
 | FR-TT-2 | Timetable | `(parent)/timetable` | `timetable_entries` | guardian class | L3,L6 |
 | FR-TT-3 | Timetable | `console/classes/[id]` | `class_subject_teachers` | principal-tier | L4,L6 |
 | FR-LV-1 | Leave | `(parent)/leave/actions.ts` | `leave_requests` | guardian WITH CHECK | **L3**,L4 |
-| FR-LV-2 | Leave | `console/leave/actions.ts` | `leave_requests` | staff | L4,L6 |
-| FR-LV-3 | Leave | `leave-status.ts` | `leave_requests` | scoped | L6 |
+| FR-LV-2 | Leave | `console/leave/actions.ts` (`decideLeave`, `sendLeaveMessage`) | `leave_requests` | staff; class_teacher blocked > 3 days | L4,L6 |
+| FR-LV-3 | Leave | `leave-status.ts` (expired state) | `leave_requests` | scoped | L6 |
 | FR-SB-1 | Stay-back | `(parent)/stay-back/actions.ts` | `stay_back_consents` | guardian WITH CHECK | **L3**,L4 |
 | FR-SB-2 | Stay-back | `lib/stay-back-chain.ts`, `lib/approvals.ts` | `approval_steps` | staff (admin client) | L4 |
 | FR-SB-3 | Stay-back | `lib/approvals.ts` | `approval_steps` | `computeSubjectStatus` | L2(planned),L4 |
 | FR-SB-4 | Stay-back | `stay-back/actions.ts` | `notification_log` | service-role | L4 |
-| FR-PTM-1 | PTM | `console/ptm/actions.ts` | `ptm_meetings`, `ptm_meeting_teachers`, `ptm_slots` | staff | L4,L6 |
-| FR-PTM-2 | PTM | `(parent)/ptm/actions.ts` | `ptm_slots`, `approval_steps` | guardian class | L3,L4 |
-| FR-PTM-3 | PTM | `console/ptm/actions.ts` | `ptm_meetings`, `ptm_slots` | delete guard | L4,L6 |
+| FR-PTM-1 | PTM | `console/ptm/actions.ts` (`createMeeting`, `createSlots`) | `ptm_meetings`, `ptm_slots` | principal/super_admin create (app gate) | L4,L6 |
+| FR-PTM-2 | PTM | `(parent)/ptm/actions.ts` (`bookSlot`, `cancelSlot`) | `ptm_slots` | guardian class, open meeting only (0041); conditional-UPDATE race guard | L3,L4 |
+| FR-PTM-3 | PTM | `console/ptm/actions.ts` (`deleteMeeting`) | `ptm_meetings`, `ptm_slots` | staff; cascade + guardian cancellation push | L4,L6 |
 | FR-CON-1 | Consultations | `(parent)/consultations/actions.ts` | `parent_consultations` | Tue/Thu CHECK + WITH CHECK | **L3**,L4 |
 | FR-CON-2 | Consultations | `console/consultations/actions.ts` | `parent_consultations` | staff / cancel-only | L3,L4,L6 |
 | FR-MSG-1 | Messaging | `messages/compose/actions.ts` | `messages`, `message_targets` | send perms | L4,L6 |
@@ -68,6 +68,7 @@ Test-level codes: **L1** static · **L3** RLS impersonation · **L4** integratio
 | FR-ADMIN-1 | Admin | `console/staff/actions.ts` | `staff` | super_admin / principal split (0050) | **L3**,L4 |
 | FR-ADMIN-2 | Admin | `console/storage/actions.ts` | `storage_usage_snapshots` | principal-tier | L3,L4 |
 | FR-ADMIN-3 | Admin | `console/notification-log` | `notification_log` | principal-tier read | L3 |
+| FR-ADMIN-4 | Admin | `api/cron/tick`, `console/students/actions.ts` | `audit_log`, all student-linked tables | cron secret; `requireSuperAdmin` | L3,L4 |
 
 ---
 
@@ -76,7 +77,7 @@ Test-level codes: **L1** static · **L3** RLS impersonation · **L4** integratio
 | Req | Control | Source | Test |
 |-----|---------|--------|------|
 | NFR-1 Confidentiality | RLS on all tables | all migrations | **L3** + `SECURITY_AUDIT.md` §5 |
-| NFR-2 Auditability | notification log; queued deletions | 0042; 0017 | L4 |
+| NFR-2 Auditability | notification log; queued deletions; marks/attendance audit trail | 0042; 0017; 0051 | L3,L4 |
 | NFR-3 Integrity | deferred constraint triggers + RPCs | 0040 | L4 (add/remove-parent cases) |
 | NFR-4 Low cost | managed platforms; free notification paths | `sms.ts`, `whatsapp.ts` | review |
 | NFR-5 Portability | standalone build + Docker | `next.config.ts`, `Dockerfile` | build check |
@@ -100,7 +101,7 @@ Test-level codes: **L1** static · **L3** RLS impersonation · **L4** integratio
 | F6 CSV injection | Medium | ✅ Fixed | `lib/csv.ts` |
 | F7 attachment IDOR/path | Medium | ✅ Fixed | upload route |
 | F8 security headers | Medium | ✅ Fixed | `next.config.ts` |
-| F9 dependency advisories | Medium | ⚠️ Partial | `npm audit fix`; firebase-admin major pending |
+| F9 dependency advisories | Medium | 🔴 Re-opened | 2026-11-01 `npm audit`: 37 advisories (1 critical `next`, 10 high). See `12-deployment-readiness-plan.md` WS-5 |
 | F10 cron fail-open | Low | ✅ Fixed | `cron/tick/route.ts` |
 | F11 password floor / HIBP | Low | ⚠️ Partial | min-8; HIBP toggle = dashboard |
 | F12 anon EXECUTE on fns | Low | ✅ Fixed | 0050 revokes |

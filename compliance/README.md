@@ -19,9 +19,9 @@
 | Field | Value |
 |-------|-------|
 | System | Manthan Vidyashram Parent Portal |
-| Document set version | 1.0 |
-| Date issued | 2026-09-03 |
-| Status | Baseline — reflects the codebase at commit `1d9f53a` (security hardening) |
+| Document set version | 1.1 |
+| Date issued | 2026-09-03 (rev. 1.1: 2026-11-01) |
+| Status | Re-verified 2026-11-01 against the live database (project `symyylbkadpzzyncwjbd`, 49 tables) and the working tree at `HEAD` (`030b5a7`) |
 | Database schema baseline | migrations `0001` … `0052` |
 | Owner | Engineering |
 | Audience | School leadership, teaching staff, auditors, data-protection reviewers, engineers |
@@ -55,6 +55,7 @@ question.
 | 09 | [Data governance & privacy](./09-data-governance-and-privacy.md) | "How is minors' PII handled, retained and protected?" |
 | 10 | [Operations & runbook](./10-operations-and-runbook.md) | "How is it deployed, configured, backed up and recovered?" |
 | 11 | [Requirements traceability matrix](./11-traceability-matrix.md) | "Where is requirement X implemented and tested?" |
+| 12 | [Deployment-readiness plan](./12-deployment-readiness-plan.md) | "What exactly must be done, and what evidence must exist, to call this deployment-ready?" |
 
 ---
 

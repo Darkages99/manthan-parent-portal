@@ -25,8 +25,9 @@ TB-* set from `02-architecture-and-trust-boundaries.md` §7.
   authenticated by a service-account key (not Firebase Auth — the app authenticates
   via Supabase).
 - **Credentials:** `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`,
-  `FIREBASE_ADMIN_PRIVATE_KEY` (secret), `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-  (+ web config `NEXT_PUBLIC_FIREBASE_*`).
+  `FIREBASE_ADMIN_PRIVATE_KEY` (secret), `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`.
+  There is no client-side Firebase SDK (removed 2026-11-01; it was unused), so the
+  web-config variables `NEXT_PUBLIC_FIREBASE_API_KEY/AUTH_DOMAIN/PROJECT_ID` no longer exist.
 - **Download model:** `uploadFileAdmin()` writes an object with a random
   `firebaseStorageDownloadTokens` UUID and returns a token URL. That URL is a
   bearer credential that intentionally bypasses Storage rules — knowledge of the
@@ -102,8 +103,9 @@ TB-* set from `02-architecture-and-trust-boundaries.md` §7.
 - **Role:** daily scheduled trigger.
 - **Schedule:** `0 3 * * *` (03:00 UTC ≈ 08:30 IST), region `bom1` (`vercel.json`).
 - **Endpoint:** `GET /api/cron/tick`, guarded by `Authorization: Bearer CRON_SECRET`
-  (fail-closed if unset). Runs `syncFromSheet()` + `notifyUnsubmittedHomework()`
-  via `Promise.allSettled` (one failing job does not sink the other).
+  (fail-closed if unset). Runs `syncFromSheet()`, `notifyUnsubmittedHomework()`
+  and `pruneOldRecords()` (the `prune_old_records` RPC) via `Promise.allSettled`
+  (one failing job does not sink the others).
 - **Credentials:** `CRON_SECRET`.
 
 ## 8. Integration credential matrix
@@ -112,7 +114,7 @@ TB-* set from `02-architecture-and-trust-boundaries.md` §7.
 |-------------|----------|---------|--------------|
 | Supabase | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | required — app can't run |
 | Supabase admin | `SUPABASE_SERVICE_ROLE_KEY` | secret | required for background/admin |
-| Firebase Storage | `FIREBASE_ADMIN_*`, `NEXT_PUBLIC_FIREBASE_*` | mixed | file ops fail if unset |
+| Firebase Storage | `FIREBASE_ADMIN_*`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | mixed | file ops fail if unset |
 | Google Sheets | `GOOGLE_SHEETS_CLIENT_EMAIL/PRIVATE_KEY/SPREADSHEET_ID` | secret | sync fails, logged; app runs |
 | Web Push | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | mixed | no-op if unset |
 | SMS relay | `SMS_GATEWAY_URL`, `SMS_GATEWAY_TOKEN` | secret | no-op if unset |

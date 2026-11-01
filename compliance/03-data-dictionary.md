@@ -20,8 +20,8 @@ The extension `pgcrypto` provides `gen_random_uuid()`.
 
 | Enum | Values | Defined in |
 |------|--------|-----------|
-| `role` | `parent`, `class_teacher`, `front_office`, `accounts`, `principal`, `super_admin`, `coordinator` (+ legacy `admin`) | 0001:12, +0009, +0030 |
-| `attendance_status` | `present`, `absent`, `late`, `excused` | 0001:62 |
+| `role` | `parent`, `class_teacher`, `front_office`, `accounts`, `principal`, `super_admin`, `coordinator`, `admin` (`admin` was added in 0030 for the since-removed per-PTM approver; the value remains in the enum but no current feature assigns it) | 0001:12, +0009, +0030 |
+| `attendance_status` | `present`, `absent`, `late`, `half_day` | 0001:62, +0004 |
 | `leave_status` | `pending`, `approved`, `declined` | 0001:73 |
 | `stay_back_status` | `pending`, `approved`, `declined` | 0001:95 |
 | `approval_decision` | `approved`, `declined` | 0001:96 |
@@ -29,10 +29,10 @@ The extension `pgcrypto` provides `gen_random_uuid()`.
 | `invoice_status` | `due`, `partially_paid`, `paid`, `overdue` | 0001:142 |
 | `message_scope_type` | `school`, `class`, `student`, `group` | 0001:223 |
 | `ptm_status` | `open`, `closed` | 0006:10 |
-| `approval_subject_type` | `stay_back_consent`, `ptm_slot_request` | 0010:6 |
+| `approval_subject_type` | `stay_back_consent`, `ptm_slot_request` (**unused** — PTM approval was removed in 0041; value left in the enum) | 0010:6 |
 | `approval_step_role` | `class_teacher`, `front_office`, `coordinator`, `principal` | 0010:7 |
 | `stay_back_purpose` | `cultural`, `project`, `competitions_prep`, `ihc`, `others` | 0011 |
-| `notification_category` | `stay_back`, `leave`, `ptm`, `messages`, `reminders`, `defaulters` | 0015:4 |
+| `notification_category` | `stay_back`, `leave`, `ptm`, `messages`, `reminders`, `defaulters`, `consultations`, `homework` | 0015:4, +0043, +0046 |
 | `issue_status` | `open`, `resolved` | 0019:4 |
 | `issue_audience` | `principal_only`, `front_office_and_principal` | 0039:14 |
 | `consultation_status` | `pending`, `scheduled`, `declined`, `cancelled` | 0044 |
@@ -64,7 +64,7 @@ guardians ──< guardian_student >── students ──> class_sections ─�
 
 class_sections ──< timetable_entries >── timetable_periods / subjects / staff
 class_sections ──< class_subject_teachers >── subjects / staff
-class_sections ──< ptm_meetings ──< ptm_meeting_teachers / ptm_slots
+class_sections ──< ptm_meetings ──< ptm_slots
 custom_groups ──< custom_group_students / custom_group_staff_access
 ```
 
@@ -82,9 +82,9 @@ parents, or `is_staff()` / `current_staff_role()` for staff.
 | `auth_user_id` | uuid FK→`auth.users` | on delete set null; links to Supabase Auth |
 | `name` | text NOT NULL | |
 | `role` | `role` NOT NULL | see enum |
-| `phone` | text NOT NULL | |
+| `phone` | text | nullable since 0030 (OTP recovery unavailable without one) |
 | `email` | text | added 0022 |
-| `username` | text | login username, added 0031 |
+| `username` | text NOT NULL | login username, added 0031 |
 | `active` | boolean | active-flag, added 0026; inactive staff get no access (`session.ts:57`) |
 | `created_at` | timestamptz NOT NULL | `now()` |
 
@@ -163,8 +163,7 @@ Deferred trigger enforces "a student keeps ≥1 parent" on link removal (0040).
 | `id` | uuid PK | |
 | `student_id` | uuid FK→`students` NOT NULL | |
 | `date` | date NOT NULL | |
-| `status` | `attendance_status` NOT NULL | |
-| `half_day` | (added 0004) | half-day support |
+| `status` | `attendance_status` NOT NULL | includes `half_day` (0004) |
 | `marked_by` | uuid FK→`staff` | |
 | UNIQUE | (student_id, date) | one record per child per day |
 
@@ -314,7 +313,7 @@ guardian insert `WITH CHECK`-bound to own child; staff decide.
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | uuid PK | |
-| `subject_type` | `approval_subject_type` NOT NULL | stay_back_consent / ptm_slot_request |
+| `subject_type` | `approval_subject_type` NOT NULL | `stay_back_consent` in use (`ptm_slot_request` retired in 0041) |
 | `subject_id` | uuid NOT NULL | polymorphic (not FK) |
 | `step_order` | smallint NOT NULL | ordered |
 | `approver_role` | `approval_step_role` NOT NULL | |
@@ -330,9 +329,13 @@ reads steps for subjects they own (subject-type-specific ownership path).
 ### 5.4 PTM family
 | Table | Key columns | RLS |
 |-------|-------------|-----|
-| `ptm_meetings` (0006) | `class_section_id`, `teacher_id` (primary), `title`, `meeting_date`, `status` (open/closed), `assigned_admin_id` (0033) | guardian reads own children's classes; staff full |
-| `ptm_meeting_teachers` (0033) | `meeting_id`, `teacher_id`, PK(pair) | staff read; principal-tier manage |
-| `ptm_slots` (0001, +meeting_id 0006) | `teacher_id`, `class_section_id`, `meeting_id` NOT NULL, `starts_at`/`ends_at`, `booked_by_guardian_id`, `booked_student_id` | guardian reads class + books own; staff full |
+| `ptm_meetings` (0006, +window 0013) | `class_section_id`, `teacher_id` (single class teacher), `title`, `meeting_date`, `status` (open/closed), `window_start`, `window_end`, `slot_minutes` | guardian reads own children's classes; staff full |
+| `ptm_slots` (0001, +meeting_id 0006) | `teacher_id`, `class_section_id`, `meeting_id` NOT NULL, `starts_at`/`ends_at`, `booked_by_guardian_id`, `booked_student_id` | guardian reads class + books/cancels own on **open** meetings only (first-come-first-served; `0041`); staff full |
+
+> **History.** Migration 0033 added a multi-teacher join table (`ptm_meeting_teachers`)
+> and `ptm_meetings.assigned_admin_id` with an approval chain on bookings. Migration
+> 0041 (`ptm_simplify`) reverted this: both were dropped and a booking is confirmed
+> the instant a guardian claims the slot. The live database matches 0041.
 
 ### 5.5 `parent_consultations` (0044)
 | Column | Type | Notes |

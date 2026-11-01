@@ -296,7 +296,7 @@ For **each** of the 32 `actions.ts` files and 11 route handlers, confirm the ful
 | F6 | **Medium** | CSV/formula injection in exports | `toCsv()` prefixes cells starting `= + - @ \t \r` with `'` | ✅ Fixed |
 | F7 | **Medium** | Attachment write-IDOR + unsanitized storage path | Uploader must own the message; `messageId` UUID-validated; filename sanitized to a basename | ✅ Fixed |
 | F8 | **Medium** | No security headers | `next.config.ts` sets X-Frame-Options DENY, CSP `frame-ancestors 'none'`, HSTS, nosniff, Referrer-Policy, Permissions-Policy | ✅ Fixed |
-| F9 | **Medium** | Dependency advisories (uuid via firebase-admin) | `npm audit fix` (11→8). Residual 8 need a **breaking** `firebase-admin` major bump — not pushed blind | ⚠️ Partial (see note) |
+| F9 | **Medium** | Dependency advisories (uuid via firebase-admin) | Cleared 2026-11-01: `npm audit fix` + `firebase-admin@14.5.0`; `npm ls uuid` is empty. Same pass upgraded `next` 16.2.12 → 16.4.3 (critical) and removed the unused client `firebase` SDK. `npm audit --omit=dev --audit-level=high` exits 0 (CI-enforced) | ✅ Fixed |
 | F10 | **Low** | Cron fails open if `CRON_SECRET` unset | Route now refuses to run when the secret is unset/empty | ✅ Fixed |
 | F11 | **Low** | Weak password floor + HIBP off | Min length raised to 8 (activation + staff). **HIBP toggle is a Supabase dashboard setting** — action item | ⚠️ Partial (see note) |
 | F12 | **Low** | Helper funcs `EXECUTE`-able by `anon` via `/rpc` | `EXECUTE` revoked from `anon` on the helper/definer functions | ✅ Fixed |
@@ -305,9 +305,18 @@ For **each** of the 32 `actions.ts` files and 11 route handlers, confirm the ful
 | F15 | Info | Dual-role (guardian+staff) auth ids get staff DB read | Expected for staff-who-parent; documented | ▫️ Noted |
 | F16 | Info | Redundant `staff` SELECT policies | Removed as part of F1 | ✅ Fixed |
 
+### Accepted dependency advisories (re-review by 2027-02-01)
+Production audit as of 2026-11-01 (`npm audit --omit=dev`): 0 critical, 0 high, 5 moderate. CI fails on any new high/critical.
+
+| Advisory | Path | Why accepted |
+|----------|------|--------------|
+| `glob` 3.0.0–14.0.1 (GHSA-3g3m-2fjr-6pw4, AbortSignal cancellation bypass) | `googleapis` → `googleapis-common` → `gaxios` → `rimraf` → `glob` | Moderate. Only reachable through the Google Sheets client, which runs in the cron job on school-controlled input paths, not attacker-supplied patterns. `npm audit fix` cannot resolve it (the patched range is excluded by `rimraf`/`gaxios`). Disappears when Sheets sync is retired for the self-hosted build (TODO 7.3/7.4). |
+| `minimatch` <11.0.1 (GHSA-g3hv-75wg-m249, DoS via globparts) | same chain | As above. |
+
+Dev-only advisories (15 moderate, all in the `eslint`/`typescript-eslint` toolchain via `minimatch`) never ship to production and are out of the CI gate.
+
 ### Action items that can't ship in code (owner must do in the Supabase dashboard)
 - **F11** — enable **Leaked Password Protection** (Auth → Policies → "Check against HaveIBeenPwned"). One toggle.
-- **F9** — schedule a tested `firebase-admin` major upgrade to clear the residual `uuid` advisories (breaking; verify Storage upload + push still work).
 - **F5** — the phone-match is a meaningful barrier but not full email-ownership verification. For a bank-grade fix, move activation to an emailed magic-link/OTP once an email transport is chosen. The current change is safe and won't lock out parents who know their own number.
 
 *Sections 4–7 are the checklist the audit walked. Re-run the §5 impersonation queries after any RLS change to keep the posture verified.*

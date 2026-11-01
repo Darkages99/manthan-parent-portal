@@ -12,12 +12,33 @@ the security portion rather than duplicating it.
 
 ---
 
+## 0. Current verification status (measured 2026-11-01; Phase 1 update same day)
+
+This is what actually exists today, so the rest of the document is read as *plan*
+where it says so. Evidence is regenerable with the commands shown.
+
+| Level | Status | Evidence / command |
+|-------|--------|--------------------|
+| L1 Static - types | ✅ clean | `npx tsc --noEmit` exits 0 |
+| L1 Static - lint | ✅ clean | `npx eslint src test e2e --max-warnings 0` exits 0 (the earlier `theme-toggle`/`results-view` findings are fixed). 4 `eslint-disable-next-line` suppressions remain in `src/components` and `selected-child-context.tsx` |
+| L2 Unit | 🟡 313 tests / 31 files | `npm run test:unit` (Vitest). `src/lib` coverage **58.7% lines** (`npm run test:unit:coverage`), enforced as a ratchet in `vitest.config.mts`; target 80%. The gap is `google-sheets.ts` (0%) and thin Supabase/Firebase wrappers |
+| L3 RLS suite | 🟡 manual only | impersonation queries run by hand (SECURITY_AUDIT §5) - **not yet repeatable code** |
+| L4 Integration | ❌ none automated | |
+| L5 E2E | 🟡 smoke only | `e2e/smoke.spec.ts` - 5 tests, all pass: sign-in page renders; 4 protected routes redirect anonymous visitors. No authenticated journey. (The sign-in test had gone stale against the UI and was fixed 2026-11-01.) |
+| L6 UAT | ❌ not executed | every row of `FEATURES.md` is `[ ]` untested |
+| CI | 🟡 written, **not yet run on GitHub** | `.github/workflows/ci.yml`: typecheck, lint, unit+coverage, build, Playwright smoke, prod audit, gitleaks. Every command was run locally with exit 0; the workflow itself has never executed because nothing is pushed. Branch protection not set |
+| Dependency audit | 🟡 0 critical / 0 high (prod) | `npm audit --omit=dev --audit-level=high` exits 0. 5 moderate prod advisories accepted with expiry (`SECURITY_AUDIT.md`). `next` is 16.4.3 |
+
+Closing these gaps is the subject of `12-deployment-readiness-plan.md`.
+
+---
+
 ## 1. Test strategy & levels
 
 | Level | Purpose | Tooling | Where |
 |-------|---------|---------|-------|
 | L1 Static | Type safety, lint, dead code | `tsc --noEmit`, `eslint` | CI / local |
-| L2 Unit | Pure logic (approval status, grade mapping, chain building, CSV escaping) | (to add) targeted unit tests | `src/lib/*` |
+| L2 Unit | Pure logic (approval status, grade mapping, chain building, CSV escaping) | Vitest (`npm run test:unit`) | `src/**/*.test.ts`, helpers in `test/` |
 | L3 DB / RLS | Access-control correctness per table | Supabase SQL impersonation | Supabase MCP / SQL |
 | L4 Integration | Actions/route handlers end-to-end incl. external side effects | manual + scripted | actions/routes |
 | L5 E2E | User journeys in a browser | Playwright | `e2e/` |
@@ -29,10 +50,13 @@ the security portion rather than duplicating it.
 
 From project memory and `SECURITY_AUDIT.md` §1.3 — **read before running anything**:
 
-- **`next build` fails offline** because Next fetches Google Fonts at build time.
-  Do **not** treat a failed offline build as a code defect. Verify instead with:
+- **`next build` fails offline** because Next fetches Google Fonts at build time
+  (`next/font/google` in `src/app/layout.tsx`). This is also a self-hosting blocker -
+  see doc 12 WS-7. Until fixed, do **not** treat a failed offline build as a code
+  defect. Verify instead with:
   - `npx tsc --noEmit` (type check)
-  - `npx eslint src` (lint; a known baseline of pre-existing lint noise exists)
+  - `npx eslint src test e2e --max-warnings 0` (lint, zero warnings)
+  - `npm run test:unit` (unit tests)
 - **DB / RLS changes** are applied via Supabase MCP `apply_migration` (project
   `symyylbkadpzzyncwjbd`) and verified by **impersonation** — the service-role MCP
   bypasses RLS, so tests **must** `set local role authenticated` and set JWT claims,
@@ -45,7 +69,8 @@ From project memory and `SECURITY_AUDIT.md` §1.3 — **read before running anyt
 ## 3. L1 — Static analysis
 ```
 npx tsc --noEmit        # must be clean for changed code
-npx eslint src          # no new errors above the known baseline
+npx eslint src test e2e --max-warnings 0   # zero warnings; enforced in CI
+npm run test:unit       # Vitest unit tests
 ```
 Gate: no new type errors; no new lint errors introduced by a change.
 
@@ -137,7 +162,7 @@ requirement to its module, source, RLS, and test.
 | Timetable | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Leave | ✓ | ✓ (WITH CHECK) | ✓ | ✓ | ✓ |
 | Stay-back | ✓ | ✓ | ✓ (chain) | ✓ | ✓ |
-| PTM | ✓ | ✓ | ✓ (booking race, delete guard) | ✓ | ✓ |
+| PTM | ✓ | ✓ | ✓ (booking race, delete cascades + cancellation push) | ✓ | ✓ |
 | Consultations | ✓ | ✓ (Tue/Thu, cancel-only) | ✓ | ✓ | ✓ |
 | Messaging | ✓ | ✓ (send perms, scope) | ✓ (recipients, attach) | ✓ | ✓ |
 | Issues | ✓ | ✓ (audience/directed) | ✓ | ✓ | ✓ |

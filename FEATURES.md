@@ -25,7 +25,7 @@ Legend: `[ ]` untested · `[x]` tested and working · `[!]` tested, found an iss
 
 - [ ] Coordinator role: admin-equivalent permissions (class-teacher assignment, message permissions, PTM/stay-back "principal" step)
 - [ ] Role label rename: "Teacher" instead of "Class teacher" in permission grid, approval checklists, stay-back page
-- [ ] PTM booking approval chain (now 2-step: principal + named teacher)
+- [ ] ~~PTM booking approval chain~~ - removed in 0041; PTM booking is now plain first-come-first-served (see the PTM rows below)
 - [ ] Stay-back approval chain (grade-conditional: 3-step for Grade 8+, 4-step below)
 - [ ] Stay-back request form (single reason field, food/transport checkbox, default 16:00–17:00, "Agree & continue")
 - [ ] Stay-back request list filter (All time / This year / Last 6 months / This month / This week + Clear filter)
@@ -39,10 +39,16 @@ Legend: `[ ]` untested · `[x]` tested and working · `[!]` tested, found an iss
 
 ## 2026-08-22 — full feature build
 
-- [ ] PTM meetings & slot booking (staff: create/open/close/delete meeting, open slots; parent: book/cancel slot)
-- [ ] PTM delete-meeting guard (blocked while any slot is booked/pending)
+- [ ] PTM meetings & slot booking (principal/super_admin create meeting with window + slot length; staff open/close, generate slots; parent: book/cancel slot first-come-first-served, no approval)
+- [ ] PTM delete-meeting (allowed any time; slots cascade; guardians with a booking get a "PTM cancelled" push)
 - [ ] Stay-back consent (staff approval queue, WhatsApp nudge link)
-- [ ] Leave requests (parent raise, staff approve/decline)
+- [ ] Leave requests (parent raise; staff approve only - no decline, use "send message"; class teacher cannot approve > 3 days; pending past end date shows Expired)
+- [ ] Parent Consultations (parent requests a Tue/Thu slot; front office / principal schedule or decline; parent can cancel)
+- [ ] Notification log + CSV export; storage-usage snapshot (principal-tier)
+- [ ] Subject-first results page: grade boundaries, max marks, marks entry; report-card single + bulk upload
+- [ ] Audit trail (0051): editing a mark / attendance row writes an `audit_log` row visible to principal-tier only
+- [ ] Right to erasure (0052): super_admin "Erase all data" on a student removes DB rows, Firebase files and orphaned guardian logins
+- [ ] Daily cron: retention prune runs alongside sheet sync and homework notify
 - [ ] Messages compose + send permissions admin page (pre-scoping overhaul baseline)
 - [ ] Custom groups (create, save-as-group from a selection)
 - [ ] Homework tracker (parent view, staff assign/edit/delete)
@@ -53,7 +59,7 @@ Legend: `[ ]` untested · `[x]` tested and working · `[!]` tested, found an iss
 - [ ] Google Sheets roster/academic-config sync (staff console/sync, pending-deletion confirm)
 - [ ] Login: email/password, phone OTP, Google OAuth
 - [ ] Global child switcher (multi-child parent accounts)
-- [ ] Daily cron tick (`/api/cron/tick` — sheet sync)
+- [ ] Daily cron tick (`/api/cron/tick` — sheet sync, homework notify, retention prune)
 
 ## 2026-08-03
 

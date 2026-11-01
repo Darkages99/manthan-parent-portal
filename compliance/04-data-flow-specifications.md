@@ -116,7 +116,8 @@ Portal /results ── anon-key query exam_results for own children (RLS-scoped)
 
 ```
 Author (write):  Console /console/homework ── create/edit/delete homework_assignments (staff)
-Status (write):  mark per-student not-submitted → homework_submissions;
+Status (write):  per-assignment `checked` default + per-student override rows in
+                 homework_submissions;
                  teacher remark → homework_comments (staff)
 Read (parent):   Portal /homework ── homework_assignments for own class (RLS) +
                  homework_comments for own children
@@ -134,9 +135,13 @@ Raise (parent):  Portal /leave ── raiseLeave action
   ── getViewer() guardian
   ── insert leave_requests(requested_by=self, student_id=own child)
   ── RLS WITH CHECK binds requested_by=current_guardian_id() AND own child
-Decide (staff):  Console /console/leave ── approve/decline
-  ── set status, decided_by, decided_at
-Read (parent):   status tracked in portal; staff queue ordered by leave date
+Decide (staff):  Console /console/leave ── decideLeave (approve only; no decline)
+  ── class_teacher blocked if the leave spans > 3 days (principal required)
+  ── set status=approved, decided_by, decided_at; push to the guardian ("leave")
+Message (staff): sendLeaveMessage ── routes through the normal messaging pipeline
+                 (scope=student) instead of a decline
+Read (parent):   status tracked in portal (pending -> approved, or *expired* when a
+                 pending request's end date has passed); staff queue by leave date
 ```
 
 ---
@@ -175,14 +180,16 @@ write approval steps (staff-only RLS); cannot decide (staff-only).
 ## 8. PTM flow
 
 ```
-Create (staff):  Console /console/ptm ── create ptm_meetings + ptm_meeting_teachers,
-                 then open ptm_slots
-Book (parent):   Portal /ptm ── bookSlot: claim a slot for own child;
-                 creates an approval chain (ptm_slot_request: principal + named teacher)
-                 via the service-role client (mirror of stay-back)
-Cancel (parent): releases the slot
-Guard:           a meeting cannot be deleted while any slot is booked/pending
-Notify:          all meeting teachers notified on a booking decision
+Create (staff):  Console /console/ptm ── createMeeting (principal/super_admin only):
+                 insert ptm_meetings (class teacher attached automatically,
+                 window + slot length); then createSlots generates ptm_slots
+Book (parent):   Portal /ptm ── bookSlot: conditional UPDATE sets booked_by_guardian_id
+                 / booked_student_id only WHERE still null (race-safe); RLS limits it to
+                 open meetings of the child's class. Confirmed immediately - no
+                 approval chain (removed in 0041).
+Cancel (parent): cancelSlot clears the booking (own booking, open meeting only)
+Delete (staff):  deleteMeeting - allowed any time; slots cascade; every guardian with
+                 a booking gets a "PTM cancelled" push (logged to notification_log)
 ```
 
 ---
@@ -293,8 +300,10 @@ shares it (Drive API) with every principal/super_admin who has an email on file.
 ```
 Vercel Cron (0 3 * * *, region bom1) ──TB-7──> GET /api/cron/tick
   ── require Authorization: Bearer CRON_SECRET; fail closed if unset/empty
-  ── Promise.allSettled([ syncFromSheet(), notifyUnsubmittedHomework() ])
-  ── return per-job status (never leaks internals)
+  ── Promise.allSettled([ syncFromSheet(), notifyUnsubmittedHomework(),
+                          pruneOldRecords() ])      <- prune_old_records() RPC, 0052
+  ── each failure is logged server-side (logError)
+  ── return per-job status only (sheetSync / homeworkNotify / retention)
 ```
 
 ---

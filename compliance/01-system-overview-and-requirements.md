@@ -10,7 +10,7 @@ referenced by the functional-module document (06) and the traceability matrix (1
 ## 1. Purpose & scope
 
 ### 1.1 Problem statement
-A single school (Manthan Vidyashram) needs a low-cost, transparent channel between
+A single school (Manthan Vidyashram) needs a transparent channel between
 parents and staff for day-to-day school life: attendance, academics, homework,
 fees, calendar, and a set of parent-initiated requests and staff approvals. The
 system replaces ad-hoc phone/WhatsApp/paper communication with an auditable,
@@ -19,7 +19,7 @@ role-scoped application.
 ### 1.2 In scope
 - A parent-facing progressive web app (the **Portal**).
 - A staff-facing management console (the **Console**).
-- A relational data store with strict per-family / per-role access control.
+- A relational data store with strict per-role access control.
 - Roster & academic configuration managed from a Google Sheet.
 - File storage for report cards, receipts, and message attachments.
 - Multi-channel, best-effort notifications (Web Push, SMS relay, WhatsApp link).
@@ -28,8 +28,6 @@ role-scoped application.
 - **Online fee payment / payment gateway.** `invoices`/`payments` tables exist and
   are readable-by-design-only; there is no parent-facing payment execution flow
   (see `SECURITY_AUDIT.md` F14). Payments are recorded by staff.
-- **In-app competition registration** — the competitions module is informational
-  only (`0021_competitions.sql`).
 - **Automated WhatsApp/SMS broadcast** — WhatsApp is click-to-chat (human presses
   send); SMS depends on an Android relay phone being provisioned.
 - **Native mobile apps** — delivery is a PWA.
@@ -78,8 +76,7 @@ module document (06) gives the detailed rules and the exact source/RLS artifacts
   destructive/administrative actions require principal-tier or super-admin.
 
 ### 3.2 Attendance (`FR-ATT-*`)
-- **FR-ATT-1** Staff mark daily attendance per student (present/absent/late/excused,
-  with half-day support).
+- **FR-ATT-1** Staff mark daily attendance per student (present/absent/late/half-day).
 - **FR-ATT-2** Parents view their child's attendance history and a summary/donut,
   with a "not marked" state distinguished from "present".
 - **FR-ATT-3** The console surfaces a "mark attendance for today" prompt and a
@@ -99,11 +96,12 @@ module document (06) gives the detailed rules and the exact source/RLS artifacts
 ### 3.4 Homework (`FR-HW-*`)
 - **FR-HW-1** Staff author, edit and delete homework for a class (title, subject,
   description, due date).
-- **FR-HW-2** Staff mark per-student non-submission and can add a per-student
-  comment/remark.
+- **FR-HW-2** Staff set each assignment's default status (not done, or "Checked" = done),
+  override it per student, and can add a per-student comment/remark.
 - **FR-HW-3** Parents view their child's class homework and any teacher comment.
 - **FR-HW-4** Guardians of students with unsubmitted homework are notified once per
-  assignment (dedup ledger), dispatched by the daily cron.
+  assignment (dedup ledger), dispatched by the daily cron; a teacher remark also
+  notifies the guardian (`homework` category).
 
 ### 3.5 Timetable (`FR-TT-*`)
 - **FR-TT-1** Principal-tier configures the daily period structure and the weekly
@@ -115,8 +113,13 @@ module document (06) gives the detailed rules and the exact source/RLS artifacts
 ### 3.6 Leave (`FR-LV-*`)
 - **FR-LV-1** A guardian raises a leave request for their own child (date range +
   reason).
-- **FR-LV-2** Staff approve/decline; the decision and decider are recorded.
-- **FR-LV-3** Parents track status; staff see an ordered pending queue.
+- **FR-LV-2** Staff approve a request; the decision and decider are recorded. There is
+  no "decline" action - a staff member with a concern sends the guardian a message
+  instead. A class teacher cannot approve a leave longer than 3 days; that needs the
+  principal.
+- **FR-LV-3** Parents track status (pending / approved / expired - a pending request
+  whose leave window has passed with no decision shows as expired); staff see an
+  ordered pending queue.
 
 ### 3.7 Stay-back consent (`FR-SB-*`)
 - **FR-SB-1** A guardian raises a stay-back consent naming a teacher, reason, date,
@@ -128,11 +131,15 @@ module document (06) gives the detailed rules and the exact source/RLS artifacts
   pick it up from the console queue.
 
 ### 3.8 Parent-teacher meetings (`FR-PTM-*`)
-- **FR-PTM-1** Staff create a PTM meeting (class, teacher(s), date), then open/close
-  bookable slots.
-- **FR-PTM-2** A parent books/cancels a slot for their child; a booking triggers an
-  approval chain (principal + named teacher).
-- **FR-PTM-3** A meeting cannot be deleted while any slot is booked/pending.
+- **FR-PTM-1** A principal or super admin creates a PTM meeting for a class on a date
+  with a booking window and slot length (default 7 min up to Class 5, 10 min above;
+  the class teacher is attached automatically). Staff then generate the slots and can
+  open/close the meeting and remove unbooked slots.
+- **FR-PTM-2** A parent books an open slot for their child on a plain first-come-
+  first-served basis - the slot is confirmed the instant it is claimed, with no
+  approval step - and may cancel their own booking while the meeting is open.
+- **FR-PTM-3** Staff may delete a meeting at any time. Deleting cascades to its slots
+  and sends every guardian who held a booking a "PTM cancelled" push notification.
 
 ### 3.9 Consultations (`FR-CON-*`)
 - **FR-CON-1** A guardian requests an off-cycle consultation on a Tuesday/Thursday
@@ -189,6 +196,9 @@ module document (06) gives the detailed rules and the exact source/RLS artifacts
   may manage non-super-admin staff only.
 - **FR-ADMIN-2** Principal-tier can view a storage-usage snapshot (DB + files).
 - **FR-ADMIN-3** Principal-tier can view the notification log (audit).
+- **FR-ADMIN-4** The daily cron prunes append-only logs past their retention window
+  (`prune_old_records`), and a super admin can erase a student and dependent records
+  (`erase_student`, 0052).
 
 ---
 

@@ -28,9 +28,6 @@ dev). **Secrets must never be committed.**
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | RLS-bound client key |
 | `SUPABASE_SERVICE_ROLE_KEY` | **secret** | RLS-bypass admin key (server-only) |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | public | Firebase web config |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | public | Firebase web config |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | public | Firebase web config |
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | public | Storage bucket name |
 | `FIREBASE_ADMIN_PROJECT_ID` | **secret** | Admin SDK |
 | `FIREBASE_ADMIN_CLIENT_EMAIL` | **secret** | Admin SDK |
@@ -64,8 +61,9 @@ npm run dev            # http://localhost:3000
 ### 3.2 Verification (do NOT rely on offline build)
 ```
 npx tsc --noEmit
-npx eslint src
-npm run test           # Playwright E2E
+npx eslint src test e2e --max-warnings 0
+npm run test:unit      # Vitest unit tests
+npm run test           # Playwright E2E (currently a smoke spec only - see doc 08)
 ```
 `next build` fetches Google Fonts and fails offline — use the above for local
 verification (see doc 08 §2).
@@ -103,9 +101,11 @@ docker run --env-file .env.production -p 3000:3000 manthan-portal
 |-----|---------|--------|------|
 | Roster sync | daily cron + manual "Sync now" (console/sync) | reconcile Sheet → Postgres, queue deletions | service-role + `CRON_SECRET` on the route |
 | Homework not-submitted notify | daily cron | push to guardians of students with unsubmitted homework (deduped) | service-role |
+| Retention prune | daily cron | `prune_old_records()` deletes append-only log rows past their window (notification_log / audit_log 24 mo, sheet_sync_runs / resolved pending deletions 12 mo) | service-role (EXECUTE granted to `service_role` only) |
 
-Both run inside `GET /api/cron/tick` under `Promise.allSettled`; one failing does
-not sink the other; the route returns per-job status.
+All three run inside `GET /api/cron/tick` under `Promise.allSettled`; one failing does
+not sink the others; failures are logged via `logError` and the route returns
+per-job status (`sheetSync`, `homeworkNotify`, `retention`).
 
 **Manual re-run:** hit `/api/cron/tick` with the correct `Authorization: Bearer
 <CRON_SECRET>` header (safe/idempotent), or use the console "Sync now" control.
@@ -119,7 +119,7 @@ not sink the other; the route returns per-job status.
 - **Usage monitoring:** a principal computes a snapshot on the console
   (`console/storage`) → `storage_usage_snapshots` (DB bytes via
   `database_size_bytes()`, file bytes via `getBucketUsageBytes()`). Use this to
-  decide when to archive/reset (see the retention gap in doc 09 §4).
+  decide when to archive/reset (automated log retention is in doc 09 §4).
 
 ---
 
@@ -172,7 +172,7 @@ verify with the RLS suite.
 
 | Cadence | Task |
 |---------|------|
-| Daily (auto) | Cron: roster sync + homework notify |
+| Daily (auto) | Cron: roster sync + homework notify + retention prune |
 | Weekly | Review `sheet_sync_runs` failures; skim `notification_log` delivery rate |
 | Monthly | `npm audit`; Supabase `get_advisors`; storage-usage snapshot review |
 | Term / year-end | Archive + reset per retention policy (doc 09 §4); rotate secrets; review staff roster & roles |

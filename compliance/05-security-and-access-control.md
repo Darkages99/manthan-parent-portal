@@ -107,7 +107,11 @@ contain no dynamic SQL built from user input.
 | Attendance (write) | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Marks (write) | — | ✅ own classes | — | ✅ | ✅ | ✅ |
 | Timetable/subjects/periods (write) | — | — | — | — | ✅ | ✅ |
-| Approve leave/stay-back/PTM | — | ✅ named step | ✅ step | ✅ step | ✅ step | ✅ |
+| Approve stay-back (approval chain) | — | ✅ named step | ✅ step | ✅ step | ✅ step | ✅ |
+| Approve leave | — | ✅ up to 3 days | ✅ | ✅ | ✅ (any length) | ✅ |
+| Create PTM meeting (`createMeeting`) | — | — | — | — | ✅ | ✅ |
+| Decide a consultation | — | — | ✅ | ✅ | ✅ | ✅ |
+| Erase a student (DPDP) | — | — | — | — | — | ✅ |
 | Message school-wide | — | ❌ | per grid | ✅ | ✅ | ✅ |
 | Manage staff (non-super) | — | — | — | ✅ | ✅ | ✅ |
 | Manage super_admins | — | — | — | — | — | ✅ |
@@ -126,7 +130,8 @@ enumerated non-factory sites and why each is safe:
 | Site | Why it needs bypass | Re-authorization |
 |------|---------------------|------------------|
 | `stay-back/actions.ts` | Only staff may write `approval_steps`; a guardian action must create the chain after their own scoped insert | Preceded by guardian `getViewer()` + RLS-bound consent insert |
-| `ptm/actions.ts` (book) | Same as above for `ptm_slot_request` chain | Same pattern |
+| `console/students/actions.ts` (`eraseStudent`) | After the `erase_student` RPC, delete the returned Firebase files and guardian auth users, which live outside Postgres | `requireSuperAdmin()`; the RPC re-checks super_admin and writes an `ERASE` audit row |
+| `api/cron/tick/route.ts` | Run `prune_old_records()` (EXECUTE granted to `service_role` only) | `CRON_SECRET` bearer, fail-closed |
 | `report-issue/actions.ts` | Attach recipients / cross-cutting insert | Reporter identity checked; RLS insert bound to self |
 | `messages/compose/actions.ts` | Resolve broadcast recipients across families, insert receipts, fan out push | Sender staff + send-permission + teacher-scope checks first |
 | `staff/actions.ts` | Create/modify staff accounts | `requireSuperAdmin()` for role-sensitive ops; DB policy split also enforces |
@@ -206,8 +211,12 @@ transaction (`0040_integrity_rules.sql`). See doc 03 §7–8.
 
 From `SECURITY_AUDIT.md` §"Action items that can't ship in code":
 - **F11** — enable Supabase "Leaked Password Protection" (HIBP) in the dashboard.
-- **F9** — schedule a tested `firebase-admin` major upgrade to clear residual
-  `uuid` transitive advisories (breaking; verify Storage + push after).
+- **F9** — **closed 2026-11-01.** It had re-opened the same day: `npm audit` reported 37
+  advisories (1 critical `next@16.2.12`, 10 high). Fixed by `next@16.4.3`, `npm audit fix`,
+  and removing the unused client `firebase` SDK. `npm audit --omit=dev --audit-level=high`
+  now exits 0 and is enforced in CI (`.github/workflows/ci.yml`). Five moderate production
+  advisories remain (`glob`/`minimatch` via `googleapis`), accepted with an expiry in
+  `SECURITY_AUDIT.md`.
 - **F5** — consider upgrading activation to emailed magic-link/OTP for full
   email-ownership verification.
 
@@ -228,6 +237,6 @@ Compliance-level summary of the outcome:
 | Malicious guardian (forged requests) | `WITH CHECK` binds inserts to own children even bypassing the UI. |
 | Low-privilege staff | Marks scoped; can't escalate to principal/super_admin; can't send school-wide. |
 | Compromised channel (push/sheet/cron) | Cron secret required; sheet deletions queued; push private key server-only. |
-| Supply chain | `npm audit` run; residual advisories tracked (F9). |
+| Supply chain | `npm audit` run; **37 open advisories as of 2026-11-01 (F9 re-opened)** - remediation in doc 12 WS-5. |
 | Insider w/ repo | No secrets in history. |
 | Network/browser | HTTPS pinned, clickjacking blocked, httpOnly cookies, origin-checked actions. |

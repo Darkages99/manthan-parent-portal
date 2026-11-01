@@ -39,7 +39,7 @@ compliance set, plus the notation conventions the other documents follow.
 | **Stay-back consent** | A parent request to keep their child at school past normal hours, requiring a multi-step staff approval chain. `stay_back_consents`. |
 | **Consultation** | An off-cycle parent-requested meeting (Tuesdays/Thursdays only), distinct from a PTM. `parent_consultations`. |
 | **Defaulter record** | A recorded disciplinary/behavioural incident for a student. `defaulter_records`. |
-| **Approval chain / step** | A generic ordered list of role-based approvals attached to a subject (a stay-back or a PTM booking). `approval_steps`. |
+| **Approval chain / step** | A generic ordered list of role-based approvals attached to a subject (currently used only by stay-back consents; PTM bookings used it until migration 0041 removed that step). `approval_steps`. |
 | **Custom group** | A staff-defined ad-hoc set of students used as a messaging target. `custom_groups`. |
 | **Receipt / report card** | PDF documents held in Firebase Storage, referenced by URL columns in `payments` / `exam_results`. |
 | **Roster** | The set of people/classes/subjects/timetable managed from the Google Sheet and synced into the database. |
@@ -64,9 +64,10 @@ The `role` enum (`supabase/migrations/0001_init.sql:12`, extended in `0009` and
 | `principal` | Principal | **Principal-tier** | Full school-wide management: classes, timetable, results scope, approvals, message permissions. |
 | `super_admin` | Super Admin | **Principal-tier + strict** | Everything principal can do, **plus** the strict-only actions: create/elevate other super admins, confirm sheet-sync deletions. |
 
-> Note: an `admin` role label appears in some legacy RLS branches (e.g.
-> `0039_issue_audience.sql:743`) as the historical name for front office. New
-> code uses `front_office`.
+> Note: an `admin` enum value exists (added in migration 0030 for the per-PTM
+> approver that migration 0041 later removed). No current feature assigns it; the
+> live roles in use are the others listed above. Do not build on `admin` without
+> re-review.
 
 **Dual-role people:** a staff member who is also a parent has two logical
 identities. `getViewer()` resolves a guardian identity first if one exists for

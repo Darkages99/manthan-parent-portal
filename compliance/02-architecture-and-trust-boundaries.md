@@ -55,7 +55,7 @@ Node server bundle is emitted (used by `Dockerfile`).
              │  Server Components · Server Actions · Route Handlers        │
              │      │                         │                           │
              │      │ anon-key client         │ service-role client       │
-             │      │ (RLS enforced)          │ (RLS BYPASSED, 14 sites)  │
+             │      │ (RLS enforced)          │ (RLS BYPASSED, 15 sites)  │
              └──────┼─────────────────────────┼───────────────────────────┘
                     ▼                         ▼
         ┌───────────────────────┐   ┌──────────────────────────────────┐
@@ -144,7 +144,7 @@ Access control is enforced at four layers, each independently:
 > **Central design principle** (from `SECURITY_AUDIT.md` §2): *if the layout and
 > action check were bypassed, RLS must still stop the access.* RLS is the last line
 > and independently enforces every rule. The one place RLS does not apply is the
-> service-role client — which is why those 14 call sites are the highest-risk
+> service-role client — which is why those 15 call sites are the highest-risk
 > surface and each must re-authorize (doc 05 §6).
 
 ---
@@ -164,9 +164,11 @@ src/app/(parent)/report-issue/actions.ts
 src/app/(parent)/stay-back/actions.ts
 src/app/(staff)/console/messages/compose/actions.ts
 src/app/(staff)/console/staff/actions.ts
+src/app/(staff)/console/students/actions.ts      (eraseStudent: Storage + Auth cleanup)
 src/app/(staff)/console/sync/pending-deletions/actions.ts
 src/app/activate/actions.ts
 src/app/api/attachments/upload/route.ts
+src/app/api/cron/tick/route.ts                    (prune_old_records)
 src/app/api/report-card/bulk-upload/route.ts
 src/app/api/report-card/upload/route.ts
 src/lib/google-sheets.ts
