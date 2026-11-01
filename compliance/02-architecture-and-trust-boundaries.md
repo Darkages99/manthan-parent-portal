@@ -60,7 +60,7 @@ Node server bundle is emitted (used by `Dockerfile`).
                     ▼                         ▼
         ┌───────────────────────┐   ┌──────────────────────────────────┐
         │   Supabase Postgres    │   │  Side channels (server-only)      │
-        │  ~49 tables, RLS on     │   │  • Firebase Storage (Admin SDK)   │
+        │  ~48 tables, RLS on     │   │  • Firebase Storage (Admin SDK)   │
         │  every table            │   │  • Google Sheets + Drive (SA)     │
         │  SECURITY DEFINER fns    │   │  • web-push / FCM (VAPID)         │
         │  Supabase Auth (users)  │   │  • SMS relay (Android phone)      │

@@ -1398,57 +1398,6 @@ export type Database = {
           },
         ]
       }
-      reminders: {
-        Row: {
-          created_at: string
-          guardian_id: string | null
-          id: string
-          message: string
-          remind_at: string
-          sent_at: string | null
-          staff_id: string | null
-          subject_id: string | null
-          subject_type: string | null
-        }
-        Insert: {
-          created_at?: string
-          guardian_id?: string | null
-          id?: string
-          message: string
-          remind_at: string
-          sent_at?: string | null
-          staff_id?: string | null
-          subject_id?: string | null
-          subject_type?: string | null
-        }
-        Update: {
-          created_at?: string
-          guardian_id?: string | null
-          id?: string
-          message?: string
-          remind_at?: string
-          sent_at?: string | null
-          staff_id?: string | null
-          subject_id?: string | null
-          subject_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reminders_guardian_id_fkey"
-            columns: ["guardian_id"]
-            isOneToOne: false
-            referencedRelation: "guardians"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reminders_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reported_issue_recipients: {
         Row: {
           issue_id: string

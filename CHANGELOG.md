@@ -30,6 +30,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 - `.env.example` is now tracked (the `.env*` ignore rule had been hiding it).
 
 ### Removed
+- Migration `0053_retire_legacy_schema.sql` (applied to production 2026-11-01): dropped the
+  empty, unused `reminders` table. Retired the `admin` role and the `ptm_slot_request` approval
+  subject type: every use removed (4 `admin` send-permission rows, 3 RLS policies) and CHECK
+  constraints stop them returning. Both values remain in their enums; see the migration header.
 - Unused client-side Firebase SDK (`firebase` dependency, `src/lib/firebase/storage.ts`) and
   the three `NEXT_PUBLIC_FIREBASE_*` variables only it used. Server-side `firebase-admin`
   is unchanged.

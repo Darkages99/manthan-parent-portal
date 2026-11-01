@@ -65,9 +65,9 @@ The `role` enum (`supabase/migrations/0001_init.sql:12`, extended in `0009` and
 | `super_admin` | Super Admin | **Principal-tier + strict** | Everything principal can do, **plus** the strict-only actions: create/elevate other super admins, confirm sheet-sync deletions. |
 
 > Note: an `admin` enum value exists (added in migration 0030 for the per-PTM
-> approver that migration 0041 later removed). No current feature assigns it; the
-> live roles in use are the others listed above. Do not build on `admin` without
-> re-review.
+> approver that migration 0041 later removed). It is retired: migration 0053
+> removed every use and a CHECK constraint stops any staff row or send permission
+> from using it. The live roles are the others listed above.
 
 **Dual-role people:** a staff member who is also a parent has two logical
 identities. `getViewer()` resolves a guardian identity first if one exists for

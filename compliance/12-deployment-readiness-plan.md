@@ -60,7 +60,7 @@ not scale.
 | Backup/restore | 🟡 provider-managed; **no restore drill ever performed** | doc 10 §7 |
 | Documentation | ✅ 13-file set, re-verified against the live DB 2026-11-01; **no mechanism stopping it drifting again** | this folder |
 | Security review | 🟡 self-audit only (`SECURITY_AUDIT.md`); no independent review | |
-| Dead / legacy code | 🟡 `reminders` table, `ptm_slot_request` enum value, `admin` role value, `ptm_meeting_teachers` history | doc 03 |
+| Dead / legacy code | 🟡 `reminders` table, `ptm_slot_request` enum value, `admin` role value, `ptm_meeting_teachers` history (2026-11-01: 0053 dropped `reminders` and retired both enum values by CHECK constraint) | doc 03 |
 
 **Strengths to lead with** (real, and verifiable): RLS on all 49 tables with
 guardian-scoped policies; security hardening of 13 findings already done and
@@ -124,7 +124,7 @@ test **file** (not a level code) — doc 11 is regenerated to show that.
 ### WS-3 — Reproducible environments (≈3 d)
 | # | Task | Artifact |
 |---|------|----------|
-| 3.1 | `supabase init` → commit `config.toml`; `supabase start` + `supabase db reset` replays `0001…0052` + `seed.sql` on an empty database with no errors | CI job "migrations replay" |
+| 3.1 | `supabase init` → commit `config.toml`; `supabase start` + `supabase db reset` replays `0001…0053` + `seed.sql` on an empty database with no errors | CI job "migrations replay" |
 | 3.2 | Schema-drift check: `supabase db diff` between a fresh replay and the live project must be empty (resolves the file-name vs live-history mismatch) | drift report; fix migration files or record a baseline migration |
 | 3.3 | One-command local setup: `docker compose up` (app + local Supabase) and a README "first 15 minutes" | `docker-compose.yml`, README |
 | 3.4 | `.env.example` is exhaustive and validated at boot (fail fast with a clear message listing missing vars) | `src/lib/env.ts` |
