@@ -84,9 +84,10 @@ Conventions: **Parent** = `parent` role; **Staff** = any staff role;
 - **Source:** `(parent)/stay-back/*`, `console/stay-back/*`,
   `src/lib/stay-back-chain.ts`, `src/lib/stay-back-transport.ts`,
   `src/lib/approvals.ts`, `approval-chain.tsx`, `stay-back-*.tsx`.
-- **Rules:** grade-conditional chain (named teacher → front office → [coordinator if
-  grade < 8] → principal); any decline closes it; named teacher + principals
-  notified immediately; transport mode required.
+- **Rules:** grade-conditional chain (named teacher → front office → coordinator if
+  grade < 8, else principal); any decline closes it; each approver decides only
+  their own step (RLS, 0054); super_admin may decide any open step; named teacher +
+  final approver notified immediately; transport mode required.
 
 ## 8. Parent-teacher meetings (PTM)
 - **Requirements:** FR-PTM-1..3.

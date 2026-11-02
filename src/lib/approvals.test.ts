@@ -168,6 +168,24 @@ describe("decideApprovalStep", () => {
     expect(updates).toHaveLength(0);
   });
 
+  it("with anyOpenStep, decides the first open step whatever its role", async () => {
+    const { client, updates } = fakeSupabase([
+      { approver_role: "class_teacher", approver_staff_id: "t1", decision: "approved" },
+      { approver_role: "front_office" },
+      { approver_role: "coordinator" },
+    ]);
+    const status = await decideApprovalStep(client, {
+      ...base,
+      approverRole: "principal",
+      staffId: "sa1",
+      decision: "approved",
+      anyOpenStep: true,
+    });
+    expect(updates).toHaveLength(1);
+    expect(updates[0].patch).toMatchObject({ approver_staff_id: "sa1" });
+    expect(status).toBe("pending");
+  });
+
   it("refuses a role that has no step in the chain", async () => {
     const { client } = fakeSupabase([{ approver_role: "coordinator" }]);
     await expect(

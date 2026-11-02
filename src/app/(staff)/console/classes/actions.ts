@@ -2,12 +2,12 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePrincipal } from "@/lib/roles";
+import { requireLeadership, requirePrincipal } from "@/lib/roles";
 import { getViewer } from "@/lib/session";
 
 /** Edits a class section's grade and section label. */
 export async function updateClassSection(id: string, input: { grade: string; section: string }) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!id) throw new Error("Class is required");
   if (!input.grade.trim() || !input.section.trim()) throw new Error("Grade and section are required");
 
@@ -25,7 +25,7 @@ export async function updateClassSection(id: string, input: { grade: string; sec
  * it (the FK is NO ACTION) — the caller should reassign or remove those
  * students first. */
 export async function deleteClassSection(id: string) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!id) throw new Error("Class is required");
 
   const supabase = await createClient();
@@ -44,7 +44,7 @@ export async function deleteClassSection(id: string) {
 
 /** Assigns (or clears, when staffId is null) the class teacher for a section. */
 export async function assignClassTeacher(classSectionId: string, staffId: string | null) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!classSectionId) throw new Error("Class is required");
 
   const supabase = await createClient();
@@ -92,7 +92,7 @@ export async function addClassSubjectTeacher(input: {
   subjectId: string;
   teacherId: string;
 }) {
-  await requirePrincipal();
+  await requireLeadership();
   const { classSectionId, subjectId, teacherId } = input;
   if (!classSectionId || !subjectId || !teacherId) {
     throw new Error("Class, subject and teacher are all required");
@@ -108,7 +108,7 @@ export async function addClassSubjectTeacher(input: {
 
 /** Removes a subject-teacher assignment from a class. */
 export async function removeClassSubjectTeacher(id: string, classSectionId: string) {
-  await requirePrincipal();
+  await requireLeadership();
   const supabase = await createClient();
   const { error } = await supabase.from("class_subject_teachers").delete().eq("id", id);
   if (error) throw new Error(error.message);
@@ -118,7 +118,7 @@ export async function removeClassSubjectTeacher(id: string, classSectionId: stri
 /** Copies a teacher's subject assignment onto another class — used by the
  * class detail page's drag-and-drop. Does not remove the source assignment. */
 export async function copyTeacherToClass(classSubjectTeacherId: string, targetClassSectionId: string) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!classSubjectTeacherId || !targetClassSectionId) throw new Error("Missing teacher or target class");
 
   const supabase = await createClient();

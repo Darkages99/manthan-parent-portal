@@ -57,9 +57,10 @@ export async function getApprovalChain(
 
 /**
  * Records a decision for whichever open step matches the caller, identified
- * either by role (front_office/coordinator/principal) or by a pre-assigned
- * approver_staff_id (the named class teacher). Throws if no open step matches
- * or the caller's step was already decided.
+ * either by role (front_office/coordinator/principal), by a pre-assigned
+ * approver_staff_id (the named class teacher), or, for super_admin, as the
+ * next open step. Throws if no open step matches or the caller's step was
+ * already decided.
  */
 export async function decideApprovalStep(
   supabase: SupabaseClient<Database>,
@@ -71,12 +72,15 @@ export async function decideApprovalStep(
     decision: ApprovalDecision;
     /** Only match a step pre-assigned to this staff id (used for class_teacher steps). */
     matchByStaffId?: boolean;
+    /** Take the first open step whatever its role (super_admin). */
+    anyOpenStep?: boolean;
   },
 ): Promise<SubjectStatus> {
   const steps = await getApprovalChain(supabase, params.subjectType, params.subjectId);
 
   const step = steps.find((s) => {
     if (s.decision !== null) return false;
+    if (params.anyOpenStep) return true;
     if (params.matchByStaffId) {
       return s.approver_role === params.approverRole && s.approver_staff_id === params.staffId;
     }

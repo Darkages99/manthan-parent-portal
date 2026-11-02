@@ -7,23 +7,24 @@ const roles = (grade: Parameters<typeof buildStayBackChainSteps>[1]) =>
   buildStayBackChainSteps("t1", grade).map((s) => s.approverRole);
 
 describe("buildStayBackChainSteps", () => {
-  it("grades below 8 go teacher → front office → coordinator → principal", () => {
-    expect(roles(7)).toEqual(["class_teacher", "front_office", "coordinator", "principal"]);
-    expect(roles("1")).toEqual(["class_teacher", "front_office", "coordinator", "principal"]);
+  it("grades below 8 go teacher → front office → coordinator, with no principal step", () => {
+    expect(roles(7)).toEqual(["class_teacher", "front_office", "coordinator"]);
+    expect(roles("1")).toEqual(["class_teacher", "front_office", "coordinator"]);
   });
 
-  it("grade 8 and above skip the coordinator (the principal acts as coordinator)", () => {
+  it("grade 8 and above go teacher → front office → principal", () => {
     expect(roles(8)).toEqual(["class_teacher", "front_office", "principal"]);
     expect(roles("12")).toEqual(["class_teacher", "front_office", "principal"]);
   });
 
   it("accepts zero-padded numeric strings", () => {
     expect(roles("08")).toEqual(["class_teacher", "front_office", "principal"]);
+    expect(roles("05")).toEqual(["class_teacher", "front_office", "coordinator"]);
   });
 
-  it("keeps the coordinator when the grade is unknown or not purely numeric", () => {
-    for (const g of [null, undefined, "", "8A", "Nursery", " 9"]) {
-      expect(roles(g)).toEqual(["class_teacher", "front_office", "coordinator", "principal"]);
+  it("falls back to the principal when the grade is unknown or not purely numeric", () => {
+    for (const g of [null, undefined, "", "8A", "Nursery", " 5"]) {
+      expect(roles(g)).toEqual(["class_teacher", "front_office", "principal"]);
     }
   });
 
@@ -86,6 +87,6 @@ describe("ensureStayBackChains", () => {
     expect(inserted[0].every((r) => r.subject_id === "b")).toBe(true);
     expect(chainRoles(inserted[0])).toEqual(["class_teacher", "front_office", "principal"]);
     expect(inserted[1].every((r) => r.subject_id === "c")).toBe(true);
-    expect(chainRoles(inserted[1])).toEqual(["class_teacher", "front_office", "coordinator", "principal"]);
+    expect(chainRoles(inserted[1])).toEqual(["class_teacher", "front_office", "coordinator"]);
   });
 });

@@ -161,10 +161,11 @@ This is the most elaborate workflow. Source: `src/app/(parent)/stay-back/actions
    approval_steps, so admin client is used, re-authorized by the prior guardian
    check + WITH CHECK insert):
      buildStayBackChainSteps(teacherId, grade):
-       named teacher → front office → [coordinator if grade < 8] → principal
+       named teacher → front office → coordinator (grade < 8) | principal (grade 8+)
      createApprovalChain() inserts ordered approval_steps
 
-3. Notify (best-effort): sendPush() to the named teacher + all principals/super_admins
+3. Notify (best-effort): sendPush() to the named teacher + every active coordinator
+   (grade < 8) or principal (grade 8+)
    ("stay_back" category); logged to notification_log. Others pick up from console.
 
 4. Decide (staff, Console /console/stay-back):

@@ -7,7 +7,7 @@ import { getViewer } from "@/lib/session";
 import { sendPush } from "@/lib/notifications/push";
 import { logError } from "@/lib/log";
 import { createApprovalChain } from "@/lib/approvals";
-import { buildStayBackChainSteps } from "@/lib/stay-back-chain";
+import { buildStayBackChainSteps, stayBackFinalApprover } from "@/lib/stay-back-chain";
 import { TRANSPORT_PARENT_ARRANGED, TRANSPORT_SELF_RETURN } from "@/lib/stay-back-transport";
 
 export async function raiseStayBack(formData: FormData) {
@@ -57,7 +57,7 @@ export async function raiseStayBack(formData: FormData) {
     throw new Error(error.message);
   }
 
-  // Named teacher, then front office, [coordinator for grades below 8,] then principal.
+  // Named teacher, then front office, then coordinator (grades 1-7) or principal (8+).
   // RLS only lets staff write approval_steps, so use the admin client here
   // (mirrors src/app/(parent)/ptm/actions.ts bookSlot).
   const admin = createAdminClient();
@@ -68,17 +68,17 @@ export async function raiseStayBack(formData: FormData) {
     buildStayBackChainSteps(teacherId, grade),
   );
 
-  // Best-effort: notify the named teacher (first approval step) plus every
-  // principal/super_admin (last step) so the two named/most-senior parties
-  // get an immediate heads-up. Front office and coordinator pick requests up
-  // from their console queue.
+  // Best-effort: notify the named teacher (first approval step) plus whoever
+  // holds the last step (coordinator or principal, by grade) so both get an
+  // immediate heads-up. Front office picks requests up from its console queue.
   try {
-    const { data: principals } = await admin
+    const { data: finalApprovers } = await admin
       .from("staff")
       .select("id")
-      .in("role", ["principal", "super_admin"]);
+      .eq("role", stayBackFinalApprover(grade))
+      .eq("active", true);
 
-    const targetIds = new Set([teacherId, ...(principals ?? []).map((p) => p.id)]);
+    const targetIds = new Set([teacherId, ...(finalApprovers ?? []).map((p) => p.id)]);
     const studentName = viewer.students.find((s) => s.id === studentId)?.first_name ?? "your child";
 
     await sendPush(

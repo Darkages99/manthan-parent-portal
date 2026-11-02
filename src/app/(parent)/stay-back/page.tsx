@@ -5,6 +5,7 @@ import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatTime } from "@/lib/format";
 import { DATE_RANGE_OPTIONS, rangeFrom } from "@/lib/date-range";
+import { stayBackFinalApprover } from "@/lib/stay-back-chain";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export default async function StayBackPage({
@@ -138,7 +139,11 @@ export default async function StayBackPage({
                   <p className="mt-1 text-base text-slate-strong">
                     {c.stay_date} · {formatTime(c.from_time)}–{formatTime(c.to_time)} · Notified{" "}
                     {teacher?.name}
-                    {teacher?.role === "class_teacher" ? " + Principal" : ""}
+                    {teacher?.role === "class_teacher"
+                      ? stayBackFinalApprover(student?.classSection?.grade) === "coordinator"
+                        ? " + Coordinator"
+                        : " + Principal"
+                      : ""}
                   </p>
                 </div>
                 <div className="mt-4 border-t border-hairline bg-mist/40 px-5 py-4">

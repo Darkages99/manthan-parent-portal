@@ -15,18 +15,15 @@ describe("resolveApproverMatch", () => {
     expect(resolveApproverMatch("class_teacher", "teacher-2", NAMED)).toBeNull();
   });
 
-  it.each(["front_office", "coordinator"] as const)("%s decides their own step by role", (role) => {
+  it.each(["front_office", "coordinator", "principal"] as const)("%s decides their own step by role", (role) => {
     expect(resolveApproverMatch(role, "anyone", NAMED)).toEqual({
       approverRole: role,
       matchByStaffId: false,
     });
   });
 
-  it.each(["principal", "super_admin"] as const)("%s satisfies the principal step", (role) => {
-    expect(resolveApproverMatch(role, "anyone", NAMED)).toEqual({
-      approverRole: "principal",
-      matchByStaffId: false,
-    });
+  it("lets super_admin decide any open step", () => {
+    expect(resolveApproverMatch("super_admin", "anyone", NAMED)).toMatchObject({ anyOpenStep: true });
   });
 
   it.each(["parent", "accounts", "admin"] as const)("%s is not a party to the chain", (role) => {

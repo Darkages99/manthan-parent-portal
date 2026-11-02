@@ -23,32 +23,18 @@ export async function decideStayBack(id: string, decision: "approved" | "decline
   if (!match) throw new Error("You aren't a party to this request");
 
   // Finds the caller's open step in the class_teacher -> front_office ->
-  // [coordinator ->] principal chain and records the decision; any decline
-  // closes the whole request, approval only completes once every step has.
-  // Coordinator is admin-equivalent (see src/lib/roles.ts): grade 8+ chains
-  // skip the dedicated coordinator step, so a coordinator falls back to
-  // deciding the principal step directly on those requests.
-  let status;
-  try {
-    status = await decideApprovalStep(supabase, {
-      subjectType: "stay_back_consent",
-      subjectId: id,
-      approverRole: match.approverRole,
-      staffId: viewer.staff.id,
-      decision,
-      matchByStaffId: match.matchByStaffId,
-    });
-  } catch (err) {
-    if (viewer.staff.role !== "coordinator" || match.approverRole !== "coordinator") throw err;
-    status = await decideApprovalStep(supabase, {
-      subjectType: "stay_back_consent",
-      subjectId: id,
-      approverRole: "principal",
-      staffId: viewer.staff.id,
-      decision,
-      matchByStaffId: false,
-    });
-  }
+  // coordinator (grades 1-7) | principal (grade 8+) chain and records the
+  // decision; any decline closes the whole request, approval only completes
+  // once every step has. RLS on approval_steps enforces the same matching.
+  const status = await decideApprovalStep(supabase, {
+    subjectType: "stay_back_consent",
+    subjectId: id,
+    approverRole: match.approverRole,
+    staffId: viewer.staff.id,
+    decision,
+    matchByStaffId: match.matchByStaffId,
+    anyOpenStep: match.anyOpenStep,
+  });
 
   const { error } = await supabase.from("stay_back_consents").update({ status }).eq("id", id);
   if (error) throw new Error(error.message);
