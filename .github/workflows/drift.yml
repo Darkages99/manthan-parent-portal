@@ -1,0 +1,53 @@
+name: Schema drift
+
+# Compares the live database schema with what supabase/migrations builds (TODO 3.2).
+# Read-only against live. Runs on a schedule or by hand, never on pull requests,
+# so the database password is never exposed to PR code.
+
+on:
+  schedule:
+    - cron: "30 3 * * 1" # Mondays 03:30 UTC (09:00 IST)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: Live schema matches migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+        with:
+          version: 2.121.0
+      - run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      # Informational: live records timestamp versions, the files are numbered.
+      - name: Migration history (live vs files)
+        run: supabase migration list --linked --password "$SUPABASE_DB_PASSWORD" | tee -a "$GITHUB_STEP_SUMMARY"
+      # Replays the files into a shadow database and diffs live against it.
+      - name: Schema diff
+        run: |
+          set -o pipefail
+          supabase db diff --linked --password "$SUPABASE_DB_PASSWORD" | tee drift.sql
+          # Keep only real statements (drop blank lines and SQL comments).
+          if grep -vE '^\s*(--.*)?$' drift.sql > /dev/null; then
+            { echo '### Drift found'; echo '```sql'; cat drift.sql; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo '### No drift: live matches the migration files' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: drift-report
+          path: drift.sql
+          if-no-files-found: ignore
