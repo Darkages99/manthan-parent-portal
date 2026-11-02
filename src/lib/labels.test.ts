@@ -8,14 +8,10 @@ import { countAlerts } from "./console-alert-count";
 describe("roleLabel", () => {
   it("labels every role, showing class_teacher as Teacher", () => {
     expect(Object.keys(ROLE_LABELS).sort()).toEqual(
-      ["accounts", "admin", "class_teacher", "coordinator", "front_office", "parent", "principal", "super_admin"],
+      ["class_teacher", "coordinator", "front_office", "principal", "super_admin"],
     );
     expect(roleLabel("class_teacher")).toBe("Teacher");
     expect(roleLabel("super_admin")).toBe("Super admin");
-  });
-
-  it("renders the retired admin role as Front office", () => {
-    expect(roleLabel("admin")).toBe("Front office");
   });
 
   it("falls back to the raw value for an unknown role", () => {

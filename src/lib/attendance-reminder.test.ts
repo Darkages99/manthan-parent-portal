@@ -40,7 +40,7 @@ describe("shouldRemindAttendance", () => {
 
   it("only class teachers are reminded", async () => {
     use(base());
-    for (const role of ["principal", "front_office", "coordinator", "accounts"]) {
+    for (const role of ["principal", "front_office", "coordinator", "super_admin"]) {
       expect(await shouldRemindAttendance({ id: "T", role } as never)).toBe(false);
     }
     expect(createClient).not.toHaveBeenCalled();

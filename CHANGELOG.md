@@ -29,8 +29,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
   theme toggle, instead of setting state in an effect.
 
 ### Removed
+- Staff roles `admin`, `parent` and `accounts` (migration 0055). The 2 accounts staff are
+  now front office, which is the same job. The role pickers and the message-permissions
+  grid show the five remaining roles.
 - Unused code: `TrendLine` chart, `SidebarIcon`, the collapsible `PeriodEditor` wrapper
   (the timetable uses `PeriodEditorBody`), and `export` on 18 file-local names.
+
+### Security
+- `staff_directory` is read-only for signed-in users. Before 0055 any signed-in user,
+  parents included, could edit staff names and roles through it.
 
 ## [0.2.0] - 2026-11-01
 

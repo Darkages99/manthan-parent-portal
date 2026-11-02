@@ -29,7 +29,7 @@ compliance set, plus the notation conventions the other documents follow.
 |------|------------|
 | **Guardian** | A parent or guardian account. The primary "parent-side" actor. Linked to one or more students via `guardian_student`. Stored in `guardians`. |
 | **Student** | A child enrolled at the school. Stored in `students`. Belongs to exactly one class section. Has one or more guardians. |
-| **Staff** | Any school employee account (teacher, front office, accounts, coordinator, principal, super admin). Stored in `staff`. |
+| **Staff** | Any school employee account (teacher, front office, coordinator, principal, super admin). Stored in `staff`. |
 | **Class section** | A specific class-and-division for an academic year, e.g. "2026-27 / Grade 5 / A". Stored in `class_sections`. |
 | **Viewer** | The resolved identity of the currently signed-in user — either a `GuardianViewer` or a `StaffViewer`, or `null` if unauthenticated. Produced by `getViewer()` (`src/lib/session.ts`). |
 | **Console** | The staff-facing area of the app, under the `/console` route group. |
@@ -50,24 +50,23 @@ compliance set, plus the notation conventions the other documents follow.
 
 ## 3. Actor / role catalogue
 
-The `role` enum (`supabase/migrations/0001_init.sql:12`, extended in `0009` and
-`0030`) has these values. "Principal-tier" is a recurring grouping defined in
+The `role` enum (`supabase/migrations/0001_init.sql:12`, rebuilt in `0055`) is the
+staff role and has these five values. Guardians are not staff and have no `role`;
+they are identified by a `guardians` row. "Principal-tier" is a recurring grouping defined in
 `src/lib/roles.ts:10`.
 
 | Role value | Human label | Tier | What they can do (summary) |
 |------------|-------------|------|-----------------------------|
-| `parent` | Parent / Guardian | Guardian | See and act only on their own children's data. Not a staff role. |
 | `class_teacher` | Teacher | Staff (scoped) | Mark attendance, enter marks for their own classes/subjects, author homework, message their scoped audience, act as a named approver. |
 | `front_office` | Front Office | Staff | School-wide operational tasks: attendance, triage issues shared with them, approval steps. |
-| `accounts` | Accounts | Staff | Finance-oriented staff role (payments/invoices are staff-writable). |
 | `coordinator` | Coordinator | **Principal-tier** | Admin-equivalent to principal for gating purposes (`src/lib/roles.ts:10`). |
 | `principal` | Principal | **Principal-tier** | Full school-wide management: classes, timetable, results scope, approvals, message permissions. |
 | `super_admin` | Super Admin | **Principal-tier + strict** | Everything principal can do, **plus** the strict-only actions: create/elevate other super admins, confirm sheet-sync deletions. |
 
-> Note: an `admin` enum value exists (added in migration 0030 for the per-PTM
-> approver that migration 0041 later removed). It is retired: migration 0053
-> removed every use and a CHECK constraint stops any staff row or send permission
-> from using it. The live roles are the others listed above.
+> Note: migration 0055 removed three values. `admin` (added in 0030 for the per-PTM
+> approver that 0041 removed; retired in 0053) and `parent` (never held by staff)
+> were unused. `accounts` was the same job as front office, so its 2 staff became
+> `front_office`. When the school says "admin" it means front office.
 
 **Dual-role people:** a staff member who is also a parent has two logical
 identities. `getViewer()` resolves a guardian identity first if one exists for

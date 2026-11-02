@@ -26,7 +26,7 @@ describe("resolveApproverMatch", () => {
     expect(resolveApproverMatch("super_admin", "anyone", NAMED)).toMatchObject({ anyOpenStep: true });
   });
 
-  it.each(["parent", "accounts", "admin"] as const)("%s is not a party to the chain", (role) => {
-    expect(resolveApproverMatch(role, NAMED, NAMED)).toBeNull();
+  it("an unknown role is not a party to the chain", () => {
+    expect(resolveApproverMatch("janitor" as never, NAMED, NAMED)).toBeNull();
   });
 });
