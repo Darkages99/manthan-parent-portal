@@ -15,11 +15,7 @@ const SELECT_PILL =
   "rounded-full border border-hairline bg-surface px-4 py-2.5 text-sm text-slate-strong shadow-[var(--shadow-card)] transition-colors focus:border-rust/60";
 
 type StaffRow = Tables<"staff">;
-// "admin" is a retired role (PTM approval now uses front_office). It stays in the
-// enum, but migration 0053 forbids it on staff, so it must not be offered here.
-const ROLE_OPTIONS: Enums<"role">[] = (Object.keys(ROLE_LABELS) as Enums<"role">[]).filter(
-  (r) => r !== "admin"
-);
+const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as Enums<"role">[];
 
 export function StaffManager({ staff }: { staff: StaffRow[] }) {
   const [list, setList] = useState(staff);
@@ -148,7 +144,7 @@ function StaffRow({ staff, onChange }: { staff: StaffRow; onChange: (next: Staff
           onChange={(e) => onRoleChange(e.target.value as Enums<"role">)}
           className="rounded-sm border border-hairline bg-mist px-3 py-2 text-base text-slate-strong disabled:opacity-60"
         >
-          {(ROLE_OPTIONS.includes(staff.role) ? ROLE_OPTIONS : [staff.role, ...ROLE_OPTIONS]).map((r) => (
+          {ROLE_OPTIONS.map((r) => (
             <option key={r} value={r}>
               {roleLabel(r)}
             </option>

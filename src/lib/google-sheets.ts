@@ -34,13 +34,11 @@ const SCOPES = [
 ];
 
 const ROLE_VALUES: Enums<"role">[] = [
-  "parent",
   "class_teacher",
   "front_office",
-  "accounts",
+  "coordinator",
   "principal",
   "super_admin",
-  "coordinator",
 ];
 
 function getServiceAccountAuth() {

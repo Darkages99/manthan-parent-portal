@@ -119,7 +119,7 @@ describe("assertCanEditMark", () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
-  it.each(["front_office", "accounts", "parent"])("%s is refused", async (role) => {
+  it.each(["front_office", "janitor"])("%s is refused", async (role) => {
     asStaff(role);
     await expect(assertCanEditMark("s-8a", "Maths")).rejects.toThrow("Not authorized to enter marks");
   });
@@ -203,8 +203,8 @@ describe("assertCanManageReportCard", () => {
     await expect(assertCanManageReportCard("s-6c")).resolves.toBeDefined();
   });
 
-  it("accounts and parents are refused", async () => {
-    asStaff("accounts");
+  it("an unknown role is refused", async () => {
+    asStaff("janitor");
     await expect(assertCanManageReportCard("s-8a")).rejects.toThrow("Not authorized to manage report cards");
   });
 

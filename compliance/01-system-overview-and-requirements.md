@@ -50,9 +50,9 @@ role-scoped application.
 See the role catalogue in `00-glossary-and-conventions.md` §3. In requirement
 terms there are two top-level actor classes and one non-human actor:
 
-- **Guardian** (`parent`) — parent-side.
-- **Staff** — with sub-roles `class_teacher`, `front_office`, `accounts`,
-  `coordinator`, `principal`, `super_admin`.
+- **Guardian** — parent-side (a `guardians` row; no staff role).
+- **Staff** — with roles `class_teacher`, `front_office`, `coordinator`,
+  `principal`, `super_admin`.
 - **System / scheduler** — Vercel Cron and the sheet-sync/notification background
   jobs, which act under the service-role client.
 

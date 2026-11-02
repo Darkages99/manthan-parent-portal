@@ -19,7 +19,7 @@ beforeEach(() => getViewer.mockReset());
 describe("isPrincipalRole", () => {
   it("covers principal, super_admin and coordinator only", () => {
     expect([...PRINCIPAL_ROLES].sort()).toEqual(["coordinator", "principal", "super_admin"]);
-    for (const r of ["parent", "class_teacher", "front_office", "accounts", "admin"] as const) {
+    for (const r of ["class_teacher", "front_office"] as const) {
       expect(isPrincipalRole(r)).toBe(false);
     }
   });
@@ -31,7 +31,7 @@ describe("requirePrincipal", () => {
     await expect(requirePrincipal()).resolves.toMatchObject({ staff: { role } });
   });
 
-  it.each(["class_teacher", "front_office", "accounts"])("rejects %s", async (role) => {
+  it.each(["class_teacher", "front_office"])("rejects %s", async (role) => {
     getViewer.mockResolvedValue(staff(role));
     await expect(requirePrincipal()).rejects.toThrow("Only the principal");
   });
@@ -51,7 +51,7 @@ describe("requireLeadership", () => {
     await expect(requireLeadership()).resolves.toMatchObject({ staff: { role } });
   });
 
-  it.each(["class_teacher", "accounts"] as const)("rejects %s", async (role) => {
+  it.each(["class_teacher"] as const)("rejects %s", async (role) => {
     expect(isLeadershipRole(role)).toBe(false);
     getViewer.mockResolvedValue(staff(role));
     await expect(requireLeadership()).rejects.toThrow("Only school leadership");

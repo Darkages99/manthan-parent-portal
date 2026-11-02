@@ -26,7 +26,7 @@ export default async function AttendanceByClass() {
   const today = istToday();
 
   // class_teacher already redirected away above — every remaining role
-  // (principal-tier, front_office, accounts) sees every class.
+  // (principal-tier, front_office) sees every class.
   const { data: allClasses } = await supabase
     .from("class_sections")
     .select("*")

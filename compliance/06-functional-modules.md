@@ -5,7 +5,7 @@ capabilities, the tables and RLS it relies on, the source files that implement i
 and the business rules/invariants. Requirement IDs (`FR-*`) are defined in
 `01-system-overview-and-requirements.md` §3 and traced in doc 11.
 
-Conventions: **Parent** = `parent` role; **Staff** = any staff role;
+Conventions: **Parent** = a guardian; **Staff** = any staff role;
 **Principal-tier** = principal/super_admin/coordinator.
 
 ---

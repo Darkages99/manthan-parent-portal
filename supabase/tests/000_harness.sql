@@ -10,7 +10,7 @@
 --   teacher_8b   b...001  class_teacher of 8-B                        [seed]
 --   teacher_5a   b...002  class_teacher of 5-A                        [seed]
 --   principal    b...003                                              [seed]
---   coordinator  b...004, front_office b...005, accounts b...006,
+--   coordinator  b...004, front_office b...005,
 --   super_admin  b...007                                              [here]
 --   stranger     signed in, but neither staff nor guardian
 
@@ -92,7 +92,6 @@ grant execute on all functions in schema tests to anon, authenticated;
 insert into staff (id, name, role, username, email) values
   ('b0000000-0000-0000-0000-000000000004','Test Coordinator','coordinator','test.coordinator','test.coordinator@example.test'),
   ('b0000000-0000-0000-0000-000000000005','Test Front Office','front_office','test.frontoffice','test.frontoffice@example.test'),
-  ('b0000000-0000-0000-0000-000000000006','Test Accounts','accounts','test.accounts','test.accounts@example.test'),
   ('b0000000-0000-0000-0000-000000000007','Test Super Admin','super_admin','test.superadmin','test.superadmin@example.test')
 on conflict (id) do nothing;
 
@@ -118,7 +117,6 @@ insert into fixture_users values
   ('principal',    '0f000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000003', null),
   ('coordinator',  '0f000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000004', null),
   ('front_office', '0f000000-0000-0000-0000-000000000007', 'b0000000-0000-0000-0000-000000000005', null),
-  ('accounts',     '0f000000-0000-0000-0000-000000000008', 'b0000000-0000-0000-0000-000000000006', null),
   ('super_admin',  '0f000000-0000-0000-0000-000000000009', 'b0000000-0000-0000-0000-000000000007', null),
   ('stranger',     '0f000000-0000-0000-0000-000000000010', null, null);
 
@@ -132,6 +130,6 @@ on conflict (handle) do nothing;
 update staff set auth_user_id = f.id from fixture_users f where staff.id = f.staff_id;
 update guardians set auth_user_id = f.id from fixture_users f where guardians.id = f.guardian_id;
 
-select is((select count(*) from tests.users), 10::bigint, 'harness: 10 fixture users installed');
+select is((select count(*) from tests.users), 9::bigint, 'harness: 9 fixture users installed');
 select * from finish();
 commit;

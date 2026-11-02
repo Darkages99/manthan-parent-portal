@@ -97,9 +97,6 @@ select is(tests.affected($$update class_sections set section = 'B' where id = 'a
 select throws_ok(
   $$insert into class_sections (academic_year, grade, section) values ('2026-27', '9', 'Z')$$,
   '42501', null, 'a teacher cannot add a class');
-select tests.authenticate_as('accounts');
-select is(tests.affected($$update class_sections set section = 'B' where id = 'a0000000-0000-0000-0000-000000000001'$$),
-  0::bigint, 'accounts cannot edit a class');
 select tests.authenticate_as('front_office');
 select is(tests.affected($$update class_sections set section = 'B' where id = 'a0000000-0000-0000-0000-000000000001'$$),
   1::bigint, 'front office edits a class');
@@ -121,8 +118,6 @@ select is(tests.affected($$update leave_requests set status = 'approved' where i
   0::bigint, 'a class teacher cannot decide another class''s leave');
 select is(tests.affected($$update leave_requests set status = 'approved' where id = '20000000-0000-0000-0000-000000000001'$$),
   1::bigint, 'a class teacher decides their class''s leave');
-select tests.authenticate_as('accounts');
-select is(tests.visible('leave_requests'), 0::bigint, 'accounts sees no leave');
 select tests.authenticate_as('front_office');
 select is(tests.visible('leave_requests'), 2::bigint, 'front office sees all leave');
 select is(tests.affected($$update leave_requests set status = 'approved' where id = '20000000-0000-0000-0000-000000000002'$$),
@@ -158,9 +153,6 @@ select is(tests.affected($$update approval_steps set decision = 'approved', appr
 select tests.authenticate_as('principal');
 select is(tests.affected($$update approval_steps set decision = 'approved', approver_staff_id = current_staff_id()
   where id = '31000000-0000-0000-0000-000000000003'$$), 0::bigint, 'principal cannot decide the coordinator''s step');
-select tests.authenticate_as('accounts');
-select is(tests.affected($$update stay_back_consents set status = 'approved' where id = '30000000-0000-0000-0000-000000000001'$$),
-  0::bigint, 'accounts cannot change a stay-back');
 select tests.authenticate_as('coordinator');
 select is(tests.affected($$update approval_steps set decision = 'approved', approver_staff_id = current_staff_id()
   where id = '31000000-0000-0000-0000-000000000003'$$), 1::bigint, 'coordinator decides the last step for grade 5');
@@ -216,6 +208,17 @@ select is(tests.affected($$update approval_steps set decision = 'declined' where
   1::bigint, 'super admin overrides any approval step');
 select is(tests.affected($$update dtr_events set title = 'Sports day!' where title = 'Sports day'$$),
   1::bigint, 'super admin edits any event');
+reset role;
+
+-- ---- Roles and the staff directory (0055) ----
+select is(enum_range(null::role)::text, '{class_teacher,front_office,coordinator,principal,super_admin}',
+  'only the five staff roles remain');
+select tests.authenticate_as('teacher_8b');
+select throws_ok($$update staff_directory set name = 'x'$$, '42501', null,
+  'a teacher cannot edit staff through the directory');
+select tests.authenticate_as('guardian_a');
+select throws_ok($$update staff_directory set role = 'super_admin'$$, '42501', null,
+  'a parent cannot edit staff through the directory');
 reset role;
 
 select * from finish();

@@ -20,7 +20,7 @@ The extension `pgcrypto` provides `gen_random_uuid()`.
 
 | Enum | Values | Defined in |
 |------|--------|-----------|
-| `role` | `parent`, `class_teacher`, `front_office`, `accounts`, `principal`, `super_admin`, `coordinator`, `admin` (**retired** — added in 0030 for the since-removed per-PTM approver; 0053 removed every use and added CHECK `role <> 'admin'` on `staff` and `message_send_permissions`. The value stays in the enum because `current_staff_role()` returns this type) | 0001:12, +0009, +0030, 0053 |
+| `role` | `class_teacher`, `front_office`, `coordinator`, `principal`, `super_admin`. Rebuilt in 0055, which removed `admin` (retired in 0053), `parent` (never a staff role) and `accounts` (its 2 staff moved to `front_office`), and dropped 0053's `role <> 'admin'` CHECKs | 0001:12, +0009, +0030, 0053, 0055 |
 | `attendance_status` | `present`, `absent`, `late`, `half_day` | 0001:62, +0004 |
 | `leave_status` | `pending`, `approved`, `declined` | 0001:73 |
 | `stay_back_status` | `pending`, `approved`, `declined` | 0001:95 |
@@ -97,7 +97,9 @@ findings.
 
 ### 3.2 `staff_directory` — safe teacher view (0050)
 A view (`security_invoker = false`) exposing only `id, name, role, active` from
-`staff`, granted SELECT to `authenticated`. Used by parent-facing teacher pickers
+`staff`, read-only for `authenticated` (SELECT only). 0050 intended that, but the
+schema's default privileges had already granted ALL, so until 0055 any signed-in
+user could update staff rows through the view; 0055 recreated it with SELECT only. Used by parent-facing teacher pickers
 (report-issue, stay-back, ptm, timetable).
 
 ### 3.3 `class_sections` — a class-division for an academic year
@@ -492,7 +494,7 @@ finding F13). `EXECUTE` on the helper/definer functions is revoked from `anon`
 | A student has ≥1 guardian | deferred constraint trigger + RPC | 0040 |
 | A guardian has a child or an email | deferred constraint trigger | 0040 |
 | Owner XOR on push/preferences | CHECK `num_nonnulls(...) = 1` | 0001/0015 |
-| Retired enum values unusable | CHECK `role <> 'admin'` (staff, message_send_permissions); CHECK `subject_type = 'stay_back_consent'` (approval_steps) | 0053 |
+| Retired enum value unusable | CHECK `subject_type = 'stay_back_consent'` (approval_steps) | 0053 |
 | Consultation date must be Tue/Thu | CHECK on `extract(dow ...)` | 0044 |
 | One push subscription per endpoint | UNIQUE(endpoint) | 0005b |
 | Approval steps ordered & unique | UNIQUE(subject_type, subject_id, step_order) | 0010 |

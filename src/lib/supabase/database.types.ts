@@ -2097,14 +2097,11 @@ export type Database = {
         | "homework"
       ptm_status: "open" | "closed"
       role:
-        | "parent"
         | "class_teacher"
         | "front_office"
-        | "accounts"
+        | "coordinator"
         | "principal"
         | "super_admin"
-        | "coordinator"
-        | "admin"
       stay_back_purpose:
         | "cultural"
         | "project"
@@ -2267,14 +2264,11 @@ export const Constants = {
       ],
       ptm_status: ["open", "closed"],
       role: [
-        "parent",
         "class_teacher",
         "front_office",
-        "accounts",
+        "coordinator",
         "principal",
         "super_admin",
-        "coordinator",
-        "admin",
       ],
       stay_back_purpose: [
         "cultural",

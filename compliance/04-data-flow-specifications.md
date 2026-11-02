@@ -343,5 +343,5 @@ traversal is prevented by server-side path generation + basename sanitization
 | Messages | app | staff | guardian recipients | Firebase (attachments), push |
 | Issues | app | guardian/staff (raise), staff (resolve) | audience-scoped | — |
 | Notifications | app | `sendPush` (service-role) | principal-tier (log) | web-push/FCM, SMS relay |
-| Finance | app | staff (accounts) | (deny-all today) | Firebase (receipts) |
+| Finance | app | staff | (deny-all today) | Firebase (receipts) |
 | Files | app | route handlers (Admin SDK) | anyone with the token URL | Firebase Storage |
