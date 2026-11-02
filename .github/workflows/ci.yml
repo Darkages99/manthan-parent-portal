@@ -86,6 +86,8 @@ jobs:
           seed=$(q "select (select count(*) from students)||','||(select count(*) from ptm_slots)||','||(select count(*) from ptm_slots where booked_by_guardian_id is not null)||','||(select count(*) from custom_group_students)")
           echo "students,ptm_slots,booked,group_members: $seed"
           test "$seed" = "2,16,1,1"
+      # RLS suite (pgTAP): supabase/tests, run in name order against the replayed database.
+      - run: supabase test db
 
   audit:
     name: Dependency audit (production, high+)
