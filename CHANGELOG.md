@@ -11,6 +11,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
   `knip.jsonc`.
 - Component tests: `happy-dom` (opt in per file). First one covers the parent portal's
   selected-child switcher, including storage that throws (private browsing).
+- Schema drift workflow (weekly and on demand, never on PRs): replays the migration files
+  into a shadow database, diffs live against it, and fails with the diff as an artifact.
 
 ### Changed
 - `seed.sql` is self-contained (creates its own placeholder staff, classes, students and
