@@ -1,8 +1,35 @@
--- Manthan Parent Portal — placeholder seed data for the module demo.
--- Re-runnable (delete-then-insert). Assumes the base seed already exists:
---   Guardian Sarang d...001; students Test Child One c...001 (8-B / teacher Anjali b...001)
---   and Test Child Two c...002 (5-A / teacher Suresh b...002); principal Kavita b...003.
--- Names, marks and incidents here are illustrative placeholders only.
+-- Manthan Parent Portal — local/CI seed. Runs after `supabase db reset` replays
+-- every migration on an empty database, so it creates its own base rows first.
+-- Re-runnable: base rows use fixed ids + `on conflict do nothing`; demo rows are
+-- delete-then-insert. Every name, phone and email here is a placeholder.
+--   Staff: class teachers b...001 (8-B) and b...002 (5-A), principal b...003
+--   Guardian d...001, parent of students c...001 (8-B) and c...002 (5-A)
+
+-- ---- Base: staff, classes, students, guardian ----
+insert into staff (id, name, role, username, email) values
+  ('b0000000-0000-0000-0000-000000000001','Anjali Teacher','class_teacher','anjali.teacher','anjali.teacher@example.test'),
+  ('b0000000-0000-0000-0000-000000000002','Suresh Teacher','class_teacher','suresh.teacher','suresh.teacher@example.test'),
+  ('b0000000-0000-0000-0000-000000000003','Kavita Principal','principal','kavita.principal','kavita.principal@example.test')
+on conflict (id) do nothing;
+
+insert into class_sections (id, academic_year, grade, section, class_teacher_id) values
+  ('a0000000-0000-0000-0000-000000000001','2026-27','8','B','b0000000-0000-0000-0000-000000000001'),
+  ('a0000000-0000-0000-0000-000000000002','2026-27','5','A','b0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;
+
+insert into students (id, first_name, last_name, roll_no, class_section_id) values
+  ('c0000000-0000-0000-0000-000000000001','Test','Child One','1','a0000000-0000-0000-0000-000000000001'),
+  ('c0000000-0000-0000-0000-000000000002','Test','Child Two','1','a0000000-0000-0000-0000-000000000002')
+on conflict (id) do nothing;
+
+insert into guardians (id, name, relation, phone, email) values
+  ('d0000000-0000-0000-0000-000000000001','Test Guardian','Father','+910000000001','guardian@example.test')
+on conflict (id) do nothing;
+
+insert into guardian_student (guardian_id, student_id) values
+  ('d0000000-0000-0000-0000-000000000001','c0000000-0000-0000-0000-000000000001'),
+  ('d0000000-0000-0000-0000-000000000001','c0000000-0000-0000-0000-000000000002')
+on conflict do nothing;
 
 -- ---- Attendance: weekdays 2026-07-01..2026-07-29 ----
 delete from attendance_records where student_id in
@@ -62,17 +89,22 @@ insert into defaulter_records (student_id, incident_date, description, action_ta
   ('c0000000-0000-0000-0000-000000000001','2026-07-16','Mathematics homework not submitted.','Verbal warning; required to complete by next class.','b0000000-0000-0000-0000-000000000001'),
   ('c0000000-0000-0000-0000-000000000002','2026-07-22','Talking during the Hindi period.','Seat reassigned for the week.','b0000000-0000-0000-0000-000000000002');
 
--- ---- PTM slots: 2026-08-08, 09:00-11:00 IST, 15-min slots, per class teacher ----
+-- ---- PTM: one meeting per class teacher on 2026-08-08, 09:00-11:00 IST, 15-min slots ----
+delete from ptm_meetings where id in
+  ('e0000000-0000-0000-0000-000000000001','e0000000-0000-0000-0000-000000000002');
+insert into ptm_meetings (id, class_section_id, teacher_id, title, meeting_date, window_start, window_end, slot_minutes) values
+  ('e0000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000001','Term 1 PTM','2026-08-08','09:00','11:00',15),
+  ('e0000000-0000-0000-0000-000000000002','a0000000-0000-0000-0000-000000000002','b0000000-0000-0000-0000-000000000002','Term 1 PTM','2026-08-08','09:00','11:00',15);
 delete from ptm_slots where class_section_id in
   ('a0000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000002');
-insert into ptm_slots (teacher_id, class_section_id, starts_at, ends_at)
-select t.tid, t.cid,
+insert into ptm_slots (meeting_id, teacher_id, class_section_id, starts_at, ends_at)
+select t.mid, t.tid, t.cid,
   ('2026-08-08 '::text || to_char(slot, 'HH24:MI') || ':00+05:30')::timestamptz,
   ('2026-08-08 '::text || to_char(slot + interval '15 min', 'HH24:MI') || ':00+05:30')::timestamptz
 from (values
-  ('b0000000-0000-0000-0000-000000000001'::uuid,'a0000000-0000-0000-0000-000000000001'::uuid),
-  ('b0000000-0000-0000-0000-000000000002'::uuid,'a0000000-0000-0000-0000-000000000002'::uuid)
-) as t(tid,cid)
+  ('e0000000-0000-0000-0000-000000000001'::uuid,'b0000000-0000-0000-0000-000000000001'::uuid,'a0000000-0000-0000-0000-000000000001'::uuid),
+  ('e0000000-0000-0000-0000-000000000002'::uuid,'b0000000-0000-0000-0000-000000000002'::uuid,'a0000000-0000-0000-0000-000000000002'::uuid)
+) as t(mid,tid,cid)
 cross join generate_series(timestamp '2026-08-08 09:00', timestamp '2026-08-08 10:45', interval '15 min') slot;
 
 update ptm_slots set booked_by_guardian_id='d0000000-0000-0000-0000-000000000001',

@@ -4,6 +4,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 
 ## [Unreleased]
 
+### Added
+- `supabase/config.toml` and a CI job that rebuilds the database from every migration plus
+  `seed.sql` on an empty Postgres, then checks every migration was recorded and the seed loaded.
+
+### Changed
+- `seed.sql` is self-contained (creates its own placeholder staff, classes, students and
+  guardian) and sets `meeting_id` on PTM slots.
+- Two applied migrations now replay from empty without changing live: the push-endpoint
+  constraint migration is guarded and renamed to its live version (it shared `0005`), and
+  `0030` skips the owner's staff row when that auth user doesn't exist.
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

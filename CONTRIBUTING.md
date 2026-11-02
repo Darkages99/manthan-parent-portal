@@ -25,7 +25,11 @@ required for the test tooling (CI uses 24).
   prefix convention: `Fix notification toggle reverting on save`.
 - Put pure logic in `src/lib/` and test it. Server actions and components stay thin.
 - Database changes are new files in `supabase/migrations/` (next number). Never edit a
-  migration that has been applied. Every table needs RLS; see the PR template checklist.
+  migration that has been applied. The one exception: a guard that changes nothing on live
+  but lets a fresh replay succeed (say why in the file). CI's "Migrations replay" job
+  rebuilds the database from every file plus `seed.sql`; run the same locally with
+  `npx supabase start` then `npx supabase db reset` (needs Docker). Every table needs RLS;
+  see the PR template checklist.
 - Keep `compliance/` and `FEATURES.md` in step with behaviour. Documentation that has
   drifted from the code is treated as a bug.
 - Never commit secrets. Service-account and OAuth JSON files are gitignored; keep them

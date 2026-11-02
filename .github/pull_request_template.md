@@ -23,7 +23,7 @@
 
 ## Database changes (delete this section if none)
 
-- [ ] New migration file in `supabase/migrations/` (next number, never edit an applied one)
+- [ ] New migration file in `supabase/migrations/` (next number, never edit an applied one; "Migrations replay" CI job passes)
 - [ ] Every new table has RLS enabled and policies for each role that needs access
 - [ ] Guardian access is scoped through `guardian_student`; no `using (true)` for authenticated users
 - [ ] `src/lib/supabase/database.types.ts` regenerated
