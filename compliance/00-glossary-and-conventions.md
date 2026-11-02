@@ -65,8 +65,8 @@ they are identified by a `guardians` row. "Principal-tier" is a recurring groupi
 
 > Note: migration 0055 removed three values. `admin` (added in 0030 for the per-PTM
 > approver that 0041 removed; retired in 0053) and `parent` (never held by staff)
-> were unused. `accounts` was the same job as front office, so its 2 staff became
-> `front_office`. When the school says "admin" it means front office.
+> were unused. `accounts` was the same job as front office; the migration moves any
+> holder to `front_office` (on live the 2 holders were placeholders and were deleted first). When the school says "admin" it means front office.
 
 **Dual-role people:** a staff member who is also a parent has two logical
 identities. `getViewer()` resolves a guardian identity first if one exists for
