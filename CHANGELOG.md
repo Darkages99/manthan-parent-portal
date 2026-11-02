@@ -13,6 +13,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
   selected-child switcher, including storage that throws (private browsing).
 - Schema drift workflow (weekly and on demand, never on PRs): replays the migration files
   into a shadow database, diffs live against it, and fails with the diff as an artifact.
+- RLS test harness (pgTAP, `supabase/tests`, `npm run test:db`), run in the migrations
+  replay job. Fixture users cover two families, every staff role and a signed-in user with
+  no role. A self-test shows impersonation reaches `auth.uid()` and RLS keeps families apart.
 
 ### Changed
 - `seed.sql` is self-contained (creates its own placeholder staff, classes, students and

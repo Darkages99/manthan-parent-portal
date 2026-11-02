@@ -30,6 +30,10 @@ required for the test tooling (CI uses 24).
   rebuilds the database from every file plus `seed.sql`; run the same locally with
   `npx supabase start` then `npx supabase db reset` (needs Docker). Every table needs RLS;
   see the PR template checklist.
+- RLS is tested in `supabase/tests/` (pgTAP; same CI job, `npm run test:db` locally). In a
+  transaction, call `tests.authenticate_as('<handle>')` (or `tests.authenticate_anon()`),
+  assert with `tests.visible()` / `tests.affected()` / `throws_ok`, then roll back.
+  `000_harness.sql` lists the fixture users.
 - Keep `compliance/` and `FEATURES.md` in step with behaviour. Documentation that has
   drifted from the code is treated as a bug.
 - Never commit secrets. Service-account and OAuth JSON files are gitignored; keep them
