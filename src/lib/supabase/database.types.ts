@@ -429,6 +429,36 @@ export type Database = {
           },
         ]
       }
+      dtr_event_groups: {
+        Row: {
+          custom_group_id: string
+          dtr_event_id: string
+        }
+        Insert: {
+          custom_group_id: string
+          dtr_event_id: string
+        }
+        Update: {
+          custom_group_id?: string
+          dtr_event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dtr_event_groups_custom_group_id_fkey"
+            columns: ["custom_group_id"]
+            isOneToOne: false
+            referencedRelation: "custom_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dtr_event_groups_dtr_event_id_fkey"
+            columns: ["dtr_event_id"]
+            isOneToOne: false
+            referencedRelation: "dtr_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dtr_events: {
         Row: {
           category: Database["public"]["Enums"]["dtr_category"]
@@ -1982,6 +2012,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_dtr_event: {
+        Args: {
+          p_category: Database["public"]["Enums"]["dtr_category"]
+          p_class_section_ids?: string[]
+          p_description?: string
+          p_event_date: string
+          p_group_ids?: string[]
+          p_title: string
+        }
+        Returns: string
+      }
       current_guardian_id: { Args: never; Returns: string }
       current_staff_id: { Args: never; Returns: string }
       current_staff_is_issue_recipient: {
@@ -1994,12 +2035,27 @@ export type Database = {
       }
       database_size_bytes: { Args: never; Returns: number }
       erase_student: { Args: { p_student: string }; Returns: Json }
+      is_class_teacher_of_student: {
+        Args: { p_student_id: string }
+        Returns: boolean
+      }
+      is_leadership: { Args: never; Returns: boolean }
       is_principal: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       prune_old_records: { Args: never; Returns: Json }
       replace_guardian_children: {
         Args: { p_guardian: string; p_student_ids: string[] }
         Returns: undefined
+      }
+      staff_can_use_group: { Args: { p_group_id: string }; Returns: boolean }
+      staff_teaches_class: {
+        Args: { p_class_section_id: string }
+        Returns: boolean
+      }
+      staff_teaches_student: {
+        Args: { p_student_id: string }
+        Returns: boolean
       }
       sync_upsert_guardian: {
         Args: {

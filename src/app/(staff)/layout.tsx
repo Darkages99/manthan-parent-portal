@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { StaffShell, type PtmNavMeeting, type ClassNavItem } from "@/components/staff-shell";
 import { getViewer } from "@/lib/session";
-import { isPrincipalRole } from "@/lib/roles";
+import { isLeadershipRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { shouldRemindAttendance } from "@/lib/attendance-reminder";
 
@@ -54,7 +54,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   }
 
   async function loadClasses(): Promise<ClassNavItem[]> {
-    if (!isPrincipalRole(staff.role)) return [];
+    if (!isLeadershipRole(staff.role)) return [];
     const { data: classSections } = await supabase
       .from("class_sections")
       .select("id, grade, section")

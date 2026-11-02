@@ -94,8 +94,12 @@ solid").
 The helper functions that resolve identity/role (`current_guardian_id`,
 `current_staff_role`, `is_staff`, `is_principal`, `staff_can_edit_student_marks`,
 `current_staff_is_issue_recipient`) are `SECURITY DEFINER` with `search_path`
-pinned to `public` (finding F13), and `EXECUTE` is revoked from `anon` (F12). They
-contain no dynamic SQL built from user input.
+pinned to `public` (finding F13), and `EXECUTE` is revoked from `anon` (F12) and,
+since 0054, from `PUBLIC` for the four identity helpers. 0054 adds `is_super_admin`,
+`is_leadership`, `staff_teaches_class`, `staff_teaches_student`, `staff_can_use_group`,
+`is_class_teacher_of_student` and the `create_dtr_event` RPC on the same terms
+(executable by `authenticated` and `service_role` only). They contain no dynamic SQL
+built from user input.
 
 ---
 
@@ -107,8 +111,12 @@ contain no dynamic SQL built from user input.
 | Attendance (write) | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Marks (write) | — | ✅ own classes | — | ✅ | ✅ | ✅ |
 | Timetable/subjects/periods (write) | — | — | — | — | ✅ | ✅ |
-| Approve stay-back (approval chain) | — | ✅ named step | ✅ step | ✅ step | ✅ step | ✅ |
-| Approve leave | — | ✅ up to 3 days | ✅ | ✅ | ✅ (any length) | ✅ |
+| Approve stay-back (approval chain) | — | ✅ named step | ✅ step | ✅ step (grades 1–7) | ✅ step (grade 8+) | ✅ any step |
+| Read / approve leave | — | ✅ own class, up to 3 days | ✅ | ✅ | ✅ (any length) | ✅ |
+| Add / edit / delete classes | — | — | ✅ | ✅ | ✅ | ✅ |
+| Calendar events | read | ✅ own classes/groups via `create_dtr_event`; edit own | ✅ school-wide | ✅ school-wide | ✅ school-wide | ✅ |
+| Read all messages | own + group only if child is in it | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Message classes/students/groups | — | ✅ own classes, their students, own/granted groups | per grid | per grid | per grid | ✅ |
 | Create PTM meeting (`createMeeting`) | — | — | — | — | ✅ | ✅ |
 | Decide a consultation | — | — | ✅ | ✅ | ✅ | ✅ |
 | Erase a student (DPDP) | — | — | — | — | — | ✅ |
@@ -118,7 +126,12 @@ contain no dynamic SQL built from user input.
 | Confirm sheet deletions | — | — | — | — | — | ✅ |
 | Read notification log | — | — | — | ✅ | ✅ | ✅ |
 
-(“✅ step” = may act on an approval step assigned to their role/name.)
+(“✅ step” = may act on an approval step assigned to their role/name. Enforced in
+RLS on `approval_steps` since 0054: an approver updates only an undecided step
+assigned to their staff id or role; staff may insert only undecided steps.
+super_admin has full access on every table in this summary; `audit_log` and
+`notification_log` stay append-only and push subscriptions/notification
+preferences stay with their owner. RLS suite: `supabase/tests/010_access_rules.sql`.)
 
 ---
 

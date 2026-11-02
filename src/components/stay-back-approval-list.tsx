@@ -121,18 +121,15 @@ export function StayBackApprovalList({
 
         const steps = stepsByConsent[c.id] ?? [];
         const match = resolveApproverMatch(viewer.role, viewer.id, c.teacher_id);
-        let myStep = match
-          ? steps.find(
-              (s) =>
-                s.approver_role === match.approverRole &&
-                (!match.matchByStaffId || c.teacher_id === viewer.id),
-            )
-          : undefined;
-        // Coordinator is admin-equivalent: grade 8+ chains have no dedicated
-        // coordinator step, so fall back to the principal step.
-        if (!myStep && viewer.role === "coordinator") {
-          myStep = steps.find((s) => s.approver_role === "principal");
-        }
+        const myStep = !match
+          ? undefined
+          : match.anyOpenStep
+            ? steps.find((s) => s.decision === null)
+            : steps.find(
+                (s) =>
+                  s.approver_role === match.approverRole &&
+                  (!match.matchByStaffId || c.teacher_id === viewer.id),
+              );
         const canDecide = c.status === "pending" && !!myStep && myStep.decision === null;
 
         return (

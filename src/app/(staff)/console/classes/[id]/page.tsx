@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ClassDetail } from "@/components/class-detail";
 import { getViewer } from "@/lib/session";
-import { isPrincipalRole } from "@/lib/roles";
+import { isLeadershipRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { getSubjects } from "@/lib/reference-data";
 
@@ -10,7 +10,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
-  if (!isPrincipalRole(viewer.staff.role)) redirect("/console");
+  if (!isLeadershipRole(viewer.staff.role)) redirect("/console");
 
   const supabase = await createClient();
   const [{ data: cls }, { data: staff }, subjects, { data: classSubjectTeachers }, { data: students }] =

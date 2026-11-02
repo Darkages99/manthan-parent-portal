@@ -4,13 +4,13 @@ import { EmptyState } from "@/components/empty-state";
 import { ClassCardMenu } from "@/components/class-card-menu";
 import { ClassIcon } from "@/components/icons";
 import { getViewer } from "@/lib/session";
-import { isPrincipalRole } from "@/lib/roles";
+import { isLeadershipRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ConsoleClasses() {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
-  if (!isPrincipalRole(viewer.staff.role)) redirect("/console");
+  if (!isLeadershipRole(viewer.staff.role)) redirect("/console");
 
   const supabase = await createClient();
   const [{ data: classes }, { data: studentCounts }, { data: teacherCounts }, { data: staff }] =

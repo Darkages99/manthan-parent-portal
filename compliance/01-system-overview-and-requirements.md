@@ -125,9 +125,10 @@ module document (06) gives the detailed rules and the exact source/RLS artifacts
 - **FR-SB-1** A guardian raises a stay-back consent naming a teacher, reason, date,
   time window, and how the child gets home.
 - **FR-SB-2** A grade-conditional multi-step approval chain is created (named
-  teacher → front office → [coordinator if below Grade 8] → principal).
+  teacher → front office → coordinator for Grades 1–7, or principal for Grade 8+).
 - **FR-SB-3** Any decline closes the request; all steps approving marks it approved.
-- **FR-SB-4** The named teacher and principals are notified immediately; others
+- **FR-SB-4** The named teacher and the final approver (coordinator or principal,
+  by grade) are notified immediately; others
   pick it up from the console queue.
 
 ### 3.8 Parent-teacher meetings (`FR-PTM-*`)

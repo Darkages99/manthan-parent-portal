@@ -4,28 +4,35 @@ import type { Database, Tables } from "@/lib/supabase/database.types";
 import { createApprovalChain, type ApprovalStepInput } from "@/lib/approvals";
 
 /**
- * The stay-back approval chain: the named class teacher, then front office,
- * then coordinator (skipped for grade 8+, where the principal acts as
- * coordinator — see src/lib/roles.ts), then principal. Shared by request
- * creation and the console's self-heal so both always build the same chain.
+ * The final approver of a stay-back: the coordinator for grades 1–7, the
+ * principal for grade 8 and up (or when the grade isn't a plain number).
  */
-export function buildStayBackChainSteps(
-  teacherId: string,
+export function stayBackFinalApprover(
   grade: string | number | null | undefined,
-): ApprovalStepInput[] {
+): "coordinator" | "principal" {
   const numericGrade =
     typeof grade === "number"
       ? grade
       : grade != null && /^\d+$/.test(String(grade))
         ? Number(grade)
         : null;
-  const skipCoordinator = numericGrade !== null && numericGrade >= 8;
+  return numericGrade !== null && numericGrade < 8 ? "coordinator" : "principal";
+}
 
+/**
+ * The stay-back approval chain: the named class teacher, then front office,
+ * then the coordinator (grades 1–7) or the principal (grade 8+). Shared by
+ * request creation and the console's self-heal so both always build the same
+ * chain. RLS (approval_steps) lets each approver decide only their own step.
+ */
+export function buildStayBackChainSteps(
+  teacherId: string,
+  grade: string | number | null | undefined,
+): ApprovalStepInput[] {
   return [
     { approverRole: "class_teacher", approverStaffId: teacherId },
     { approverRole: "front_office" },
-    ...(skipCoordinator ? [] : [{ approverRole: "coordinator" as const }]),
-    { approverRole: "principal" },
+    { approverRole: stayBackFinalApprover(grade) },
   ];
 }
 

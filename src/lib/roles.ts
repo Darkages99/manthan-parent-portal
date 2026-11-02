@@ -14,6 +14,26 @@ export function isPrincipalRole(role: Enums<"role">): boolean {
 }
 
 /**
+ * Principal-tier plus front office: may add, edit and delete classes and their
+ * subject teachers. Mirrors is_leadership() in migration 0054.
+ */
+const LEADERSHIP_ROLES: Enums<"role">[] = [...PRINCIPAL_ROLES, "front_office"];
+
+export function isLeadershipRole(role: Enums<"role">): boolean {
+  return LEADERSHIP_ROLES.includes(role);
+}
+
+/** Guards a server action to LEADERSHIP_ROLES. Throws otherwise. */
+export async function requireLeadership(): Promise<StaffViewer> {
+  const viewer = await getViewer();
+  if (!viewer || viewer.type !== "staff") throw new Error("Not signed in as staff");
+  if (!isLeadershipRole(viewer.staff.role)) {
+    throw new Error("Only school leadership or the front office can perform this action");
+  }
+  return viewer;
+}
+
+/**
  * Guards a server action to the principal / super_admin / coordinator. Throws
  * otherwise. (Reads are additionally enforced by RLS via current_staff_role().)
  */

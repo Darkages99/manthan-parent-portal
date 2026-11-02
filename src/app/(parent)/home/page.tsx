@@ -5,6 +5,7 @@ import { NotificationsInbox, type Notification } from "@/components/notification
 import { getViewer } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { reportCardSignature, type DashboardAlertData } from "@/lib/alerts";
+import { eventsForGuardian } from "@/lib/dtr-visibility";
 
 export default async function ParentHome() {
   const viewer = await getViewer();
@@ -28,6 +29,7 @@ export default async function ParentHome() {
     { data: examResults },
     { data: receipts },
     { data: groupMemberships },
+    { data: eventGroups },
   ] = await Promise.all([
     supabase.from("dtr_events").select("*").order("event_date", { ascending: true }),
     supabase.from("dtr_event_classes").select("*"),
@@ -61,15 +63,16 @@ export default async function ParentHome() {
       .eq("guardian_id", guardian.id)
       .is("read_at", null),
     supabase.from("custom_group_students").select("student_id, custom_group_id").in("student_id", studentIds),
+    supabase.from("dtr_event_groups").select("*"),
   ]);
 
-  // Keep only events that target one of this guardian's classes (or all classes).
-  const classIds = new Set(students.map((s) => s.classSection?.id).filter(Boolean));
-  const scopedEventIds = new Set((eventClasses ?? []).map((ec) => ec.dtr_event_id));
-  const visibleEvents = (events ?? []).filter(
-    (e) =>
-      !scopedEventIds.has(e.id) ||
-      (eventClasses ?? []).some((ec) => ec.dtr_event_id === e.id && classIds.has(ec.class_section_id))
+  // Keep only school-wide events and those for this guardian's classes or groups.
+  const visibleEvents = eventsForGuardian(
+    events ?? [],
+    eventClasses ?? [],
+    eventGroups ?? [],
+    new Set(classIdList),
+    new Set((groupMemberships ?? []).map((m) => m.custom_group_id))
   );
 
   const unreadMessageIds = new Set((receipts ?? []).map((r) => r.message_id));
