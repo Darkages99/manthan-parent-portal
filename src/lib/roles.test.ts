@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getViewer = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/session", () => ({ getViewer }));
 
-import { PRINCIPAL_ROLES, isPrincipalRole, requirePrincipal, requireSuperAdmin } from "./roles";
+import {
+  PRINCIPAL_ROLES,
+  isLeadershipRole,
+  isPrincipalRole,
+  requireLeadership,
+  requirePrincipal,
+  requireSuperAdmin,
+} from "./roles";
 
 const staff = (role: string) => ({ type: "staff", staff: { role } });
 
@@ -34,6 +41,27 @@ describe("requirePrincipal", () => {
     await expect(requirePrincipal()).rejects.toThrow("Not signed in as staff");
     getViewer.mockResolvedValue({ type: "parent" });
     await expect(requirePrincipal()).rejects.toThrow("Not signed in as staff");
+  });
+});
+
+describe("requireLeadership", () => {
+  it.each(["principal", "super_admin", "coordinator", "front_office"] as const)("allows %s", async (role) => {
+    expect(isLeadershipRole(role)).toBe(true);
+    getViewer.mockResolvedValue(staff(role));
+    await expect(requireLeadership()).resolves.toMatchObject({ staff: { role } });
+  });
+
+  it.each(["class_teacher", "accounts"] as const)("rejects %s", async (role) => {
+    expect(isLeadershipRole(role)).toBe(false);
+    getViewer.mockResolvedValue(staff(role));
+    await expect(requireLeadership()).rejects.toThrow("Only school leadership");
+  });
+
+  it("rejects signed-out and parent viewers", async () => {
+    getViewer.mockResolvedValue(null);
+    await expect(requireLeadership()).rejects.toThrow("Not signed in as staff");
+    getViewer.mockResolvedValue({ type: "parent" });
+    await expect(requireLeadership()).rejects.toThrow("Not signed in as staff");
   });
 });
 

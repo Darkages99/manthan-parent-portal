@@ -69,6 +69,14 @@ as $$
       )
 $$;
 
+-- Definer, so message_targets' insert policy can check the sender without
+-- re-entering the messages policies (which read message_targets: recursion).
+create or replace function public.staff_sent_message(p_message_id uuid)
+  returns boolean language sql stable security definer set search_path to 'public'
+as $$
+  select exists (select 1 from messages where id = p_message_id and sender_id = current_staff_id())
+$$;
+
 create or replace function public.is_class_teacher_of_student(p_student_id uuid)
   returns boolean language sql stable security definer set search_path to 'public'
 as $$
@@ -142,6 +150,7 @@ revoke all on function public.staff_teaches_class(uuid) from public, anon;
 revoke all on function public.staff_teaches_student(uuid) from public, anon;
 revoke all on function public.staff_can_use_group(uuid) from public, anon;
 revoke all on function public.is_class_teacher_of_student(uuid) from public, anon;
+revoke all on function public.staff_sent_message(uuid) from public, anon;
 revoke all on function public.create_dtr_event(text, date, dtr_category, text, uuid[], uuid[]) from public, anon;
 grant execute on function public.is_super_admin() to authenticated, service_role;
 grant execute on function public.is_leadership() to authenticated, service_role;
@@ -149,6 +158,7 @@ grant execute on function public.staff_teaches_class(uuid) to authenticated, ser
 grant execute on function public.staff_teaches_student(uuid) to authenticated, service_role;
 grant execute on function public.staff_can_use_group(uuid) to authenticated, service_role;
 grant execute on function public.is_class_teacher_of_student(uuid) to authenticated, service_role;
+grant execute on function public.staff_sent_message(uuid) to authenticated, service_role;
 grant execute on function public.create_dtr_event(text, date, dtr_category, text, uuid[], uuid[]) to authenticated, service_role;
 
 -- Live already blocks PUBLIC from the identity helpers; the files only revoked anon.
@@ -271,7 +281,7 @@ create policy "staff read message_targets" on message_targets for select
   using (is_staff());
 create policy "sender targets own message in scope" on message_targets for insert
   with check (
-    exists (select 1 from messages m where m.id = message_id and m.sender_id = current_staff_id())
+    staff_sent_message(message_id)
     and (
       current_staff_role() <> 'class_teacher'
       or (

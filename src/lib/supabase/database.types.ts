@@ -2049,6 +2049,7 @@ export type Database = {
         Returns: undefined
       }
       staff_can_use_group: { Args: { p_group_id: string }; Returns: boolean }
+      staff_sent_message: { Args: { p_message_id: string }; Returns: boolean }
       staff_teaches_class: {
         Args: { p_class_section_id: string }
         Returns: boolean
