@@ -38,7 +38,8 @@ jobs:
       - name: Schema diff
         run: |
           set -o pipefail
-          supabase db diff --linked --password "$SUPABASE_DB_PASSWORD" | tee drift.sql
+          # Reads the password from SUPABASE_DB_PASSWORD (db diff has no --password flag).
+          supabase db diff --linked | tee drift.sql
           # Keep only real statements (drop blank lines and SQL comments).
           if grep -vE '^\s*(--.*)?$' drift.sql > /dev/null; then
             { echo '### Drift found'; echo '```sql'; cat drift.sql; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
