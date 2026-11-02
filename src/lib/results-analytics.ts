@@ -12,14 +12,14 @@ const EXCELLENCE_THRESHOLD_PCT = 90;
  * triggers the principal alert in console/results/actions.ts. */
 export const WEAK_THRESHOLD_PCT = 65;
 
-export type StudentAverage = {
+type StudentAverage = {
   studentId: string;
   name: string;
   percentage: number;
   subjectCount: number;
 };
 
-export type SubjectAverage = {
+type SubjectAverage = {
   subject: string;
   percentage: number;
   entryCount: number;
@@ -50,7 +50,7 @@ export function distinctTerms(results: Pick<ExamResult, "term">[]): string[] {
   return [...new Set(results.map((r) => r.term))].sort().reverse();
 }
 
-export type TermAverage = {
+type TermAverage = {
   term: string;
   percentage: number;
   subjectCount: number;

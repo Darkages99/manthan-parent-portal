@@ -58,7 +58,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 });
 
 /** Inline spinner sized to the current font by default (em units). */
-export function Spinner({ className = "h-[1.15em] w-[1.15em]" }: { className?: string }) {
+function Spinner({ className = "h-[1.15em] w-[1.15em]" }: { className?: string }) {
   return (
     <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />

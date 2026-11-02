@@ -83,6 +83,7 @@ export function ComboBox({
   const selected = value ? optionByValue.get(value) : undefined;
 
   // Pre-fill from the most recently used value when asked and nothing is set.
+  // Only on mount: `didInit` makes every later run a no-op.
   const didInit = useRef(false);
   useEffect(() => {
     if (didInit.current) return;
@@ -91,8 +92,7 @@ export function ComboBox({
       const recent = readRecent(recallKey);
       if (recent && optionByValue.has(recent)) onChange(recent);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [defaultToRecent, value, recallKey, optionByValue, onChange]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

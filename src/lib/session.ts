@@ -3,7 +3,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
-export type GuardianViewer = {
+type GuardianViewer = {
   type: "guardian";
   guardian: Tables<"guardians">;
   students: (Tables<"students"> & { classSection: Tables<"class_sections"> | null })[];

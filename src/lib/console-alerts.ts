@@ -6,21 +6,21 @@ import { ATTENDANCE_THRESHOLD } from "@/lib/attendance";
 import { FAIL_THRESHOLD_PCT } from "@/lib/results-analytics";
 import type { Tables } from "@/lib/supabase/database.types";
 
-export type LowAttendanceStudent = {
+type LowAttendanceStudent = {
   id: string;
   name: string;
   className: string;
   pct: number;
 };
 
-export type PendingRequest = {
+type PendingRequest = {
   id: string;
   name: string;
   className: string;
 };
 
 /** Every student absent today, whether covered by approved leave or not. */
-export type AbsentToday = {
+type AbsentToday = {
   id: string;
   name: string;
   className: string;
@@ -28,7 +28,7 @@ export type AbsentToday = {
 };
 
 /** A student who scored below the pass mark in one or more subjects. */
-export type LowScoreStudent = {
+type LowScoreStudent = {
   id: string;
   name: string;
   className: string;
@@ -36,7 +36,7 @@ export type LowScoreStudent = {
 };
 
 /** A student on approved leave covering today. */
-export type OnLeaveToday = {
+type OnLeaveToday = {
   id: string;
   name: string;
   className: string;
@@ -44,7 +44,7 @@ export type OnLeaveToday = {
 };
 
 /** A student with one or more homework items due today they haven't done. */
-export type DueHomeworkStudent = {
+type DueHomeworkStudent = {
   id: string;
   name: string;
   className: string;
@@ -52,7 +52,7 @@ export type DueHomeworkStudent = {
 };
 
 /** A student staying back today (approved stay-back consent). */
-export type StayingBackToday = {
+type StayingBackToday = {
   id: string;
   name: string;
   className: string;

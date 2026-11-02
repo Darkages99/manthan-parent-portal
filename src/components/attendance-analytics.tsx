@@ -56,14 +56,17 @@ export function AttendanceAnalytics({
   const [markOpen, setMarkOpen] = useState(Boolean(initialMarkOpen));
   const markSectionRef = useRef<HTMLElement>(null);
   const autoOpenedRef = useRef(false);
+  const didInitialScrollRef = useRef(false);
 
   // Arriving from the dashboard's "Mark attendance" link — the form is already
   // expanded (see initialMarkOpen above), so bring it into view too instead of
   // leaving the page scrolled to the top past the snapshot/analytics sections.
+  // Only on mount: the ref stops later prop changes from scrolling again.
   useEffect(() => {
+    if (didInitialScrollRef.current) return;
+    didInitialScrollRef.current = true;
     if (initialMarkOpen) markSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialMarkOpen]);
   // Today's rows just saved by AttendanceMarker, merged in immediately rather
   // than waiting on the server round trip that repopulates `todayRecords` —
   // keeps the "Today" snapshot in sync with the save the instant it succeeds.

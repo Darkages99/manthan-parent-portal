@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 ### Added
 - `supabase/config.toml` and a CI job that rebuilds the database from every migration plus
   `seed.sql` on an empty Postgres, then checks every migration was recorded and the seed loaded.
+- `knip` dead-code check (`npm run knip`), run in CI. Exceptions and their reasons live in
+  `knip.jsonc`.
+- Component tests: `happy-dom` (opt in per file). First one covers the parent portal's
+  selected-child switcher, including storage that throws (private browsing).
 
 ### Changed
 - `seed.sql` is self-contained (creates its own placeholder staff, classes, students and
@@ -14,6 +18,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 - Two applied migrations now replay from empty without changing live: the push-endpoint
   constraint migration is guarded and renamed to its live version (it shared `0005`), and
   `0030` skips the owner's staff row when that auth user doesn't exist.
+- ESLint rejects `eslint-disable` comments (`noInlineConfig`). The 4 that existed are gone:
+  two mount-only effects now list their real dependencies behind a run-once ref, and the
+  selected-child switcher reads localStorage through `useSyncExternalStore`, like the
+  theme toggle, instead of setting state in an effect.
+
+### Removed
+- Unused code: `TrendLine` chart, `SidebarIcon`, the collapsible `PeriodEditor` wrapper
+  (the timetable uses `PeriodEditorBody`), and `export` on 18 file-local names.
 
 ## [0.2.0] - 2026-11-01
 

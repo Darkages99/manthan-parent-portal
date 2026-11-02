@@ -3,41 +3,10 @@
 import { useState, useTransition } from "react";
 import { addPeriod, updatePeriod, deletePeriod } from "@/app/(staff)/console/timetable/actions";
 import { sortPeriods, type Period } from "@/lib/timetable";
-import { ChevronDownIcon } from "./icons";
 
 /** Trims "HH:MM:SS" (as stored) down to "HH:MM" for <input type="time">. */
 function hhmm(t: string): string {
   return t.slice(0, 5);
-}
-
-export function PeriodEditor({ periods }: { periods: Period[] }) {
-  const [open, setOpen] = useState(false);
-  const ordered = sortPeriods(periods);
-
-  return (
-    <div className="rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 px-5 py-4 text-left"
-      >
-        <div>
-          <h2 className="font-heading text-xl text-maroon">Period structure</h2>
-          <p className="text-sm text-slate">
-            {ordered.length} slots · applies to every class, Mon–Sat
-          </p>
-        </div>
-        <ChevronDownIcon className={`h-5 w-5 text-slate transition-transform ${open ? "" : "-rotate-90"}`} />
-      </button>
-
-      {open && (
-        <div className="border-t border-hairline px-5 py-4">
-          <PeriodEditorBody periods={ordered} />
-        </div>
-      )}
-    </div>
-  );
 }
 
 /** The editable period rows + "add slot" control, without the collapsing card
