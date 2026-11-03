@@ -16,6 +16,7 @@ const CATEGORY_META: Partial<Record<NotificationCategory, { label: string; descr
   messages: { label: "Messages", description: "School announcements and class messages." },
   defaulters: { label: "Defaulter room", description: "New discipline incidents recorded." },
   homework: { label: "Homework remarks", description: "Teacher comments on your child's homework." },
+  calendar: { label: "Calendar", description: "New holidays, exams and events for your child." },
 };
 
 const CATEGORIES = Object.keys(CATEGORY_META) as NotificationCategory[];

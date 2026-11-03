@@ -133,8 +133,10 @@ Conventions: **Parent** = a guardian; **Staff** = any staff role;
 
 ## 12. Calendar (DTR), competitions, defaulters, gallery, QR
 - **Requirements:** FR-MISC-1..5.
-- **DTR:** `dtr_events`/`dtr_event_classes`; staff write, all read; per-class or
-  whole-school (`console/calendar`, `(parent)/dtr`).
+- **DTR:** `dtr_events`/`dtr_event_classes`/`dtr_event_groups`; added via
+  `create_dtr_event`, all read; whole-school, per-class or per-group
+  (`console/calendar`, `(parent)/dtr`). A new event is pushed to its guardians by
+  `src/lib/calendar-notify.ts` (skipped for past dates).
 - **Competitions:** `competitions`; principal-tier manage, all read; informational.
 - **Defaulters:** `defaulter_records`; staff record, parent reads own child.
 - **Gallery:** staff upload media, parent views (`(parent)/gallery`,

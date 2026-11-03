@@ -53,7 +53,7 @@ Test-level codes: **L1** static · **L3** RLS impersonation · **L4** integratio
 | FR-ISS-1 | Issues | `(parent)/report-issue/actions.ts` | `reported_issues`, `reported_issue_recipients` | reporter | L4 |
 | FR-ISS-2 | Issues | `0039` policies | `reported_issues` | audience/directed RLS | **L3** |
 | FR-ISS-3 | Issues | `console/issues/actions.ts` | `reported_issues` | visible-staff resolve | L3,L4 |
-| FR-MISC-1 | DTR | `console/calendar`, `(parent)/dtr` | `dtr_events`, `dtr_event_classes` | staff write/all read | L6 |
+| FR-MISC-1 | DTR | `console/calendar`, `(parent)/dtr`, `lib/calendar-notify.ts` (test: `calendar-notify.test.ts`) | `dtr_events`, `dtr_event_classes`, `dtr_event_groups`, `notification_log` | `create_dtr_event`/all read | L6 |
 | FR-MISC-2 | Competitions | `console/competitions` | `competitions` | principal-tier | L6 |
 | FR-MISC-3 | Defaulters | `console/defaulters` | `defaulter_records` | staff / guardian own | L3,L6 |
 | FR-MISC-4 | QR | `console/qr-codes`, `lib/qr` | `student_qr_codes` | principal write / scoped read | L3,L6 |

@@ -32,7 +32,7 @@ The extension `pgcrypto` provides `gen_random_uuid()`.
 | `approval_subject_type` | `stay_back_consent`, `ptm_slot_request` (**retired** — PTM approval was removed in 0041; 0053 dropped it from the guardian policy and added CHECK `subject_type = 'stay_back_consent'` on `approval_steps`; value left in the enum) | 0010:6, 0053 |
 | `approval_step_role` | `class_teacher`, `front_office`, `coordinator`, `principal` | 0010:7 |
 | `stay_back_purpose` | `cultural`, `project`, `competitions_prep`, `ihc`, `others` | 0011 |
-| `notification_category` | `stay_back`, `leave`, `ptm`, `messages`, `reminders`, `defaulters`, `consultations`, `homework` | 0015:4, +0043, +0046 |
+| `notification_category` | `stay_back`, `leave`, `ptm`, `messages`, `reminders`, `defaulters`, `consultations`, `homework`, `calendar` | 0015:4, +0043, +0046, +0056 |
 | `issue_status` | `open`, `resolved` | 0019:4 |
 | `issue_audience` | `principal_only`, `front_office_and_principal` | 0039:14 |
 | `consultation_status` | `pending`, `scheduled`, `declined`, `cancelled` | 0044 |
