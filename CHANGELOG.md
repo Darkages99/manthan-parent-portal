@@ -20,6 +20,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
   events only for their own classes or groups; edits change details, not the audience.
 - A new calendar event (today or later) sends a push to the guardians it is for, under a
   new `calendar` notification category (migration 0056) that parents can turn off.
+- RLS tests for the academic tables (`supabase/tests/030_academic.sql`, 41 asserts):
+  attendance, exam results, grading config, grade bands and defaulter records.
 
 ### Changed
 - `seed.sql` is self-contained (creates its own placeholder staff, classes, students and
@@ -38,6 +40,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
   grid show the five remaining roles.
 - Unused code: `TrendLine` chart, `SidebarIcon`, the collapsible `PeriodEditor` wrapper
   (the timetable uses `PeriodEditorBody`), and `export` on 18 file-local names.
+
+### Fixed
+- Front office could press "Remove" on a report card and see it succeed while nothing
+  changed (RLS doesn't let front office write exam results). Removal now goes through the
+  service role after the same permission check as upload, and errors if nothing matched.
 
 ### Security
 - `staff_directory` is read-only for signed-in users. Before 0055 any signed-in user,

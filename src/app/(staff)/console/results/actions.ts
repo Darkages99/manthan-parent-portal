@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getViewer } from "@/lib/session";
 import { isPrincipalRole } from "@/lib/roles";
 import { getTaughtClassIds } from "@/lib/teacher-scope";
@@ -142,18 +143,21 @@ export async function upsertResult(input: {
 
 /** Unpublishes a student's report card PDF for a term (clears the URL from
  * every exam_results row for that student+term — see the upload route for
- * why the URL is denormalized across subject rows). */
+ * why the URL is denormalized across subject rows). Writes through the
+ * service role like the upload route: front office may manage report cards
+ * but RLS doesn't let it write exam_results, so a session-client update
+ * silently changed nothing for it. */
 export async function removeReportCard(studentId: string, term: string) {
   if (!studentId || !term) throw new Error("Student and term are required");
   await assertCanManageReportCard(studentId);
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const { error, count } = await createAdminClient()
     .from("exam_results")
-    .update({ report_card_pdf_url: null })
+    .update({ report_card_pdf_url: null }, { count: "exact" })
     .eq("student_id", studentId)
     .eq("term", term);
   if (error) throw new Error(error.message);
+  if (!count) throw new Error("No report card found for that term");
   revalidatePath("/console/results");
 }
 
