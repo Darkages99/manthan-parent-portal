@@ -166,8 +166,10 @@ module document (06) gives the detailed rules and the exact source/RLS artifacts
 - **FR-ISS-3** Staff who can see an issue may resolve it.
 
 ### 3.12 Calendar / DTR, competitions, defaulters, gallery, QR (`FR-MISC-*`)
-- **FR-MISC-1 (DTR)** Staff maintain the school calendar (per-class or whole-school);
-  all authenticated users read it.
+- **FR-MISC-1 (DTR)** Staff maintain the school calendar (whole-school, per-class or
+  per-group; teachers only for their own classes/groups); all authenticated users read it.
+  Adding an event dated today or later pushes it to the guardians it is for
+  (`calendar` category).
 - **FR-MISC-2 (Competitions)** Principal-tier maintains an informational list; all
   read.
 - **FR-MISC-3 (Defaulters)** Staff record behavioural incidents; parents read their

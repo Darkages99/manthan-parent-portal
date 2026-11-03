@@ -16,6 +16,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
 - RLS test harness (pgTAP, `supabase/tests`, `npm run test:db`), run in the migrations
   replay job. Fixture users cover two families, every staff role and a signed-in user with
   no role. A self-test shows impersonation reaches `auth.uid()` and RLS keeps families apart.
+- Calendar screen (`/console/calendar`): add, edit and delete events. Teachers can add
+  events only for their own classes or groups; edits change details, not the audience.
+- A new calendar event (today or later) sends a push to the guardians it is for, under a
+  new `calendar` notification category (migration 0056) that parents can turn off.
 
 ### Changed
 - `seed.sql` is self-contained (creates its own placeholder staff, classes, students and

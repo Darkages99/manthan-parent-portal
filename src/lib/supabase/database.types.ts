@@ -2095,6 +2095,7 @@ export type Database = {
         | "defaulters"
         | "consultations"
         | "homework"
+        | "calendar"
       ptm_status: "open" | "closed"
       role:
         | "class_teacher"
@@ -2261,6 +2262,7 @@ export const Constants = {
         "defaulters",
         "consultations",
         "homework",
+        "calendar",
       ],
       ptm_status: ["open", "closed"],
       role: [

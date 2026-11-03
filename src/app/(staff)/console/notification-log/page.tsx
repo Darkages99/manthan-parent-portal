@@ -16,6 +16,8 @@ const CATEGORIES: Enums<"notification_category">[] = [
   "reminders",
   "defaulters",
   "consultations",
+  "homework",
+  "calendar",
 ];
 
 export default async function NotificationLogPage({

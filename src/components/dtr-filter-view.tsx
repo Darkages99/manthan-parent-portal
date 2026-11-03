@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   fromISODate,
   monthGrid,
@@ -25,7 +25,18 @@ type View = "month" | "week";
 /** "day" shows the selected day's events; "list" shows every date for the active tag. */
 type PanelMode = "day" | "list";
 
-export function DtrFilterView({ events }: { events: Event[] }) {
+/** Optional per-event extras: a short "who it's for" note, and staff edit controls. */
+type EventExtras = {
+  eventNote?: (event: Event) => string | null;
+  renderEventActions?: (event: Event) => ReactNode;
+};
+
+export function DtrFilterView({
+  events,
+  eventNote,
+  renderEventActions,
+}: { events: Event[] } & EventExtras) {
+  const extras: EventExtras = { eventNote, renderEventActions };
   const today = useMemo(() => new Date(), []);
   const [view, setView] = useState<View>("month");
   const [active, setActive] = useState<DTRCategory | "all">("all");
@@ -158,9 +169,10 @@ export function DtrFilterView({ events }: { events: Event[] }) {
           categoryEvents={filtered}
           onJumpToEvent={jumpToEvent}
           panelMode={panelMode}
+          extras={extras}
         />
       ) : (
-        <WeekView weekDays={weekDays} eventsByDay={eventsByDay} />
+        <WeekView weekDays={weekDays} eventsByDay={eventsByDay} extras={extras} />
       )}
     </div>
   );
@@ -177,6 +189,7 @@ function MonthView({
   categoryEvents,
   onJumpToEvent,
   panelMode,
+  extras,
 }: {
   weeks: ReturnType<typeof monthGrid>;
   eventsByDay: Map<string, Event[]>;
@@ -187,6 +200,7 @@ function MonthView({
   categoryEvents: Event[];
   onJumpToEvent: (event: Event) => void;
   panelMode: "day" | "list";
+  extras: EventExtras;
 }) {
   return (
     <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[26rem_1fr]">
@@ -251,7 +265,7 @@ function MonthView({
             ) : (
               <ul className="divide-y divide-hairline rounded-sm border border-hairline bg-surface shadow-[var(--shadow-card)]">
                 {selectedEvents.map((e) => (
-                  <EventRow key={e.id} event={e} />
+                  <EventRow key={e.id} event={e} extras={extras} />
                 ))}
               </ul>
             )}
@@ -287,6 +301,7 @@ function MonthView({
                           })}
                         </p>
                         <p className="mt-0.5 text-base font-semibold text-maroon">{e.title}</p>
+                        <EventNote event={e} extras={extras} />
                         {e.description && <p className="mt-1 text-sm text-slate-strong">{e.description}</p>}
                       </div>
                     </button>
@@ -305,9 +320,11 @@ function MonthView({
 function WeekView({
   weekDays,
   eventsByDay,
+  extras,
 }: {
   weekDays: ReturnType<typeof weekOf>;
   eventsByDay: Map<string, Event[]>;
+  extras: EventExtras;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -341,6 +358,12 @@ function WeekView({
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${categoryChip[e.category]}`}>
                           {categoryLabel[e.category]}
                         </span>
+                        {extras.renderEventActions && (
+                          <div className="ml-auto">{extras.renderEventActions(e)}</div>
+                        )}
+                      </div>
+                      <div className="pl-5">
+                        <EventNote event={e} extras={extras} />
                       </div>
                       {e.description && (
                         <p className="mt-1 pl-5 text-base text-slate-strong">{e.description}</p>
@@ -377,7 +400,13 @@ function EmptyDay() {
   );
 }
 
-function EventRow({ event: e }: { event: Event }) {
+function EventNote({ event, extras }: { event: Event; extras: EventExtras }) {
+  const note = extras.eventNote?.(event);
+  if (!note) return null;
+  return <p className="mt-0.5 text-sm text-slate">For: {note}</p>;
+}
+
+function EventRow({ event: e, extras }: { event: Event; extras: EventExtras }) {
   return (
     <li className="flex items-start gap-3 px-5 py-4">
       <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${categoryDot[e.category]}`} />
@@ -388,8 +417,10 @@ function EventRow({ event: e }: { event: Event }) {
             {categoryLabel[e.category]}
           </span>
         </div>
+        <EventNote event={e} extras={extras} />
         {e.description && <p className="mt-1 text-base text-slate-strong">{e.description}</p>}
       </div>
+      {extras.renderEventActions?.(e)}
     </li>
   );
 }

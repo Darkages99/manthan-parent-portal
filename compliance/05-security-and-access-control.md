@@ -154,6 +154,7 @@ enumerated non-factory sites and why each is safe:
 | `api/report-card/upload` + `bulk-upload` | Write files + result rows | Session + staff validated; zip entries path-checked |
 | `lib/google-sheets.ts` | Trusted background roster sync | Runs from cron (CRON_SECRET) or staff console; deletions queued not applied |
 | `lib/homework-notify.ts` | Background sweep across classes | Read-only + push; no user input |
+| `lib/calendar-notify.ts` | Resolve a new calendar event's guardians across families and push to them | Runs only after `create_dtr_event` accepted the event (teacher scope checked there); read-only + push |
 | `lib/notifications/push.ts` | Read subscriptions across users to fan out | Targets computed by the calling feature's authorized logic |
 | `lib/reference-data.ts` | Server-side reference lookups | Read-only reference data |
 
