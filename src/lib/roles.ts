@@ -15,7 +15,8 @@ export function isPrincipalRole(role: Enums<"role">): boolean {
 
 /**
  * Principal-tier plus front office: may add, edit and delete classes and their
- * subject teachers. Mirrors is_leadership() in migration 0054.
+ * subject teachers (is_leadership() in migration 0054), and add and edit
+ * students and parents (admissions, migration 0057).
  */
 const LEADERSHIP_ROLES: Enums<"role">[] = [...PRINCIPAL_ROLES, "front_office"];
 

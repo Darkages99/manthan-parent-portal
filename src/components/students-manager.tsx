@@ -27,12 +27,15 @@ export function StudentsManager({
   classes,
   guardians,
   guardianNamesByStudent,
+  canDelete = false,
   canErase = false,
 }: {
   students: Student[];
   classes: ClassSection[];
   guardians: Guardian[];
   guardianNamesByStudent: Record<string, string[]>;
+  /** Principal tier only; front office can add and edit but not delete. */
+  canDelete?: boolean;
   /** Super-admin only: enables the permanent right-to-erasure control (DG-1). */
   canErase?: boolean;
 }) {
@@ -130,6 +133,7 @@ export function StudentsManager({
             classes={classes}
             guardians={guardians}
             student={editing}
+            canDelete={canDelete}
             canErase={canErase}
             onDone={() => setEditing(null)}
           />
@@ -143,12 +147,14 @@ function StudentForm({
   classes,
   guardians,
   student,
+  canDelete = false,
   canErase = false,
   onDone,
 }: {
   classes: ClassSection[];
   guardians: Guardian[];
   student?: Student;
+  canDelete?: boolean;
   canErase?: boolean;
   onDone: () => void;
 }) {
@@ -301,16 +307,18 @@ function StudentForm({
         >
           Save
         </Button>
-        {student && (
+        {student && (canDelete || canErase) && (
           <div className="flex items-center gap-2">
             {canErase && (
               <Button type="button" variant="danger" size="sm" onClick={erase} disabled={pending}>
                 Erase all data
               </Button>
             )}
-            <Button type="button" variant="danger" size="sm" onClick={remove} disabled={pending}>
-              Delete student
-            </Button>
+            {canDelete && (
+              <Button type="button" variant="danger" size="sm" onClick={remove} disabled={pending}>
+                Delete student
+              </Button>
+            )}
           </div>
         )}
       </div>

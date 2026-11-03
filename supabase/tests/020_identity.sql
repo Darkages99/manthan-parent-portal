@@ -3,7 +3,7 @@
 -- c…001 (8-B) and c…002 (5-A); guardian_b has c…003 (8-B). Totals are captured
 -- first so the counts hold however many rows seed.sql adds later.
 begin;
-select plan(55);
+select plan(60);
 
 create temp table totals on commit drop as select
   (select count(*) from staff) as staff,
@@ -83,13 +83,31 @@ select throws_ok(
   '42501', null, 'a teacher cannot link guardians to students');
 reset role;
 
--- ---- Front office: classes yes; staff, guardians and students no (app: requirePrincipal) ----
+-- ---- Front office: admissions (0057). Add and edit students, parents and links;
+-- deleting a student or parent and touching staff stay with the principal tier ----
 select tests.authenticate_as('front_office');
 select is(tests.visible('students'), (select students from totals), 'front office reads all students');
-select is(tests.affected($$update students set first_name = 'x' where id = 'c0000000-0000-0000-0000-000000000001'$$),
-  0::bigint, 'front office cannot edit students');
-select is(tests.affected($$update guardians set phone = '+919999999999' where id = 'd0000000-0000-0000-0000-000000000001'$$),
-  0::bigint, 'front office cannot edit guardians');
+select is(tests.affected($$update students set first_name = 'Edited' where id = 'c0000000-0000-0000-0000-000000000001'$$),
+  1::bigint, 'front office edits a student');
+select is(tests.affected($$update guardians set phone = '+919999999998' where id = 'd0000000-0000-0000-0000-000000000001'$$),
+  1::bigint, 'front office edits a guardian');
+select lives_ok(
+  $$insert into guardians (id, name, relation, phone, email)
+    values ('d0000000-0000-0000-0000-000000000098', 'New Parent', 'Mother', '+919000000098', 'new.parent@example.test')$$,
+  'front office adds a guardian');
+select lives_ok(
+  $$select create_student_with_guardians('New', 'Pupil', '98', 'a0000000-0000-0000-0000-000000000001',
+    array['d0000000-0000-0000-0000-000000000098']::uuid[])$$,
+  'front office admits a student with a parent');
+select lives_ok(
+  $$select replace_guardian_children('d0000000-0000-0000-0000-000000000001', array[
+    'c0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002',
+    'c0000000-0000-0000-0000-000000000003']::uuid[])$$,
+  'front office changes a parent''s linked children');
+select is(tests.affected($$delete from students where id = 'c0000000-0000-0000-0000-000000000002'$$),
+  0::bigint, 'front office cannot delete a student');
+select is(tests.affected($$delete from guardians where id = 'd0000000-0000-0000-0000-000000000098'$$),
+  0::bigint, 'front office cannot delete a guardian');
 select is(tests.affected($$update staff set name = 'x' where id = 'b0000000-0000-0000-0000-000000000001'$$),
   0::bigint, 'front office cannot edit staff');
 reset role;

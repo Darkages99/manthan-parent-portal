@@ -20,11 +20,14 @@ export function GuardiansManager({
   studentOptions,
   studentLabelById,
   childIdsByGuardian,
+  canDelete = false,
 }: {
   guardians: Guardian[];
   studentOptions: TypeaheadOption[];
   studentLabelById: Record<string, string>;
   childIdsByGuardian: Record<string, string[]>;
+  /** Principal tier only; front office can add and edit but not delete. */
+  canDelete?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -121,6 +124,7 @@ export function GuardiansManager({
             studentOptions={studentOptions}
             guardian={editing}
             initialChildIds={childIdsByGuardian[editing.id] ?? []}
+            canDelete={canDelete}
             onDone={() => setEditing(null)}
           />
         )}
@@ -133,11 +137,13 @@ function GuardianForm({
   studentOptions,
   guardian,
   initialChildIds = [],
+  canDelete = false,
   onDone,
 }: {
   studentOptions: TypeaheadOption[];
   guardian?: Guardian;
   initialChildIds?: string[];
+  canDelete?: boolean;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -240,7 +246,7 @@ function GuardianForm({
         >
           Save
         </Button>
-        {guardian && (
+        {guardian && canDelete && (
           <Button type="button" variant="danger" size="sm" onClick={remove} disabled={pending}>
             Delete parent
           </Button>

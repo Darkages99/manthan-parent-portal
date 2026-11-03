@@ -58,7 +58,7 @@ they are identified by a `guardians` row. "Principal-tier" is a recurring groupi
 | Role value | Human label | Tier | What they can do (summary) |
 |------------|-------------|------|-----------------------------|
 | `class_teacher` | Teacher | Staff (scoped) | Mark attendance, enter marks for their own classes/subjects, author homework, message their scoped audience, act as a named approver. |
-| `front_office` | Front Office | Staff | School-wide operational tasks: attendance, triage issues shared with them, approval steps. |
+| `front_office` | Front Office | Staff | School-wide operational tasks: attendance, triage issues shared with them, approval steps, classes, and admissions (add/edit students and parents; deleting them stays with the principal tier). |
 | `coordinator` | Coordinator | **Principal-tier** | Admin-equivalent to principal for gating purposes (`src/lib/roles.ts:10`). |
 | `principal` | Principal | **Principal-tier** | Full school-wide management: classes, timetable, results scope, approvals, message permissions. |
 | `super_admin` | Super Admin | **Principal-tier + strict** | Everything principal can do, **plus** the strict-only actions: create/elevate other super admins, confirm sheet-sync deletions. |

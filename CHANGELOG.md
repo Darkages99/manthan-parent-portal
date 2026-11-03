@@ -25,6 +25,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
   stranger, both families and every staff role.
 
 ### Changed
+- Front office handles admissions: it can add and edit students and parents and change
+  which children a parent is linked to (migration 0057; Students and Parents now appear in
+  its menu). Deleting a student or a parent stays with the principal, coordinator and
+  super admin.
 - `seed.sql` is self-contained (creates its own placeholder staff, classes, students and
   guardian) and sets `meeting_id` on PTM slots.
 - Two applied migrations now replay from empty without changing live: the push-endpoint

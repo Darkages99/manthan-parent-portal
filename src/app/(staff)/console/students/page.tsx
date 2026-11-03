@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { StudentsManager } from "@/components/students-manager";
 import { getViewer } from "@/lib/session";
-import { isPrincipalRole } from "@/lib/roles";
+import { isLeadershipRole, isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ConsoleStudents() {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
-  if (!isPrincipalRole(viewer.staff.role)) redirect("/console");
+  if (!isLeadershipRole(viewer.staff.role)) redirect("/console");
 
   const supabase = await createClient();
   const [{ data: students }, { data: classes }, { data: links }, { data: guardians }] = await Promise.all([
@@ -42,6 +42,7 @@ export default async function ConsoleStudents() {
         classes={classes ?? []}
         guardians={guardians ?? []}
         guardianNamesByStudent={Object.fromEntries(guardianNamesByStudent)}
+        canDelete={isPrincipalRole(viewer.staff.role)}
         canErase={viewer.staff.role === "super_admin"}
       />
     </div>

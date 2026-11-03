@@ -125,7 +125,8 @@ user could update staff rows through the view; 0055 recreated it with SELECT onl
 | `created_at` | timestamptz NOT NULL | |
 
 **RLS:** staff read all; a guardian reads a student only if linked via
-`guardian_student`. Staff write policy added 0027; the manual add path goes through
+`guardian_student`. Principal tier manages (0027, restated 0054); front office adds
+and edits but cannot delete (0057). The manual add path goes through
 `create_student_with_guardians()` to enforce "≥1 parent" (0040).
 
 ### 3.5 `guardians` — parent/guardian accounts
@@ -140,7 +141,8 @@ user could update staff rows through the view; 0055 recreated it with SELECT onl
 | `created_at` | timestamptz NOT NULL | |
 
 **RLS:** a guardian reads only their own row (`auth_user_id = auth.uid()`); staff
-read all; staff write added 0038. Integrity: a guardian must have a linked child
+read all; principal tier manages (0038, restated 0054); front office adds and edits
+but cannot delete (0057). Integrity: a guardian must have a linked child
 **or** an email (deferred trigger, 0040).
 
 ### 3.6 `guardian_student` — the guardian↔student link (join)
@@ -150,7 +152,8 @@ read all; staff write added 0038. Integrity: a guardian must have a linked child
 | `student_id` | uuid FK→`students` | on delete cascade |
 | PK | (guardian_id, student_id) | |
 
-**RLS:** a guardian reads only their own links; staff read/write. **A guardian
+**RLS:** a guardian reads only their own links; staff read; principal tier
+writes; front office inserts and deletes links (0057). **A guardian
 cannot insert a link** (writes are staff-only) — this is the single most important
 control: it prevents a parent from granting themselves access to another child.
 Deferred trigger enforces "a student keeps ≥1 parent" on link removal (0040).

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePrincipal, requireSuperAdmin } from "@/lib/roles";
+import { requireLeadership, requirePrincipal, requireSuperAdmin } from "@/lib/roles";
 import { deleteFileAdmin, storagePathFromDownloadUrl } from "@/lib/firebase/admin-storage";
 import { logError } from "@/lib/log";
 
@@ -21,7 +21,7 @@ type StudentInput = {
  * guardian links are inserted atomically via an RPC so the deferred integrity
  * triggers see the final state. */
 export async function createStudent(input: StudentInput, guardianIds: string[]) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!input.firstName.trim() || !input.lastName.trim()) throw new Error("First and last name are required");
   if (!input.rollNo.trim()) throw new Error("Roll number is required");
   if (!input.classSectionId) throw new Error("Class is required");
@@ -43,7 +43,7 @@ export async function createStudent(input: StudentInput, guardianIds: string[]) 
 
 /** Edits an existing student's name, roll number, class or photo. */
 export async function updateStudent(id: string, input: StudentInput) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!id) throw new Error("Student is required");
   if (!input.firstName.trim() || !input.lastName.trim()) throw new Error("First and last name are required");
   if (!input.rollNo.trim()) throw new Error("Roll number is required");

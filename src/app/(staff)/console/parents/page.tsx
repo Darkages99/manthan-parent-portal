@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { GuardiansManager } from "@/components/guardians-manager";
 import { getViewer } from "@/lib/session";
-import { isPrincipalRole } from "@/lib/roles";
+import { isLeadershipRole, isPrincipalRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ConsoleParents() {
   const viewer = await getViewer();
   if (!viewer || viewer.type !== "staff") redirect("/");
-  if (!isPrincipalRole(viewer.staff.role)) redirect("/console");
+  if (!isLeadershipRole(viewer.staff.role)) redirect("/console");
 
   const supabase = await createClient();
   const [{ data: guardians }, { data: links }, { data: students }, { data: classes }] = await Promise.all([
@@ -51,6 +51,7 @@ export default async function ConsoleParents() {
         studentOptions={studentOptions}
         studentLabelById={Object.fromEntries(studentLabelById)}
         childIdsByGuardian={Object.fromEntries(childIdsByGuardian)}
+        canDelete={isPrincipalRole(viewer.staff.role)}
       />
     </div>
   );
