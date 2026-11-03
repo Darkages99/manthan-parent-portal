@@ -20,6 +20,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow 
   events only for their own classes or groups; edits change details, not the audience.
 - A new calendar event (today or later) sends a push to the guardians it is for, under a
   new `calendar` notification category (migration 0056) that parents can turn off.
+- RLS tests for the identity tables (`supabase/tests/020_identity.sql`, 55 asserts): staff,
+  staff directory, guardians, guardian links, students and classes, for anon, a signed-in
+  stranger, both families and every staff role.
 
 ### Changed
 - `seed.sql` is self-contained (creates its own placeholder staff, classes, students and
