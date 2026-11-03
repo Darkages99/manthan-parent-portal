@@ -73,7 +73,8 @@ function buildNavItems(
     ...(isPrincipal || role === "class_teacher" || role === "front_office"
       ? [{ href: "/console/report-cards", label: "Report cards", icon: AwardIcon }]
       : []),
-    // Class management — principal-tier and front office (LEADERSHIP_ROLES).
+    // Classes, students and parents (admissions) — principal-tier and front
+    // office (LEADERSHIP_ROLES).
     ...(isPrincipal || role === "front_office"
       ? [
           {
@@ -88,13 +89,13 @@ function buildNavItems(
               classSectionId: c.id,
             })),
           },
+          { href: "/console/students", label: "Students", icon: ClassIcon },
+          { href: "/console/parents", label: "Parents", icon: UsersIcon },
         ]
       : []),
     // Principal-only administration.
     ...(isPrincipal
       ? [
-          { href: "/console/students", label: "Students", icon: ClassIcon },
-          { href: "/console/parents", label: "Parents", icon: UsersIcon },
           { href: "/console/staff", label: "Staff", icon: UsersIcon },
           { href: "/console/competitions", label: "Competitions", icon: AwardIcon },
         ]

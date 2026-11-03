@@ -114,6 +114,8 @@ built from user input.
 | Approve stay-back (approval chain) | — | ✅ named step | ✅ step | ✅ step (grades 1–7) | ✅ step (grade 8+) | ✅ any step |
 | Read / approve leave | — | ✅ own class, up to 3 days | ✅ | ✅ | ✅ (any length) | ✅ |
 | Add / edit / delete classes | — | — | ✅ | ✅ | ✅ | ✅ |
+| Add / edit students and parents, link children (admissions) | — | — | ✅ (0057) | ✅ | ✅ | ✅ |
+| Delete a student or parent | — | — | — | ✅ | ✅ | ✅ |
 | Calendar events | read | ✅ own classes/groups via `create_dtr_event`; edit own | ✅ school-wide | ✅ school-wide | ✅ school-wide | ✅ |
 | Read all messages | own + group only if child is in it | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Message classes/students/groups | — | ✅ own classes, their students, own/granted groups | per grid | per grid | per grid | ✅ |

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePrincipal } from "@/lib/roles";
+import { requireLeadership, requirePrincipal } from "@/lib/roles";
 
 type GuardianInput = {
   name: string;
@@ -15,7 +15,7 @@ type GuardianInput = {
  * email set here is what gates self-serve account activation — see
  * activateGuardianAccount in src/app/activate/actions.ts. */
 export async function createGuardian(input: GuardianInput, childStudentIds: string[]) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!input.name.trim()) throw new Error("Name is required");
   if (!input.phone.trim()) throw new Error("Mobile number is required");
   if (!input.email.trim() && childStudentIds.length === 0)
@@ -45,7 +45,7 @@ export async function createGuardian(input: GuardianInput, childStudentIds: stri
 
 /** Edits a guardian's details and replaces their full set of linked children. */
 export async function updateGuardian(id: string, input: GuardianInput, childStudentIds: string[]) {
-  await requirePrincipal();
+  await requireLeadership();
   if (!id) throw new Error("Guardian is required");
   if (!input.name.trim()) throw new Error("Name is required");
   if (!input.phone.trim()) throw new Error("Mobile number is required");
